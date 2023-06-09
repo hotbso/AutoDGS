@@ -143,7 +143,8 @@ static airportdb_t airportdb;
 static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
-static geo_pos3_t cur_pos;
+static geo_pos2_t cur_pos;
+static const ramp_start_t *nearest_ramp;
 
 /* Known plane descriptions */
 static const db_t planedb[]={/* lng   lat  vert  type */
@@ -753,6 +754,34 @@ static XPLMDataRef intarrayref(char *inDataName, XPLMGetDatavi_f inReadIntArray,
     return XPLMRegisterDataAccessor(inDataName, xplmType_IntArray, 0, NULL, NULL, NULL, NULL, NULL, NULL, inReadIntArray, NULL, NULL, NULL, NULL, NULL, inRefcon, 0);
 }
 
+static void find_nearest_ramp()
+{
+    if (arpt == NULL)
+        return;
+
+    double dist = 1.0E10;
+    const ramp_start_t *min_ramp = NULL;
+
+    for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
+        ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
+
+        float dlat = 111195.0 * (cur_pos.lat - ramp->pos.lat);
+        float dlon = 111195.0 * (cur_pos.lon - ramp->pos.lon) * cos(0.01745* ramp->pos.lat);
+
+        double d = sqrt(dlat * dlat + dlon * dlon);
+        if (d < dist) {
+            dist = d;
+            min_ramp = ramp;
+        }
+    }
+
+    if (min_ramp != nearest_ramp) {
+        nearest_ramp = min_ramp;
+        logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
+               min_ramp->hdgt, dist);
+    }
+}
+
 static float flight_loop_cb(float inElapsedSinceLastCall,
                 float inElapsedTimeSinceLastFlightLoop, int inCounter,
                 void *inRefcon)
@@ -780,13 +809,15 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 }
             } else {
                 arpt = NULL;
+                nearest_ramp = NULL;
             }
 
         }
     }
 
     if (on_ground) {
-        cur_pos = GEO_POS3(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon), XPLMGetDataf(ref_plane_elevation));
+        cur_pos = GEO_POS2(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon)); //, XPLMGetDataf(ref_plane_elevation));
+        find_nearest_ramp();
     }
 
     return 2.0;
