@@ -36,6 +36,7 @@
 #include "XPLMGraphics.h"
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
+#include "XPLMNavigation.h"
 #include "XPLMUtilities.h"
 
 #include <acfutils/assert.h>
@@ -109,6 +110,7 @@ static const char *psep;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
+static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
 static XPLMDataRef ref_beacon;
 static XPLMDataRef ref_draw_object_x, ref_draw_object_y, ref_draw_object_z, ref_draw_object_psi;
 static XPLMDataRef ref_acf_descrip, ref_acf_icao;
@@ -133,13 +135,15 @@ static float last_gate_update = 0;		/* and the time we examined it */
 float gate_x, gate_y, gate_z, gate_h;		/* active gate */
 static float gate_update=0;			/* and the time we examined it */
 int gate_AutoVDGS;				/* active gate is an AutoVDGS, not a standalone dummy */
-
 static float last_dgs_x, last_dgs_y, last_dgs_z;	/* last dgs object examined */
 static float last_dgs_update = 0;		/* and the time we examined it */
 static float dgs_x, dgs_y, dgs_z;		/* active DGS */
 static float running_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* running state, last switch_pos, ts of last switch action */
 static airportdb_t airportdb;
-
+static airport_t *arpt;
+static int on_ground;
+static float on_ground_ts;
+static geo_pos3_t cur_pos;
 
 /* Known plane descriptions */
 static const db_t planedb[]={/* lng   lat  vert  type */
@@ -749,6 +753,44 @@ static XPLMDataRef intarrayref(char *inDataName, XPLMGetDatavi_f inReadIntArray,
     return XPLMRegisterDataAccessor(inDataName, xplmType_IntArray, 0, NULL, NULL, NULL, NULL, NULL, NULL, inReadIntArray, NULL, NULL, NULL, NULL, NULL, inRefcon, 0);
 }
 
+static float flight_loop_cb(float inElapsedSinceLastCall,
+                float inElapsedTimeSinceLastFlightLoop, int inCounter,
+                void *inRefcon)
+{
+    float now = XPLMGetDataf(ref_total_running_time_sec);
+    int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
+
+    if (og != on_ground && now > on_ground_ts + 10.0) {
+        on_ground = og;
+        on_ground_ts = now;
+        logMsg("transition to on_ground: %d", on_ground);
+
+        if (on_ground) {
+            float lat = XPLMGetDataf(ref_plane_lat);
+            float lon = XPLMGetDataf(ref_plane_lon);
+            char airport_id[50];
+
+            XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
+            if (XPLM_NAV_NOT_FOUND != ref) {
+                XPLMGetNavAidInfo(ref, NULL, &lat, &lon, NULL, NULL, NULL, airport_id,
+                        NULL, NULL);
+                arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
+                if (arpt) {
+                    logMsg("now on airport: %s", arpt->icao);
+                }
+            } else {
+                arpt = NULL;
+            }
+
+        }
+    }
+
+    if (on_ground) {
+        cur_pos = GEO_POS3(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon), XPLMGetDataf(ref_plane_elevation));
+    }
+
+    return 2.0;
+}
 
 /* Convert path to posix style in-place */
 void posixify(char *path)
@@ -860,6 +902,10 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_y        =XPLMFindDataRef("sim/flightmodel/position/local_y");
     ref_plane_z        =XPLMFindDataRef("sim/flightmodel/position/local_z");
     ref_plane_psi      =XPLMFindDataRef("sim/flightmodel/position/psi");
+    ref_gear_fnrml     =XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
+    ref_plane_lat      =XPLMFindDataRef("sim/flightmodel/position/latitude");
+    ref_plane_lon      =XPLMFindDataRef("sim/flightmodel/position/longitude");
+    ref_plane_elevation=XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_beacon         =XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_draw_object_x  =XPLMFindDataRef("sim/graphics/animation/draw_object_x");
     ref_draw_object_y  =XPLMFindDataRef("sim/graphics/animation/draw_object_y");
@@ -905,6 +951,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 
     XPLMRegisterFlightLoopCallback(newplanecallback, 0, NULL);		/* For checking gate alignment on new location */
 
+    XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
 }
 
