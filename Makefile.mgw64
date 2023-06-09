@@ -1,0 +1,63 @@
+.SUFFIXES: .obj
+
+include version.mak
+
+TARGET=win.xpl
+HEADERS=$(wildcard *.h)
+SOURCES=$(wildcard *.c)
+OBJECTS=$(SOURCES:.c=.o)
+OBJDIR=./OBJ
+
+LIBACFUTILS_VERSION="hotbso subset"
+SDK=../SDK
+PLUGDIR=/e/X-Plane-12-clean/Resources/plugins/AutoVDGS
+OBJECTS=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o))
+
+LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
+LACFU_OBJECTS=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o)))
+
+CC=x86_64-w64-mingw32-gcc
+LD=x86_64-w64-mingw32-gcc
+
+COMMON_CFLAGS+= -g0 -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow -DWINDOWS -DWIN32 \
+    -Ilibacfutils/src/ \
+	-I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DIBM=1 -DVERSION=\"$(VERSION)\"
+
+COMMON_CFLAGS=-O2 -s -Wall -fdiagnostics-color -Wno-format-overflow \
+    -D_POSIX_C_SOURCE  \
+    -DIBM -DWINDOWS -DWIN32 -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00 \
+	-I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src/ \
+    -DVERSION=\"$(VERSION)\" \
+    $(DEFINES)
+
+CFLAGS=-mdll $(COMMON_CFLAGS)
+LACFU_CFLAGS=-DUNICODE -DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(COMMON_CFLAGS)
+
+LDFLAGS=-shared -static-libgcc -static -lpthread
+LIBS=-L$(SDK)/Libraries/Win -lDbghelp -lpsapi -lXPLM_64 -lXPWidgets_64 -lz -liconv
+
+
+all: $(TARGET)
+    $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
+
+$(OBJDIR)/%.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o: libacfutils/src/%.c
+	$(CC) $(LACFU_CFLAGS) -o $@ -c $<
+
+$(TARGET): $(OBJECTS) $(LACFU_OBJECTS)
+	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
+	
+clean:
+	rm $(OBJECTS) $(LACFU_OBJECTS) $(TARGET)
+
+# install the just compiled target
+install: $(TARGET)
+	mkdir -p "$(PLUGDIR)/64"
+	cp -p $(TARGET) "$(PLUGDIR)/64/."
+
+# create the whole plugin directory
+plugin: $(TARGET)
+	mkdir -p "$(PLUGDIR)/64"
+	cp -p $(TARGET) "$(PLUGDIR)/64/."
