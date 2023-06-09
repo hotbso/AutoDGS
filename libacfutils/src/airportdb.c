@@ -12,7 +12,7 @@
  *
  * CDDL HEADER END
  *
- * Copyright 2022 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
 
 #include <errno.h>
@@ -49,101 +49,6 @@
 #include "acfutils/safe_alloc.h"
 #include "acfutils/types.h"
 
-/*
- * The airport database is the primary repository of knowledge about airports,
- * runways and bounding boxes. It is composed of two data structures:
- *
- * *) a global ident -> airport_t AVL tree (apt_dat). This allows us to
- *	quickly locate an airport based on its identifier.
- * *) a geo-referenced AVL tree from approximate airport reference point
- *	position (in 1-degree accuracy) to the airport_t (geo_table). This
- *	allows us to quickly sift through the airport database to locate any
- *	airports close to a given point of interest.
- *
- * Of these, apt_dat is the primary repository of knowledge - once an airport
- * is gone from apt_dat, it is freed. An airport may or may not be
- * geo-referenced in the geo_table. Once all loading of an airport is
- * complete, it WILL be geo-referenced.
- *
- * The geo_table is actually comprised of tile_t data structures. A tile_t
- * refers to a 1x1 degree geographical tile at specific coordinates and
- * contains its own private airport_t tree, which is again organized by
- * abstract identifier, allowing us to step through all the airports in a
- * tile or quickly locate one based on identifier.
- *
- * During normal operation, not all airports from all over the world are
- * loaded into memory, as that would use quite a bit of memory and delay
- * startup. Instead, only the closets 9 tiles around the aircraft are
- * present. New tiles are loaded as the aircraft repositions and the old
- * ones are released. Loading a tile first populates the global apt_dat
- * with all its airports, which are then geo-referenced in the newly
- * created tile. Releasing a tile is the converse, ultimately ending in
- * the airports being purged from apt_dat and freed.
- *
- * The 9-tile rule can result in strange behavior close to the poles, where
- * the code might think of close by airports as being very far away and
- * thus not load them. Luckily, there are only about 4 airports beyond 80
- * degrees latitude (north or south), all of which are very special
- * non-regular airports, so we just ignore those.
- *
- *
- * AIRPORT DATA CONSTRUCTION METHOD
- *
- * For each airport, we need to obtain the following pieces of information:
- *
- * 1) The abstract airport identifier.
- *	1a) Optional ICAO identifier, on a 1302 icao_code line.
- *	1b) Optional IATA identifier, on a 1302 iata_code line.
- * 2) The airport reference point latitude, longitude and elevation.
- * 3) The airport's transition altitude and transition level (if published).
- * 4) For each runway:
- *	a) Runway width.
- *	b) Each threshold's geographical position and elevation.
- *	c) If the threshold is displaced, the amount of displacement.
- *	d) For each end, if available, the optimal glidepath angle and
- *	   threshold clearing height.
- *
- * First we examine all installed scenery. That means going through each
- * apt.dat declared in scenery_packs.ini and the global default apt dat
- * to find these kinds of records:
- *
- * *) '1' records identify airports. See parse_apt_dat_1_line.
- * *) '21' records identify runway-related lighting fixtures (PAPIs/VASIs).
- *	See parse_apt_dat_21_line.
- * *) '50' through '56' and '1050' through '1056' records identify frequency
- *	information. See parse_apt_dat_freq_line.
- * *) '100' records identify runways. See parse_apt_dat_100_line.
- * *) '1302' records identify airport meta-information, such as ICAO code,
- *	TA, TL, reference point location, etc.
- *
- * Prior to X-Plane 11, apt.dat's didn't necessarily contain the '1302'
- * records, so we had to pull those from the Airports.txt in the navdata
- * directory for the built-in GNS430. Starting from X-Plane 11, Airports.txt
- * is gone and this data has been relocated to the apt.dat.
- *
- * A further complication of the absence of an Airports.txt is that this
- * file contained both the GPA and TCH for each runway and although it did
- * sometimes require some fuzzy matching to account for outdated scenery
- * not exactly matching the navdata, we could obtain this information from
- * one place.
- *
- * So for X-Plane 11, we've implemented a new method of obtaining this
- * information. By default, if a runway has an instrument approach (unless
- * ifr_only=B_FALSE), it will have an entry in CIFP. Runway entries in
- * APPCH-type procedures specify the TCH and GPA in columns 24 and 29 (ARINC
- * 424 fields 4.1.9.1.85-89 and 4.1.9.1.103-106). We only use the first
- * such occurence. If there are multiple approaches to the runway, they
- * should all end up with the same TCH and GPA. This should cover pretty much
- * every case. In the rare case where we *don't* get the TCH and GPA this way,
- * we try a fallback mechanism. Almost every instrument approach runway has
- * some kind of visual glideslope indication (VGSI) right next to it. We can
- * extract the location of those from the apt.dat file. These VGSIs are
- * located in the exact touchdown point and have a fixed GPA. So we simply
- * look for a VGSI close to the runway's centerline and that is aligned with
- * the runway, compute the longitudinal displacement of this indicator from
- * the runway threshold and using the indicator's GPA compute the optimal TCH.
- */
-
 #define	RWY_PROXIMITY_LAT_FRACT		3
 #define	RWY_PROXIMITY_LON_DISPL		609.57	/* meters, 2000 ft */
 
@@ -152,7 +57,7 @@
 /* precomputed, since it doesn't change */
 #define	RWY_APCH_PROXIMITY_LAT_DISPL	(RWY_APCH_PROXIMITY_LON_DISPL * \
 	__builtin_tan(DEG2RAD(RWY_APCH_PROXIMITY_LAT_ANGLE)))
-#define	ARPTDB_CACHE_VERSION		18
+#define	ARPTDB_CACHE_VERSION		20
 
 #define	VGSI_LAT_DISPL_FACT		2	/* rwy width multiplier */
 #define	VGSI_HDG_MATCH_THRESH		5	/* degrees */
@@ -194,6 +99,261 @@ typedef struct {
 	list_node_t	node;
 	char		*fname;
 } apt_dats_entry_t;
+
+static struct {
+	const char	*code;
+	const char	*name;
+} iso3166_codes[] = {
+    { "AFG",	"Afghanistan" },
+    { "ALA",	"Åland Islands" },
+    { "ALB",	"Albania" },
+    { "DZA",	"Algeria" },
+    { "ASM",	"American Samoa" },
+    { "AND",	"Andorra" },
+    { "AGO",	"Angola" },
+    { "AIA",	"Anguilla" },
+    { "ATA",	"Antarctica" },
+    { "ATG",	"Antigua and Barbuda" },
+    { "ARG",	"Argentina" },
+    { "ARM",	"Armenia" },
+    { "ABW",	"Aruba" },
+    { "AUS",	"Australia" },
+    { "AUT",	"Austria" },
+    { "AZE",	"Azerbaijan" },
+    { "BHS",	"Bahamas" },
+    { "BHR",	"Bahrain" },
+    { "BGD",	"Bangladesh" },
+    { "BRB",	"Barbados" },
+    { "BLR",	"Belarus" },
+    { "BEL",	"Belgium" },
+    { "BLZ",	"Belize" },
+    { "BEN",	"Benin" },
+    { "BMU",	"Bermuda" },
+    { "BTN",	"Bhutan" },
+    { "BOL",	"Bolivia" },
+    { "BES",	"Bonaire, Sint Eustatius and Saba" },
+    { "BIH",	"Bosnia and Herzegovina" },
+    { "BWA",	"Botswana" },
+    { "BVT",	"Bouvet Island" },
+    { "BRA",	"Brazil" },
+    { "IOT",	"British Indian Ocean Territory" },
+    { "BRN",	"Brunei Darussalam" },
+    { "BGR",	"Bulgaria" },
+    { "BFA",	"Burkina Faso" },
+    { "BDI",	"Burundi" },
+    { "CPV",	"Cabo Verde" },
+    { "KHM",	"Cambodia" },
+    { "CMR",	"Cameroon" },
+    { "CAN",	"Canada" },
+    { "CYM",	"Cayman Islands" },
+    { "CAF",	"Central African Republic" },
+    { "TCD",	"Chad" },
+    { "CHL",	"Chile" },
+    { "CHN",	"China" },
+    { "CXR",	"Christmas Island" },
+    { "CCK",	"Cocos Islands" },
+    { "COL",	"Colombia" },
+    { "COM",	"Comoros" },
+    { "COD",	"Democratic Republic of the Congo" },
+    { "COG",	"Congo" },
+    { "COK",	"Cook Islands" },
+    { "CRI",	"Costa Rica" },
+    { "CIV",	"Côte d'Ivoire" },
+    { "HRV",	"Croatia" },
+    { "CUB",	"Cuba" },
+    { "CUW",	"Curaçao" },
+    { "CYP",	"Cyprus" },
+    { "CZE",	"Czechia" },
+    { "DNK",	"Denmark" },
+    { "DJI",	"Djibouti" },
+    { "DMA",	"Dominica" },
+    { "DOM",	"Dominican Republic" },
+    { "ECU",	"Ecuador" },
+    { "EGY",	"Egypt" },
+    { "SLV",	"El Salvador" },
+    { "GNQ",	"Equatorial Guinea" },
+    { "ERI",	"Eritrea" },
+    { "EST",	"Estonia" },
+    { "SWZ",	"Eswatini" },
+    { "ETH",	"Ethiopia" },
+    { "FLK",	"Falkland Islands" },
+    { "FRO",	"Faroe Islands" },
+    { "FJI",	"Fiji" },
+    { "FIN",	"Finland" },
+    { "FRA",	"France" },
+    { "GUF",	"French Guiana" },
+    { "PYF",	"French Polynesia" },
+    { "ATF",	"French Southern Territories" },
+    { "GAB",	"Gabon" },
+    { "GMB",	"Gambia" },
+    { "GEO",	"Georgia" },
+    { "DEU",	"Germany" },
+    { "GHA",	"Ghana" },
+    { "GIB",	"Gibraltar" },
+    { "GRC",	"Greece" },
+    { "GRL",	"Greenland" },
+    { "GRD",	"Grenada" },
+    { "GLP",	"Guadeloupe" },
+    { "GUM",	"Guam" },
+    { "GTM",	"Guatemala" },
+    { "GGY",	"Guernsey" },
+    { "GIN",	"Guinea" },
+    { "GNB",	"Guinea-Bissau" },
+    { "GUY",	"Guyana" },
+    { "HTI",	"Haiti" },
+    { "HMD",	"Heard Island and McDonald Islands" },
+    { "VAT",	"Holy See" },
+    { "HND",	"Honduras" },
+    { "HKG",	"Hong Kong" },
+    { "HUN",	"Hungary" },
+    { "ISL",	"Iceland" },
+    { "IND",	"India" },
+    { "IDN",	"Indonesia" },
+    { "IRN",	"Iran" },
+    { "IRQ",	"Iraq" },
+    { "IRL",	"Ireland" },
+    { "IMN",	"Isle of Man" },
+    { "ISR",	"Israel" },
+    { "ITA",	"Italy" },
+    { "JAM",	"Jamaica" },
+    { "JPN",	"Japan" },
+    { "JEY",	"Jersey" },
+    { "JOR",	"Jordan" },
+    { "KAZ",	"Kazakhstan" },
+    { "KEN",	"Kenya" },
+    { "KIR",	"Kiribati" },
+    { "PRK",	"Democratic People's Republic of Korea" },
+    { "KOR",	"Republic of Korea" },
+    { "KWT",	"Kuwait" },
+    { "KGZ",	"Kyrgyzstan" },
+    { "LAO",	"Laos" },
+    { "LVA",	"Latvia" },
+    { "LBN",	"Lebanon" },
+    { "LSO",	"Lesotho" },
+    { "LBR",	"Liberia" },
+    { "LBY",	"Libya" },
+    { "LIE",	"Liechtenstein" },
+    { "LTU",	"Lithuania" },
+    { "LUX",	"Luxembourg" },
+    { "MAC",	"Macao" },
+    { "MKD",	"Republic of North Macedonia" },
+    { "MDG",	"Madagascar" },
+    { "MWI",	"Malawi" },
+    { "MYS",	"Malaysia" },
+    { "MDV",	"Maldives" },
+    { "MLI",	"Mali" },
+    { "MLT",	"Malta" },
+    { "MHL",	"Marshall Islands" },
+    { "MTQ",	"Martinique" },
+    { "MRT",	"Mauritania" },
+    { "MUS",	"Mauritius" },
+    { "MYT",	"Mayotte" },
+    { "MEX",	"Mexico" },
+    { "FSM",	"Micronesia" },
+    { "MDA",	"Moldova" },
+    { "MCO",	"Monaco" },
+    { "MNG",	"Mongolia" },
+    { "MNE",	"Montenegro" },
+    { "MSR",	"Montserrat" },
+    { "MAR",	"Morocco" },
+    { "MOZ",	"Mozambique" },
+    { "MMR",	"Myanmar" },
+    { "NAM",	"Namibia" },
+    { "NRU",	"Nauru" },
+    { "NPL",	"Nepal" },
+    { "NLD",	"Netherlands" },
+    { "NCL",	"New Caledonia" },
+    { "NZL",	"New Zealand" },
+    { "NIC",	"Nicaragua" },
+    { "NER",	"Niger" },
+    { "NGA",	"Nigeria" },
+    { "NIU",	"Niue" },
+    { "NFK",	"Norfolk Island" },
+    { "MNP",	"Northern Mariana Islands" },
+    { "NOR",	"Norway" },
+    { "OMN",	"Oman" },
+    { "PAK",	"Pakistan" },
+    { "PLW",	"Palau" },
+    { "PSE",	"Palestine, State of" },
+    { "PAN",	"Panama" },
+    { "PNG",	"Papua New Guinea" },
+    { "PRY",	"Paraguay" },
+    { "PER",	"Peru" },
+    { "PHL",	"Philippines" },
+    { "PCN",	"Pitcairn" },
+    { "POL",	"Poland" },
+    { "PRT",	"Portugal" },
+    { "PRI",	"Puerto Rico" },
+    { "QAT",	"Qatar" },
+    { "REU",	"Réunion" },
+    { "ROU",	"Romania" },
+    { "RUS",	"Russian Federation" },
+    { "RWA",	"Rwanda" },
+    { "BLM",	"Saint Barthélemy" },
+    { "SHN",	"Saint Helena" },
+    { "KNA",	"Saint Kitts and Nevis" },
+    { "LCA",	"Saint Lucia" },
+    { "MAF",	"Saint Martin" },
+    { "SPM",	"Saint Pierre and Miquelon" },
+    { "VCT",	"Saint Vincent and the Grenadines" },
+    { "WSM",	"Samoa" },
+    { "SMR",	"San Marino" },
+    { "STP",	"Sao Tome and Principe" },
+    { "SAU",	"Saudi Arabia" },
+    { "SEN",	"Senegal" },
+    { "SRB",	"Serbia" },
+    { "SYC",	"Seychelles" },
+    { "SLE",	"Sierra Leone" },
+    { "SGP",	"Singapore" },
+    { "SXM",	"Sint Maarten" },
+    { "SVK",	"Slovakia" },
+    { "SVN",	"Slovenia" },
+    { "SLB",	"Solomon Islands" },
+    { "SOM",	"Somalia" },
+    { "ZAF",	"South Africa" },
+    { "SGS",	"South Georgia and the South Sandwich Islands" },
+    { "SSD",	"South Sudan" },
+    { "ESP",	"Spain" },
+    { "LKA",	"Sri Lanka" },
+    { "SDN",	"Sudan" },
+    { "SUR",	"Suriname" },
+    { "SJM",	"Svalbard and Jan Mayen" },
+    { "SWE",	"Sweden" },
+    { "CHE",	"Switzerland" },
+    { "SYR",	"Syrian Arab Republic" },
+    { "TWN",	"Taiwan" },
+    { "TJK",	"Tajikistan" },
+    { "TZA",	"Tanzania" },
+    { "THA",	"Thailand" },
+    { "TLS",	"Timor-Leste" },
+    { "TGO",	"Togo" },
+    { "TKL",	"Tokelau" },
+    { "TON",	"Tonga" },
+    { "TTO",	"Trinidad and Tobago" },
+    { "TUN",	"Tunisia" },
+    { "TUR",	"Turkey" },
+    { "TKM",	"Turkmenistan" },
+    { "TCA",	"Turks and Caicos Islands" },
+    { "TUV",	"Tuvalu" },
+    { "UGA",	"Uganda" },
+    { "UKR",	"Ukraine" },
+    { "ARE",	"United Arab Emirates" },
+    { "GBR",	"UK" },
+    { "UMI",	"United States Minor Outlying Islands" },
+    { "USA",	"United States of America" },
+    { "URY",	"Uruguay" },
+    { "UZB",	"Uzbekistan" },
+    { "VUT",	"Vanuatu" },
+    { "VEN",	"Venezuela" },
+    { "VNM",	"Viet Nam" },
+    { "VGB",	"British Virgin Islands" },
+    { "VIR",	"U.S. Virgin Islands" },
+    { "WLF",	"Wallis and Futuna" },
+    { "ESH",	"Western Sahara" },
+    { "YEM",	"Yemen" },
+    { "ZMB",	"Zambia" },
+    { "ZWE",	"Zimbabwe" }
+};
 
 static airport_t *apt_dat_lookup(airportdb_t *db, const char *ident);
 static void apt_dat_insert(airportdb_t *db, airport_t *arpt);
@@ -397,8 +557,23 @@ make_rwy_bbox(vect2_t thresh_v, vect2_t dir_v, double width, double len,
 static bool_t
 rwy_is_hard(rwy_surf_t surf)
 {
-	return (surf == RWY_SURF_ASPHALT || surf == RWY_SURF_CONCRETE ||
-	    surf == RWY_SURF_TRANSPARENT);
+	/*
+	 * We used to only check for a few surface types here, but XP12
+	 * added a bunch more undocumented hard surface types, so in
+	 * anticipation of further surface types being added, we'll instead
+	 * explicitly check for the known soft surface types first.
+	 */
+	switch (surf) {
+	case RWY_SURF_GRASS:
+	case RWY_SURF_DIRT:
+	case RWY_SURF_GRAVEL:
+	case RWY_SURF_DRY_LAKEBED:
+	case RWY_SURF_WATER:
+	case RWY_SURF_SNOWICE:
+		return (false);
+	default:
+		return (true);
+	}
 }
 
 /*
@@ -1292,6 +1467,41 @@ fill_dup_arpt_info(airport_t *arpt, const char *line, int row_code)
 	}
 }
 
+static char *
+iso3166_cc3_to_name(const char *cc3)
+{
+	ASSERT(cc3 != NULL);
+
+	for (size_t i = 0; i < ARRAY_NUM_ELEM(iso3166_codes); i++) {
+		if (strcmp(cc3, iso3166_codes[i].code) == 0)
+			return (safe_strdup(iso3166_codes[i].name));
+	}
+	return (NULL);
+}
+
+static void
+parse_attr_country(char **comps, size_t n_comps, int version, airport_t *arpt)
+{
+	ASSERT(comps != NULL);
+	ASSERT(arpt != NULL);
+
+	LACF_DESTROY(arpt->country);
+	arpt->cc3[0] = '\0';
+
+	if (n_comps == 0)
+		return;
+	if (version < 1200) {
+		arpt->country = concat_comps(comps, n_comps);
+	} else {
+		if (strlen(comps[0]) == 3 && isupper(comps[0][0]) &&
+		    isupper(comps[0][1]) && isupper(comps[0][2])) {
+			arpt->country = iso3166_cc3_to_name(comps[0]);
+		}
+		if (arpt->country == NULL)
+			arpt->country = concat_comps(comps, n_comps);
+	}
+}
+
 /*
  * Parses an apt.dat (either from regular scenery or from CACHE_DIR) to
  * cache the airports contained in it.
@@ -1304,7 +1514,7 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 	airport_t *arpt = NULL, *dup_arpt = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
-	int line_num = 0;
+	int line_num = 0, version = 0;
 	char **comps;
 	size_t ncomps;
 
@@ -1329,6 +1539,11 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 
 		if (sscanf(line, "%d", &row_code) != 1)
 			continue;
+		/* Read the version header */
+		if (line_num == 2) {
+			version = row_code;
+			continue;
+		}
 		/*
 		 * Finish the current airport on an empty line or a new
 		 * airport line.
@@ -1343,6 +1558,11 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 		if (row_code == 1) {
 			arpt = parse_apt_dat_1_line(db, line, cd_p,
 			    fill_in_dups ? &dup_arpt : NULL);
+
+            if (arpt != NULL) {
+                arpt->is_global_arpt = fill_in_dups;    /* fill_in_dups means we are reading the global apt.dat */
+                logMsg("ident: %s, %p, is_global_arpt: %d, %s", arpt->ident, arpt, arpt->is_global_arpt, apt_dat_fname);
+            }
 		}
 		if (arpt == NULL) {
 			if (dup_arpt != NULL)
@@ -1393,9 +1613,8 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 				lacf_strlcpy(arpt->iata, comps[2],
 				    sizeof (arpt->iata));
 			} else if (strcmp(comps[1], "country") == 0) {
-				LACF_DESTROY(arpt->country);
-				arpt->country = concat_comps(&comps[2],
-				    ncomps - 2);
+				parse_attr_country(&comps[2], ncomps - 2,
+				    version, arpt);
 			} else if (strcmp(comps[1], "city") == 0) {
 				LACF_DESTROY(arpt->city);
 				arpt->city = concat_comps(&comps[2],
@@ -1448,6 +1667,7 @@ write_apt_dat(const airportdb_t *db, const airport_t *arpt)
 	char *fname;
 	FILE *fp;
 	geo_pos2_t p;
+	bool_t exists;
 
 	ASSERT(db != NULL);
 	ASSERT(arpt != NULL);
@@ -1456,12 +1676,17 @@ write_apt_dat(const airportdb_t *db, const airport_t *arpt)
 	snprintf(lat_lon, sizeof (lat_lon), TILE_NAME_FMT, p.lat, p.lon);
 	fname = apt_dat_cache_dir(db, GEO3_TO_GEO2(arpt->refpt), lat_lon);
 
+	exists = file_exists(fname, NULL);
 	fp = fopen(fname, "a");
 	if (fp == NULL) {
 		logMsg("Error writing file %s: %s", fname, strerror(errno));
 		return (B_FALSE);
 	}
-
+	if (!exists) {
+		fprintf(fp, "I\n"
+		    "1200 libacfutils airportdb version %d\n"
+		    "\n", ARPTDB_CACHE_VERSION);
+	}
 	ASSERT(!IS_NULL_GEO_POS(arpt->refpt));
 
 	fprintf(fp, "1 %.0f 0 0 %s %s\n"
@@ -1811,14 +2036,19 @@ check_cache_version(const airportdb_t *db, int app_version)
 	return (version == (ARPTDB_CACHE_VERSION | (app_version << 16)));
 }
 
-/*
+/**
  * Attempts to determine the AIRAC cycle currently in use in the navdata
- * on X-Plane 11. Sadly, there doesn't seem to be a nice data field for this,
- * so we need to do some fulltext searching. Returns true if the determination
- * succeeded (`cycle' is filled with the cycle number), or false if it failed.
+ * on X-Plane 11/12. Sadly, there doesn't seem to be a nice data field for
+ * this, so we need to do some fulltext searching.
+ *
+ * @param xpdir A path to the X-Plane installation directory.
+ * @param cycle Mandatory return argument. If the search is successful,
+ *	this will be filled with the AIRAC cycle number.
+ *
+ * @return `B_TRUE` if the determination succeeded, `B_FALSE` otherwise.
  */
 bool_t
-airportdb_xp11_airac_cycle(const char *xpdir, int *cycle)
+adb_airportdb_xp_airac_cycle(const char *xpdir, int *cycle)
 {
 	int linenum = 0;
 	char *line = NULL;
@@ -1850,7 +2080,8 @@ airportdb_xp11_airac_cycle(const char *xpdir, int *cycle)
 			break;
 		if (getline(&line, &linecap, fp) <= 0 ||
 		    (strstr(line, "1100 ") != line &&
-		    strstr(line, "1150 ") != line) ||
+		    strstr(line, "1150 ") != line &&
+		    strstr(line, "1200 ") != line) ||
 		    (word_start = strstr(line, " data cycle ")) == NULL) {
 			continue;
 		}
@@ -2178,13 +2409,38 @@ recreate_cache_skeleton(airportdb_t *db, list_t *apt_dat_files, int app_version)
 	return (B_TRUE);
 }
 
-/*
- * Takes the current state of the apt_dat table and writes all the airports
- * in it to the db->cachedir so that a subsequent run can pick this info up.
- * Be sure to configure the `ifr_only' flag in the airportdb_t structure
+/**
+ * Rebuilds all cache state from disk. This must be called only once, after
+ * calling airportdb_create() to actually populate the cache. On first run,
+ * the disk cache will be empty, and this function will interrogate X-Plane's
+ * installed scenery to rebuild the cache. If the cache already exists, this
+ * function checks for changes in X-Plane's scenery and/or navdata and if
+ * necessary rebuilds the cache, or simply loads it as-is.
+ *
+ * Please note that on first run (or if a scenery change is detected), this
+ * function can take quite a bit of time to run (tens of seconds to minutes,
+ * if the machine is particularly slow and has lots of scenery). You are
+ * therefore encouraged to run it only once at startup. If you need to create
+ * multiple \ref airportdb instances, create them in sequence, NOT in
+ * parallel! This function perform disk I/O an the cache is NOT designed for
+ * concurrent writing! Once created by the first instance of \ref airportdb,
+ * subsequent \ref airportdb instances will not need to rebuild and will
+ * simply read the cache as-is, so this function will return nearly instantly.
+ *
+ * Be sure to configure the `ifr_only' flag in the \ref airportdb structure
  * before calling this function. That flag specifies whether the cache should
  * only contain airports with published instrument approaches, or if VFR-only
  * airports should also be allowed.
+ *
+ * @param db Database instance which was previously initialized using
+ *	airportdb_create().
+ * @param app_version An application-side version tag to apply to the cache.
+ *	This can be used in any way you want. If the cache detects a change
+ *	in the `app_version` tag, the cache will be recreated. You can use
+ *	this to, for example, recreate the cache, if you changed your
+ *	cache configuration between versions of your addon.
+ *
+ * @return `B_TRUE` if successful, `B_FALSE` if cache creation failed.
  */
 bool_t
 adb_recreate_cache(airportdb_t *db, int app_version)
@@ -2257,7 +2513,9 @@ adb_recreate_cache(airportdb_t *db, int app_version)
 		 * airport, because we don't have TA/TL info on them. But if
 		 * we are in ifr_only=B_FALSE mode, then accept it anyway.
 		 */
-		if (!arpt->have_iaps && db->ifr_only) {
+		if ((!arpt->have_iaps && db->ifr_only)
+            || (db->global_airports_only && !arpt->is_global_arpt)) {
+            logMsg("prune %s", arpt->ident);  
 			geo_unlink_airport(db, arpt);
 			avl_remove(&db->apt_dat, arpt);
 			free_airport(arpt);
@@ -2283,20 +2541,13 @@ adb_recreate_cache(airportdb_t *db, int app_version)
 		free(dirname);
 	}
 out:
-	unload_distant_airport_tiles(db, NULL_GEO_POS2);
+	adb_unload_distant_airport_tiles(db, NULL_GEO_POS2);
 	destroy_apt_dats_list(&apt_dat_files);
 	free(index_filename);
 	if (index_file != NULL)
 		fclose(index_file);
 
 	return (success);
-}
-
-bool_t
-recreate_cache(airportdb_t *db)
-{
-	ASSERT(db != NULL);
-	return (adb_recreate_cache(db, 0));
 }
 
 /*
@@ -2605,8 +2856,8 @@ free_airport(airport_t *arpt)
 	ZERO_FREE(arpt);
 }
 
-/*
- * The actual worker function for find_nearest_airports. Performs the
+/**
+ * The actual worker function for adb_find_nearest_airports. Performs the
  * search in a specified geo_table tile. Position is a 3-space ECEF vector.
  */
 static void
@@ -2631,13 +2882,24 @@ find_nearest_airports_tile(airportdb_t *db, vect3_t ecef,
 	}
 }
 
-/*
- * Locates all airports within a db->load_limit distance limit (in meters)
- * of a geographic reference position. The airports are searched for in the
- * apt_dat database and this function returns its result into the list argument.
+/**
+ * Locates all airports within the load limit distance of a geographic
+ * reference position. The airports are searched for in the apt_dat database
+ * and this function returns its result into the list argument. To set the
+ * load limit distance, use adb_set_airport_load_limit().
+ *
+ * @return A list of \ref airport structures. This list must be freed using
+ * adb_free_nearest_airport_list(). You may also not call
+ * adb_find_nearest_airports() multiple times without first freeing the
+ * returned list, as the linked list reuses the same list node inside of
+ * the \ref airport structures.
+ *
+ * @return When using an \ref airportdb_t from multiple threads, make sure to
+ * lock database using airportdb_lock() before doing the lookup and working
+ * with the returned list. After freeing the list, call airportdb_unlock().
  */
 list_t *
-find_nearest_airports(airportdb_t *db, geo_pos2_t my_pos)
+adb_find_nearest_airports(airportdb_t *db, geo_pos2_t my_pos)
 {
 	vect3_t ecef;
 	list_t *l;
@@ -2657,8 +2919,19 @@ find_nearest_airports(airportdb_t *db, geo_pos2_t my_pos)
 	return (l);
 }
 
+/**
+ * Frees the list returned from find_nearest_airports().
+ *
+ * You mustn't call find_nearest_airports() multiple times without first
+ * freeing the returned list, as the linked list reuses the same list node
+ * inside of the \ref airport structures.
+ *
+ * When using an \ref airportdb_t from multiple threads, make sure to lock
+ * database using airportdb_lock() before doing the lookup and working with
+ * the returned list. After freeing the list, call airportdb_unlock().
+ */
 void
-free_nearest_airport_list(list_t *l)
+adb_free_nearest_airport_list(list_t *l)
 {
 	ASSERT(l != NULL);
 	for (airport_t *a = list_head(l); a != NULL; a = list_head(l))
@@ -2711,13 +2984,33 @@ free_tile(airportdb_t *db, tile_t *tile, bool_t do_remove)
 	ZERO_FREE(tile);
 }
 
+/**
+ * Sets the distance limit within which airports are loaded from disk.
+ * A loaded airport has all its information resolved, such as the ECEF
+ * positions of the threshold, all bounding boxes constructed, etc.
+ * The default airport load limit for a newly created airportdb is
+ * 14,816 meters (8nm).
+ *
+ * @param db The database for which to set the load limit.
+ * @param limit The distance limit in meters.
+ */
 void
-set_airport_load_limit(airportdb_t *db, double limit)
+adb_set_airport_load_limit(airportdb_t *db, double limit)
 {
 	ASSERT(db != NULL);
 	db->load_limit = limit;
 }
 
+/**
+ * Performs a load of all airports within the distance load limit of a given
+ * position. The distance limit is set using adb_set_airport_load_limit().
+ * A loaded airport has all its information resolved, such as the ECEF
+ * positions of the threshold, all bounding boxes constructed, etc.
+ *
+ * @param db The database for which to perform the load.
+ * @param my_pos The 2-space geographic position around which to perform
+ *	the load. This MUST be a valid geographic coordinate.
+ */
 void
 load_nearest_airport_tiles(airportdb_t *db, geo_pos2_t my_pos)
 {
@@ -2742,7 +3035,7 @@ lon_delta(double x, double y)
 		return (fabs((180 - u) - (-180 - d)));
 }
 
-void
+static void
 unload_distant_airport_tiles_i(airportdb_t *db, tile_t *tile, geo_pos2_t my_pos)
 {
 	ASSERT(db != NULL);
@@ -2753,8 +3046,21 @@ unload_distant_airport_tiles_i(airportdb_t *db, tile_t *tile, geo_pos2_t my_pos)
 		free_tile(db, tile, B_TRUE);
 }
 
+/**
+ * Unloads airports that are beyond the airport load limit distance from
+ * a given position. This frees some memory allocations for the airports.
+ * You should be calling this function at regular intervals as you move
+ * through the world, to make sure airports don't remain loaded forever.
+ * Use adb_set_airport_load_limit() to set the distance limit.
+ *
+ * @param db The database for which to perform the unload.
+ * @param my_pos The 2-space geographic position to use as the reference.
+ *	Airports beyond the load limit distance will be unloaded. You
+ *	may pass a `NULL_GEO_POS2` for this argument - this will make the
+ *	airportdb unload all loaded airports.
+ */
 void
-unload_distant_airport_tiles(airportdb_t *db, geo_pos2_t my_pos)
+adb_unload_distant_airport_tiles(airportdb_t *db, geo_pos2_t my_pos)
 {
 	tile_t *tile, *next_tile;
 
@@ -2785,6 +3091,14 @@ arpt_index_compar(const void *a, const void *b)
 	return (0);
 }
 
+/**
+ * Initializes an \ref airportdb_t structure. Please note that this doesn't
+ * populate the data in the database. It simply sets up its memory state to
+ * be ready for operation. To load disk data into the database and actually
+ * start using it, call adb_recreate_cache() after initializing the \ref
+ * airportdb structure. Use airportdb_destroy() to free the resources
+ * allocated by an \ref airportdb_t.
+ */
 void
 airportdb_create(airportdb_t *db, const char *xpdir, const char *cachedir)
 {
@@ -2815,6 +3129,10 @@ airportdb_create(airportdb_t *db, const char *xpdir, const char *cachedir)
 	htbl_create(&db->iata_index, 16, AIRPORTDB_IATA_LEN, B_TRUE);
 }
 
+/**
+ * Destroys an \ref airportdb_t structure, after it has been initialized using
+ * airportdb_create().
+ */
 void
 airportdb_destroy(airportdb_t *db)
 {
@@ -2850,6 +3168,12 @@ airportdb_destroy(airportdb_t *db)
 	memset(db, 0, sizeof (*db));
 }
 
+/**
+ * Locks an \ref airportdb_t structure, for use by multiple threads. Use
+ * airportdb_unlock() to release the lock. Locking is recursive, so
+ * airportdb_unlock() must be called as many times as airportdb_lock()
+ * to fully release the lock.
+ */
 void
 airportdb_lock(airportdb_t *db)
 {
@@ -2857,6 +3181,11 @@ airportdb_lock(airportdb_t *db)
 	mutex_enter(&db->lock);
 }
 
+/**
+ * Unlocks an \ref airportdb_t structure after it has been locked using
+ * airportdb_lock(). Locking is recursive, so airportdb_unlock() must be
+ * called as many times as airportdb_lock() to fully release the lock.
+ */
 void
 airportdb_unlock(airportdb_t *db)
 {
@@ -2864,8 +3193,20 @@ airportdb_unlock(airportdb_t *db)
 	mutex_exit(&db->lock);
 }
 
-API_EXPORT airport_t *
-airport_lookup_by_ident(airportdb_t *db, const char *ident)
+/**
+ * Searches for an airport in the database by unique identifier.
+ *
+ * @param db Database in which to perform the lookup.
+ * @param ident The unique identifier of the airport. Please note that
+ *	X-Plane's airport identifiers needn't be exactly the same as their
+ *	ICAO codes. Some airports don't have ICAO codes, or their ident
+ *	and ICAO code are inconsistent (e.g. due to the ICAO code having
+ *	been changed by the relevant civil aviation authority).
+ *
+ * @return The \ref airport structure if the airport was found, or NULL if not.
+ */
+airport_t *
+adb_airport_lookup_by_ident(airportdb_t *db, const char *ident)
 {
 	arpt_index_t *idx;
 	arpt_index_t srch = {};
@@ -2877,7 +3218,7 @@ airport_lookup_by_ident(airportdb_t *db, const char *ident)
 	idx = avl_find(&db->arpt_index, &srch, NULL);
 	if (idx == NULL)
 		return (NULL);
-	return (airport_lookup(db, ident, TO_GEO2(idx->pos)));
+	return (adb_airport_lookup(db, ident, TO_GEO2(idx->pos)));
 }
 
 static void
@@ -2892,7 +3233,7 @@ airport_lookup_htbl_multi(airportdb_t *db, const list_t *list,
 		arpt_index_t *idx = HTBL_VALUE_MULTI(mv);
 
 		if (found_cb != NULL) {
-			airport_t *apt = airport_lookup(db, idx->ident,
+			airport_t *apt = adb_airport_lookup(db, idx->ident,
 			    TO_GEO2(idx->pos));
 			/*
 			 * Although we should NEVER hit a state where this
@@ -2915,8 +3256,23 @@ airport_lookup_htbl_multi(airportdb_t *db, const list_t *list,
 	}
 }
 
+/**
+ * Lookup by ICAO ID, with support for duplicates.
+ *
+ * @param db Database in which to perform the lookup.
+ * @param icao The 4-letter ICAO code to look for.
+ * @param found_cb Callback which will be called with each airport matching
+ *	the ICAO ID. The `airport` argument is filled with the \ref airport
+ *	information about each airport found. The `userinfo` argument will
+ *	be filled with whatever is provided in the userinfo argument to the
+ *	adb_airport_index_walk() function.
+ * @param userinfo Optional user info pointer, which will be passed to every
+ *	call to `found_cb` in its second argument.
+ *
+ * @return The number of airports found.
+ */
 size_t
-airport_lookup_by_icao(airportdb_t *db, const char *icao,
+adb_airport_lookup_by_icao(airportdb_t *db, const char *icao,
     void (*found_cb)(airport_t *airport, void *userinfo), void *userinfo)
 {
 	const list_t *list;
@@ -2935,8 +3291,14 @@ airport_lookup_by_icao(airportdb_t *db, const char *icao,
 	}
 }
 
+/**
+ * Lookup by IATA ID, with support for duplicates.
+ *
+ * Arguments and return value are the same as adb_airport_lookup_by_icao(),
+ * except the lookup is done by the IATA code, rather than ICAO code.
+ */
 size_t
-airport_lookup_by_iata(airportdb_t *db, const char *iata,
+adb_airport_lookup_by_iata(airportdb_t *db, const char *iata,
     void (*found_cb)(airport_t *airport, void *userinfo), void *userinfo)
 {
 	const list_t *list;
@@ -2955,13 +3317,19 @@ airport_lookup_by_iata(airportdb_t *db, const char *iata,
 	}
 }
 
+/**
+ * Legacy lookup function by ICAO ID. Airports without valid ICAO IDs
+ * won't show up here. The search is also restricted to a narrow zone
+ * around `pos' (within a 3x3 degree square). Use adb_airport_lookup_global()
+ * for a search at any arbitrary location.
+ */
 airport_t *
-airport_lookup(airportdb_t *db, const char *ident, geo_pos2_t pos)
+adb_airport_lookup(airportdb_t *db, const char *icao, geo_pos2_t pos)
 {
 	ASSERT(db != NULL);
-	ASSERT(ident != NULL);
+	ASSERT(icao != NULL);
 	load_airports_in_tile(db, pos);
-	return (apt_dat_lookup(db, ident));
+	return (apt_dat_lookup(db, icao));
 }
 
 static void
@@ -2972,12 +3340,20 @@ save_arpt_cb(airport_t *airport, void *userinfo)
 	*out_arpt = airport;
 }
 
-/*
+/**
  * Performs an airport lookup without having to know its approximate
- * location first.
+ * location first. This is a legacy fallback version for the
+ * airport_lookup_by_icao() function. Airports without valid ICAO IDs
+ * won't show up here.
+ *
+ * @param db The airportdb on which to perform the lookup.
+ * @param icao The ICAO code of the airport. If there are duplicate airports
+ *	matching the ICAO code, which airport is returned cannot be predicted.
+ *
+ * @return The \ref airport structure of the airport, if found, or NULL if not.
  */
-API_EXPORT airport_t *
-airport_lookup_global(airportdb_t *db, const char *icao)
+airport_t *
+adb_airport_lookup_global(airportdb_t *db, const char *icao)
 {
 	airport_t *found = NULL;
 	ASSERT(db != NULL);
@@ -2986,8 +3362,30 @@ airport_lookup_global(airportdb_t *db, const char *icao)
 	return (found);
 }
 
+/**
+ * Provides a method for walking the entire airport index in the database.
+ * This is an entirely in-memory operation, so is relatively fast. However,
+ * keep in mind that there are typically >30,000 airports in the index, so
+ * don't do this too frequently.
+ *
+ * @param db Database to perform the index walk on.
+ * @param found_cb Callback which will be called with each airport in the
+ *	index. The `idx` argument is filled with the \ref arpt_index_t
+ *	information about each airport found. The `userinfo` argument will
+ *	be filled with whatever is provided in the userinfo argument to the
+ *	adb_airport_index_walk() function.
+ * @param found_cb You may provide a NULL value for this argument, which will
+ *	not call any callbacks and can be simply used to grab the return
+ *	value of this function.
+ * @param userinfo Custom pointer user info argument, which will be passed
+ *	to the `found_cb` callback function in its second argument.
+ *
+ * @return The total number of airport in the index. If you passed `NULL` for
+ *	the found_cb argument, this will avoid walking the index entirely,
+ *	simply returning the number of airports in the index.
+ */
 size_t
-airport_index_walk(airportdb_t *db,
+adb_airport_index_walk(airportdb_t *db,
     void (*found_cb)(const arpt_index_t *idx, void *userinfo), void *userinfo)
 {
 	ASSERT(db != NULL);
@@ -3002,13 +3400,32 @@ airport_index_walk(airportdb_t *db,
 	return (avl_numnodes(&db->arpt_index));
 }
 
+/**
+ * Performs a search in an airport for a runway matching a given runway ID
+ * at one of its ends.
+ *
+ * @param arpt The airport in which to perform to search.
+ * @param rwy_id A 0-leading, NUL-terminated runway ID. This runway ID
+ *	is matched against a either end of all runways at the airport.
+ *	Examples: "05", "09R", "25C", "36L".
+ * @param rwy_p Mandatory return argument, which will be filled with
+ *	a pointer to the matching \ref runway structure, if found.
+ *	If not found, this will be set to `NULL`.
+ * @param end_p Mandatory return argument, which will be filled with the
+ *	index (0 or 1) of the matching \ref runway_end structure, if found.
+ *	If not found, this will be left unchanged. This index points into
+ *	the `ends` field in the returned \ref runway structure.
+ *
+ * @return `B_TRUE` if the search was successful, `B_FALSE` otherwise.
+ */
 bool_t
-airport_find_runway(airport_t *arpt, const char *rwy_id, runway_t **rwy_p,
+adb_airport_find_runway(airport_t *arpt, const char *rwy_id, runway_t **rwy_p,
     unsigned *end_p)
 {
 	ASSERT(arpt != NULL);
 	ASSERT(rwy_id != NULL);
 	ASSERT(rwy_p != NULL);
+	*rwy_p = NULL;
 	ASSERT(end_p != NULL);
 
 	for (runway_t *rwy = avl_first(&arpt->rwys); rwy != NULL;
@@ -3026,7 +3443,7 @@ airport_find_runway(airport_t *arpt, const char *rwy_id, runway_t **rwy_p,
 }
 
 airport_t *
-matching_airport_in_tile_with_TATL(airportdb_t *db, geo_pos2_t pos,
+adb_matching_airport_in_tile_with_TATL(airportdb_t *db, geo_pos2_t pos,
     const char *search_icao)
 {
 	tile_t *tile;
