@@ -49,6 +49,7 @@
 /* Constants */
 static const float F2M=0.3048;	/* 1 ft [m] */
 static const float D2R=M_PI/180.0;
+static const float DEG2M = 111195.0;    // deg lat to m
 
 /* Rest location [m] of bridge door floor in AutoGate.obj */
 static const float OBJ_X= -7.5;
@@ -75,6 +76,7 @@ static const float DURATION=15;	/* Time to engage/disengage */
 
 static const float POLLTIME=5;	/* How often to check we're still in range of our gate */
 
+static const float VDGS_RAMP_DIST = 10.0;
 extern float gate_x, gate_y, gate_z, gate_h;		/* active gate */
 extern float lat, vert, moving;
 
@@ -828,11 +830,10 @@ static void find_nearest_ramp()
 
         XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &foo, &foo, &alt);
         logMsg("ramp alt: %f", alt);
-        vdgs_lat = min_ramp->pos.lat;
-        vdgs_lon = min_ramp->pos.lon;
+        vdgs_hdg = min_ramp->hdgt;
+        vdgs_lat = min_ramp->pos.lat;// + VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg) / DEG2M;
+        vdgs_lon = min_ramp->pos.lon;// + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg) * cosf(D2R * vdgs_lat) / DEG2M;
         vdgs_alt = alt;
-        vdgs_hdg = min_ramp->hdgt - 180.0;
-        //XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, alt, &x, &y, &z);
         logMsg("vdgs pos is : %f, %f, %f, hdg: %f", vdgs_lat, vdgs_lon = min_ramp->pos.lon, vdgs_alt, vdgs_hdg);
     }
 }
@@ -846,17 +847,19 @@ static void update_vdgs()
     memset(drefs, 0, sizeof(drefs));
     drefs[VDGS_DR_STATUS] = 1;
     drefs[VDGS_DR_TRACK] = 2;
-    drefs[VDGS_DR_DISTANCE] = 10;
+    drefs[VDGS_DR_DISTANCE] = 20;
+    drefs[VDGS_DR_LR] = 2;
 
     double x, y, z;
     XPLMWorldToLocal(vdgs_lat, vdgs_lon, vdgs_alt, &x, &y, &z);
 
     XPLMDrawInfo_t drawinfo;
     drawinfo.structSize = sizeof(drawinfo);
-    drawinfo.x = x;
+    drawinfo.x = x + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg);
     drawinfo.y = y;
-    drawinfo.z = z;
-    drawinfo.pitch = drawinfo.heading = drawinfo.roll = 0.0;
+    drawinfo.z = z - VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg);;
+    drawinfo.heading = vdgs_hdg;
+    drawinfo.pitch = drawinfo.roll = 0.0;
     XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
     logMsg("XPLMInstanceSetPosition");
 }
