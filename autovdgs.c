@@ -30,13 +30,15 @@
 #define XPLM300
 #define XPLM301
 
+#include "XPLMPlugin.h"
+#include "XPLMProcessing.h"
 #include "XPLMCamera.h"
 #include "XPLMDataAccess.h"
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
-#include "XPLMPlugin.h"
-#include "XPLMProcessing.h"
+#include "XPLMInstance.h"
 #include "XPLMNavigation.h"
+#include "XPLMScenery.h"
 #include "XPLMUtilities.h"
 
 #include <acfutils/assert.h>
@@ -117,6 +119,7 @@ static XPLMDataRef ref_acf_descrip, ref_acf_icao;
 static XPLMDataRef ref_acf_cg_y, ref_acf_cg_z;
 static XPLMDataRef ref_acf_door_x, ref_acf_door_y, ref_acf_door_z;
 static XPLMDataRef ref_total_running_time_sec;
+static XPLMProbeRef ref_probe;
 
 /* Published DataRefs */
 static XPLMDataRef ref_vert, ref_lat, ref_moving;
@@ -143,8 +146,43 @@ static airportdb_t airportdb;
 static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
-static geo_pos2_t cur_pos;
+static geo_pos3_t cur_pos;
+
 static const ramp_start_t *nearest_ramp;
+static float vdgs_lat, vdgs_lon, vdgs_alt, vdgs_hdg;
+
+static XPLMObjectRef vdgs_obj[2];
+
+enum _VDGS_DREF {
+    VDGS_DR_STATUS,
+    VDGS_DR_ID1,
+    VDGS_DR_ID2,
+    VDGS_DR_ID3,
+    VDGS_DR_ID4,
+    VDGS_DR_LR,
+    VDGS_DR_TRACK,
+    VDGS_DR_AZIMUTH,
+    VDGS_DR_DISTANCE,
+    VDGS_DR_DISTANCE2,
+    VDGS_DR_NUM             // # of drefs
+};
+
+// keep exactly the same order
+static const char *vdgs_dref_list[] = {
+    "hotbso/dgs/status",
+    "hotbso/dgs/id1",
+    "hotbso/dgs/id2",
+    "hotbso/dgs/id3",
+    "hotbso/dgs/id4",
+    "hotbso/dgs/lr",
+    "hotbso/dgs/track",
+    "hotbso/dgs/azimuth",
+    "hotbso/dgs/distance",
+    "hotbso/dgs/distance2",
+    NULL
+};
+
+static XPLMInstanceRef vdgs_inst_ref;
 
 /* Known plane descriptions */
 static const db_t planedb[]={/* lng   lat  vert  type */
@@ -779,7 +817,48 @@ static void find_nearest_ramp()
         nearest_ramp = min_ramp;
         logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
                min_ramp->hdgt, dist);
+        double x, y, z, foo, alt;
+        XPLMProbeInfo_t probeinfo;
+        probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, cur_pos.elev - 50.0, &x, &y, &z);
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
+            logMsg("probe failed");
+            return;
+        }
+
+        XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &foo, &foo, &alt);
+        logMsg("ramp alt: %f", alt);
+        vdgs_lat = min_ramp->pos.lat;
+        vdgs_lon = min_ramp->pos.lon;
+        vdgs_alt = alt;
+        vdgs_hdg = min_ramp->hdgt - 180.0;
+        //XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, alt, &x, &y, &z);
+        logMsg("vdgs pos is : %f, %f, %f, hdg: %f", vdgs_lat, vdgs_lon = min_ramp->pos.lon, vdgs_alt, vdgs_hdg);
     }
+}
+
+static void update_vdgs()
+{
+    if (nearest_ramp == NULL)
+        return;
+
+    float drefs[VDGS_DR_NUM];
+    memset(drefs, 0, sizeof(drefs));
+    drefs[VDGS_DR_STATUS] = 1;
+    drefs[VDGS_DR_TRACK] = 2;
+    drefs[VDGS_DR_DISTANCE] = 10;
+
+    double x, y, z;
+    XPLMWorldToLocal(vdgs_lat, vdgs_lon, vdgs_alt, &x, &y, &z);
+
+    XPLMDrawInfo_t drawinfo;
+    drawinfo.structSize = sizeof(drawinfo);
+    drawinfo.x = x;
+    drawinfo.y = y;
+    drawinfo.z = z;
+    drawinfo.pitch = drawinfo.heading = drawinfo.roll = 0.0;
+    XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
+    logMsg("XPLMInstanceSetPosition");
 }
 
 static float flight_loop_cb(float inElapsedSinceLastCall,
@@ -806,6 +885,10 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
                 if (arpt) {
                     logMsg("now on airport: %s", arpt->icao);
+                    vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[0], vdgs_dref_list);
+                    if (vdgs_inst_ref == NULL) {
+                        logMsg("error creating instance");
+                    }
                 }
             } else {
                 arpt = NULL;
@@ -816,8 +899,9 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     }
 
     if (on_ground) {
-        cur_pos = GEO_POS2(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon)); //, XPLMGetDataf(ref_plane_elevation));
+        cur_pos = GEO_POS3(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon), XPLMGetDataf(ref_plane_elevation));
         find_nearest_ramp();
+        update_vdgs();
     }
 
     return 2.0;
@@ -882,8 +966,6 @@ static void drawdebug(XPLMWindowID inWindowID, void *inRefcon)
 /* =========================== plugin entry points ===============================================*/
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
-    char buffer[PATH_MAX], *c;
-
     sprintf(outName, "%s v%s", pluginName, VERSION);
     strcpy(outSig,  pluginSig);
     strcpy(outDesc, pluginDesc);
@@ -898,24 +980,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     psep = XPLMGetDirectorySeparator();
 	XPLMGetSystemPath(xpdir);
 
-    XPLMGetPluginInfo(XPLMGetMyID(), NULL, buffer, NULL, NULL);
-    posixify(buffer);
-    if ((c = strrchr(buffer, '/')))
-    {
-        *c ='\0';
-        if (!strcmp(c-3, "/64"))
-            *(c-3) = '\0';		/* plugins one level down on some builds, so go up */
-
-        if ((c = strrchr(buffer, '/')))
-            *c = '\0';			/* strip Fat plugin folder */
- }
-    if (!c ||
-        !(c = strrchr(buffer, '/')) ||
-        strcasecmp(c, "/plugins"))
-    {
-        XPLMDebugString("AutoVDGS: Can't initialise - plugin has been moved out of its folder!\n");
-        return 0;
-    }
 
     char cache_path[512];
     sprintf(cache_path, "%sOutput%scaches%sAutoVDGS.cache", xpdir, psep, psep);
@@ -950,6 +1014,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_acf_door_y     =XPLMFindDataRef("sim/aircraft/view/acf_door_y");
     ref_acf_door_z     =XPLMFindDataRef("sim/aircraft/view/acf_door_z");
     ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
+    ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
     /* Published Datarefs */
     ref_vert     =floatref("hotbso/AutoVDGS/vert", getgatefloat, &vert);
@@ -967,6 +1032,12 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_azimuth  =floatref("hotbso/dgs/azimuth",   getdgsfloat, &azimuth);
     ref_distance =floatref("hotbso/dgs/distance",  getdgsfloat, &distance);
     ref_distance2=floatref("hotbso/dgs/distance2", getdgsfloat, &distance2);
+
+    vdgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoVDGS/resources/Marshaller.obj");
+    if (vdgs_obj[0] == NULL) {
+        logMsg("error loading Marshaller");
+        return 0;
+    }
 
 #ifdef DEBUG
     XPLMCreateWindow_t cw = {
@@ -990,6 +1061,10 @@ PLUGIN_API void XPluginStop(void)
 {
     if (windowId) XPLMDestroyWindow(windowId);
     XPLMUnregisterFlightLoopCallback(newplanecallback, NULL);
+    XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
+    XPLMDestroyProbe(ref_probe);
+    if (vdgs_obj[0])
+        XPLMUnloadObject(vdgs_obj[0]);
 }
 
 PLUGIN_API int XPluginEnable(void)

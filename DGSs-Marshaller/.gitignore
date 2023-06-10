@@ -1,0 +1,2 @@
+# Don't track .obj files other than those we explicitly add
+*.obj
