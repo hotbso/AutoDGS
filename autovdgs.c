@@ -148,10 +148,9 @@ static airportdb_t airportdb;
 static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
-static geo_pos3_t cur_pos;
-
+static vect3_t plane_pos, vdgs_pos;
+static float vdgs_hdg;
 static const ramp_start_t *nearest_ramp;
-static float vdgs_lat, vdgs_lon, vdgs_alt, vdgs_hdg;
 
 static XPLMObjectRef vdgs_obj[2];
 
@@ -802,11 +801,14 @@ static void find_nearest_ramp()
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
 
+    float lat = XPLMGetDataf(ref_plane_lat);
+    float lon = XPLMGetDataf(ref_plane_lon);
+
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
-        float dlat = 111195.0 * (cur_pos.lat - ramp->pos.lat);
-        float dlon = 111195.0 * (cur_pos.lon - ramp->pos.lon) * cos(0.01745* ramp->pos.lat);
+        float dlat = DEG2M * (lat - ramp->pos.lat);
+        float dlon = DEG2M * (lon - ramp->pos.lon) * cos(D2R * ramp->pos.lat);
 
         double d = sqrt(dlat * dlat + dlon * dlon);
         if (d < dist) {
@@ -822,7 +824,7 @@ static void find_nearest_ramp()
         double x, y, z, foo, alt;
         XPLMProbeInfo_t probeinfo;
         probeinfo.structSize = sizeof(XPLMProbeInfo_t);
-        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, cur_pos.elev - 50.0, &x, &y, &z);
+        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, XPLMGetDataf(ref_plane_elevation) - 50.0, &x, &y, &z);
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
             logMsg("probe failed");
             return;
@@ -831,10 +833,10 @@ static void find_nearest_ramp()
         XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &foo, &foo, &alt);
         logMsg("ramp alt: %f", alt);
         vdgs_hdg = min_ramp->hdgt;
-        vdgs_lat = min_ramp->pos.lat;// + VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg) / DEG2M;
-        vdgs_lon = min_ramp->pos.lon;// + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg) * cosf(D2R * vdgs_lat) / DEG2M;
-        vdgs_alt = alt;
-        logMsg("vdgs pos is : %f, %f, %f, hdg: %f", vdgs_lat, vdgs_lon = min_ramp->pos.lon, vdgs_alt, vdgs_hdg);
+        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, alt, &x, &y, &z);
+
+        // move some distance away
+        vdgs_pos = VECT3(x + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg), y, z - VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg));
     }
 }
 
@@ -850,14 +852,11 @@ static void update_vdgs()
     drefs[VDGS_DR_DISTANCE] = 20;
     drefs[VDGS_DR_LR] = 2;
 
-    double x, y, z;
-    XPLMWorldToLocal(vdgs_lat, vdgs_lon, vdgs_alt, &x, &y, &z);
-
     XPLMDrawInfo_t drawinfo;
     drawinfo.structSize = sizeof(drawinfo);
-    drawinfo.x = x + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg);
-    drawinfo.y = y;
-    drawinfo.z = z - VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg);;
+    drawinfo.x = vdgs_pos.x;
+    drawinfo.y = vdgs_pos.y;
+    drawinfo.z = vdgs_pos.z;
     drawinfo.heading = vdgs_hdg;
     drawinfo.pitch = drawinfo.roll = 0.0;
     XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
@@ -902,7 +901,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     }
 
     if (on_ground) {
-        cur_pos = GEO_POS3(XPLMGetDataf(ref_plane_lat), XPLMGetDataf(ref_plane_lon), XPLMGetDataf(ref_plane_elevation));
+        plane_pos = VECT3(XPLMGetDataf(ref_plane_x), XPLMGetDataf(ref_plane_y), XPLMGetDataf(ref_plane_z));
         find_nearest_ramp();
         update_vdgs();
     }
