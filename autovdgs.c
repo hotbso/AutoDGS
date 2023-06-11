@@ -76,7 +76,7 @@ static const float DURATION=15;	/* Time to engage/disengage */
 
 static const float POLLTIME=5;	/* How often to check we're still in range of our gate */
 
-static const float VDGS_RAMP_DIST = 10.0;
+static const float VDGS_RAMP_DIST = 25.0;
 extern float gate_x, gate_y, gate_z, gate_h;		/* active gate */
 extern float lat, vert, moving;
 
@@ -85,6 +85,9 @@ typedef enum
 {
     DISABLED=0, NEWPLANE, IDLE, IDFAIL, TRACK, GOOD, BAD, ENGAGE, DOCKED, DISENGAGE, DISENGAGED
 } state_t;
+ 
+const char * const statestr[] = { "Disabled", "NewPlane", "Idle", "IDFail", "Track",
+                                  "Good", "Bad", "Engage", "Docked", "Disengage", "Disengaged" };
 
 typedef struct {
     const char *key;
@@ -148,8 +151,8 @@ static airportdb_t airportdb;
 static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
-static vect3_t plane_pos, vdgs_pos;
-static float vdgs_hdg;
+static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
+static vect3_t vdgs_pos;  // position + vector
 static const ramp_start_t *nearest_ramp;
 
 static XPLMObjectRef vdgs_obj[2];
@@ -168,7 +171,7 @@ enum _VDGS_DREF {
     VDGS_DR_NUM             // # of drefs
 };
 
-// keep exactly the same order
+// keep exactly the same order as list above
 static const char *vdgs_dref_list[] = {
     "hotbso/dgs/status",
     "hotbso/dgs/id1",
@@ -824,7 +827,7 @@ static void find_nearest_ramp()
         double x, y, z, foo, alt;
         XPLMProbeInfo_t probeinfo;
         probeinfo.structSize = sizeof(XPLMProbeInfo_t);
-        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, XPLMGetDataf(ref_plane_elevation) - 50.0, &x, &y, &z);
+        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, XPLMGetDataf(ref_plane_elevation), &x, &y, &z);
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
             logMsg("probe failed");
             return;
@@ -832,11 +835,12 @@ static void find_nearest_ramp()
 
         XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &foo, &foo, &alt);
         logMsg("ramp alt: %f", alt);
-        vdgs_hdg = min_ramp->hdgt;
         XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, alt, &x, &y, &z);
+        stand_x = x; stand_z = z; stand_hdg = min_ramp->hdgt;
+        stand_dir_x = sinf(D2R * (stand_hdg)); stand_dir_z = - cosf(D2R * stand_hdg);
 
-        // move some distance away
-        vdgs_pos = VECT3(x + VDGS_RAMP_DIST * sinf(D2R * vdgs_hdg), y, z - VDGS_RAMP_DIST * cosf(D2R * vdgs_hdg));
+        // move vdgs some distance away
+        vdgs_pos = VECT3(x + VDGS_RAMP_DIST * stand_dir_x, y, z + VDGS_RAMP_DIST * stand_dir_z);
     }
 }
 
@@ -845,20 +849,38 @@ static void update_vdgs()
     if (nearest_ramp == NULL)
         return;
 
+    XPLMDrawInfo_t drawinfo;
     float drefs[VDGS_DR_NUM];
     memset(drefs, 0, sizeof(drefs));
-    drefs[VDGS_DR_STATUS] = 1;
-    drefs[VDGS_DR_TRACK] = 2;
-    drefs[VDGS_DR_DISTANCE] = 20;
-    drefs[VDGS_DR_LR] = 2;
 
-    XPLMDrawInfo_t drawinfo;
     drawinfo.structSize = sizeof(drawinfo);
     drawinfo.x = vdgs_pos.x;
     drawinfo.y = vdgs_pos.y;
     drawinfo.z = vdgs_pos.z;
-    drawinfo.heading = vdgs_hdg;
+    drawinfo.heading = stand_hdg;
     drawinfo.pitch = drawinfo.roll = 0.0;
+
+    // xform plane pos into stand local coordinate system
+    float dx = stand_x - XPLMGetDataf(ref_plane_x);
+    float dz = stand_z - XPLMGetDataf(ref_plane_z);
+    float local_z = dx * stand_dir_x + dz * stand_dir_z;
+    float local_x = dx * stand_dir_z - dz * stand_dir_x;
+    logMsg("local z, x %f, %f", local_z, local_x);
+
+    azimuth = ((int)(2.0 * local_x)) / 2.0;
+    if (azimuth > 4.0)
+        azimuth = 4.0;
+    else if (azimuth < -4.0)
+        azimuth = -4.0;
+
+    logMsg("azimuth: %f", azimuth);
+    
+    drefs[VDGS_DR_STATUS] = 1;
+    drefs[VDGS_DR_TRACK] = 2;
+    drefs[VDGS_DR_DISTANCE] = ((int)((local_z - GOOD_Z)* 2.0)) / 2.0;
+    drefs[VDGS_DR_AZIMUTH] = azimuth;
+    drefs[VDGS_DR_LR] = azimuth < 0.0 ? 1 : 2;
+
     XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
     logMsg("XPLMInstanceSetPosition");
 }
@@ -901,7 +923,6 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     }
 
     if (on_ground) {
-        plane_pos = VECT3(XPLMGetDataf(ref_plane_x), XPLMGetDataf(ref_plane_y), XPLMGetDataf(ref_plane_z));
         find_nearest_ramp();
         update_vdgs();
     }
@@ -943,7 +964,6 @@ static void drawdebug(XPLMWindowID inWindowID, void *inRefcon)
 
     XPLMGetWindowGeometry(inWindowID, &left, &top, &right, &bottom);
 
-    char *statestr[] = { "Disabled", "NewPlane", "Idle", "IDFail", "Track", "Good", "Bad", "Engage", "Docked", "Disengage", "Disengaged" };
     sprintf(buf, "State: %s %s %s", statestr[state], plane_type==15 ? "Unknown" : canonical[plane_type], running ? "Running" : "Parked");
     XPLMDrawString(color, left + 5, top - 10, buf, 0, xplmFont_Basic);
     sprintf(buf, "Door : %10.3f %10.3f %10.3f",       XPLMGetDataf(ref_acf_door_x), XPLMGetDataf(ref_acf_door_y), XPLMGetDataf(ref_acf_door_z));
