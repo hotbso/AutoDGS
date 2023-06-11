@@ -111,7 +111,6 @@ static XPLMDataRef ref_status, ref_icao, ref_id1, ref_id2, ref_id3, ref_id4, ref
 static XPLMDataRef ref_azimuth, ref_distance, ref_distance2;
 
 /* Published DataRef values */
-float lat, vert, moving;
 static int status, id1, id2, id3, id4, lr, track;
 static int icao[4];
 static float azimuth, distance, distance2;
@@ -134,6 +133,7 @@ static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static vect3_t vdgs_pos;  // position + vector
 static const ramp_start_t *nearest_ramp;
 
+static int vdgs_type = 1;
 static XPLMObjectRef vdgs_obj[2];
 
 enum _VDGS_DREF {
@@ -147,6 +147,10 @@ enum _VDGS_DREF {
     VDGS_DR_AZIMUTH,
     VDGS_DR_DISTANCE,
     VDGS_DR_DISTANCE2,
+    VDGS_DR_ICAO_0,
+    VDGS_DR_ICAO_1,
+    VDGS_DR_ICAO_2,
+    VDGS_DR_ICAO_3,
     VDGS_DR_NUM             // # of drefs
 };
 
@@ -162,6 +166,7 @@ static const char *vdgs_dref_list[] = {
     "hotbso/dgs/azimuth",
     "hotbso/dgs/distance",
     "hotbso/dgs/distance2",
+    "hotbso/dgs/icao",          // that's an array of 4
     NULL
 };
 
@@ -225,7 +230,6 @@ static void resetidle(void)
     dgs_x=dgs_y=dgs_z=0;
     last_gate_x = last_gate_y = last_gate_z = last_gate_update = 0;
     last_dgs_x = last_dgs_y = last_dgs_z = last_dgs_update = 0;
-    vert=lat=moving=0;
     status=id1=id2=id3=id4=lr=track=0;
     azimuth=distance=distance2=0;
 
@@ -424,103 +428,111 @@ static void update_vdgs()
     status=id1=id2=id3=id4=lr=track=0;
     azimuth=distance=distance2=0;
 
-    switch (state)
-    {
-    case TRACK:
-        if (locgood)
-        {
-            state=GOOD;
-            timestamp=now;
-        }
-        else if (local_z<-GOOD_Z) {
-            timestamp = now;
-            state=BAD;
-        } else {
-            status=1;	/* plane id */
-            if (plane_type<4)
-                id1=plane_type+1;
-            else if (plane_type<8)
-                id2=plane_type-3;
-            else if (plane_type<12)
-                id3=plane_type-7;
-            else
-                id4=plane_type-11;
-            if (local_z-GOOD_Z > AZI_Z ||
-                fabsf(local_x) > AZI_X)
-                track=1;	/* lead-in only */
-            else
+    switch (state) {
+        case IDLE:
+            if (running
+                && (local_z-GOOD_Z <= AZI_Z)
+                && (fabsf(local_x) <= AZI_X))
+                track=1;
+            /* FALLTHROUGH */
+
+        case TRACK:
+            if (locgood)
             {
-                distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
-                azimuth=((float)((int)(local_x*2))) / 2;
-                if (azimuth>4)	azimuth=4;
-                if (azimuth<-4) azimuth=-4;
-
-                if (azimuth <= -0.5f)
-                    lr=1;
-                else if (azimuth >= 0.5f)
-                    lr=2;
+                state=GOOD;
+                timestamp=now;
+            }
+            else if (local_z<-GOOD_Z) {
+                timestamp = now;
+                state=BAD;
+            } else {
+                status=1;	/* plane id */
+                if (plane_type<4)
+                    id1=plane_type+1;
+                else if (plane_type<8)
+                    id2=plane_type-3;
+                else if (plane_type<12)
+                    id3=plane_type-7;
                 else
-                    lr=0;
+                    id4=plane_type-11;
 
-                if (local_z-GOOD_Z <= REM_Z/2){
-                    track=3;
-                    distance2=distance;
-                } else {
-                    if (local_z-GOOD_Z > REM_Z)
-                        /* azimuth only */
-                        distance=REM_Z;
-                    track = 2;
-                    distance2 = distance - REM_Z/2;
+                if (local_z-GOOD_Z > AZI_Z ||
+                    fabsf(local_x) > AZI_X)
+                    track=1;	/* lead-in only */
+                else
+                {
+                    distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
+                    azimuth=((float)((int)(local_x*2))) / 2;
+                    if (azimuth>4)	azimuth=4;
+                    if (azimuth<-4) azimuth=-4;
+
+                    if (azimuth <= -0.5f)
+                        lr=1;
+                    else if (azimuth >= 0.5f)
+                        lr=2;
+                    else
+                        lr=0;
+
+                    if (local_z-GOOD_Z <= REM_Z/2){
+                        track=3;
+                        distance2=distance;
+                    } else {
+                        if (local_z-GOOD_Z > REM_Z)
+                            /* azimuth only */
+                            distance=REM_Z;
+                        track = 2;
+                        distance2 = distance - REM_Z/2;
+                    }
                 }
             }
-        }
-        break;
-
-    case GOOD:
-        if (!locgood)
-            state = TRACK;
-        else if (running) {
-            /* Stop */
-            lr=3;
-            status=2;
-        } else {
-            state = PARKED;
-            timestamp = now;
-            status = 3;
-            lr = track = 0;
-        }
-        break;
-
-    case BAD:
-        if (now > timestamp + 5.0) {
-            resetidle();
             break;
-        }
 
-        if (local_z>=-GOOD_Z)
-            state=TRACK;
-        else {
-            /* Too far */
-            lr=3;
-            status=4;
-        }
-        break;
+        case GOOD:
+            if (!locgood)
+                state = TRACK;
+            else if (running) {
+                /* Stop */
+                lr=3;
+                status=2;
+            } else {
+                state = PARKED;
+                timestamp = now;
+                status = 3;
+                lr = track = 0;
+            }
+            break;
 
-    case PARKED:
-        if (now > timestamp + 5.0)
-            resetidle();
-        break;
-        
-    default:
-        /* FALLTHROUGH */
+        case BAD:
+            if (!running 
+                && (now > timestamp + 5.0)) {
+                resetidle();
+                break;
+            }
+
+            if (local_z>=-GOOD_Z)
+                state=TRACK;
+            else {
+                /* Too far */
+                lr=3;
+                status=4;
+            }
+            break;
+
+        case PARKED:
+            if (now > timestamp + 5.0)
+                resetidle();
+            break;
+            
+        default:
+            /* FALLTHROUGH */
     }
 
-    logMsg("state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
-           statestr[state], status, track, lr, distance, distance2, azimuth);
+    logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
+           nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
 
     if (state > IDLE) {
         if (vdgs_inst_ref == NULL) {
-            vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[0], vdgs_dref_list);
+            vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[vdgs_type], vdgs_dref_list);
             if (vdgs_inst_ref == NULL) {
                 logMsg("error creating instance");
                 state = DISABLED;
@@ -534,6 +546,9 @@ static void update_vdgs()
         drefs[VDGS_DR_DISTANCE2] = distance2;
         drefs[VDGS_DR_AZIMUTH] = azimuth;
         drefs[VDGS_DR_LR] = lr;
+
+        for (int i = 0; i < 4; i++)
+            drefs[VDGS_DR_ICAO_0 +i] = icao[i];
 
         XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
     }
@@ -676,17 +691,11 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
         return 0;
     }
 
-#ifdef DEBUG
-    XPLMCreateWindow_t cw = {
-        .structSize = sizeof(XPLMCreateWindow_t),
-        .left = 10, .top = 750, .right = 310, .bottom = 600,
-        .visible = 1,
-        .drawWindowFunc = drawdebug,
-        .decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle
-    };
-
-    windowId = XPLMCreateWindowEx(&cw);
-#endif
+    vdgs_obj[1] = XPLMLoadObject("Resources/plugins/AutoVDGS/resources/SafedockT2-6m-pole.obj");
+    if (vdgs_obj[1] == NULL) {
+        logMsg("error loading SafedockT2");
+        return 0;
+    }
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
@@ -696,8 +705,10 @@ PLUGIN_API void XPluginStop(void)
 {
     XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
     XPLMDestroyProbe(ref_probe);
-    if (vdgs_obj[0])
-        XPLMUnloadObject(vdgs_obj[0]);
+
+    for (int i = 0; i < 2; i++)
+        if (vdgs_obj[i])
+            XPLMUnloadObject(vdgs_obj[i]);
 }
 
 PLUGIN_API int XPluginEnable(void)

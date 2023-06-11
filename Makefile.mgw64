@@ -62,4 +62,4 @@ plugin: $(TARGET)
 	mkdir -p "$(PLUGDIR)/64"
 	mkdir -p "$(PLUGDIR)/resources"
 	cp -p $(TARGET) "$(PLUGDIR)/64/."
-	cp -p DGSs-Marshaller/* "$(PLUGDIR)/resources/."
+	cp -p DGSs-*/* "$(PLUGDIR)/resources/."
