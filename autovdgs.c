@@ -85,7 +85,7 @@ typedef enum
 {
     DISABLED=0, NEWPLANE, IDLE, IDFAIL, TRACK, GOOD, BAD, ENGAGE, DOCKED, DISENGAGE, DISENGAGED
 } state_t;
- 
+
 const char * const statestr[] = { "Disabled", "NewPlane", "Idle", "IDFail", "Track",
                                   "Good", "Bad", "Engage", "Docked", "Disengage", "Disengaged" };
 
@@ -289,6 +289,11 @@ static void resetidle(void)
 
     running_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
     beacon_on_ts = beacon_off_ts = -10.0;
+
+    if (vdgs_inst_ref) {
+        XPLMDestroyInstance(vdgs_inst_ref);
+        vdgs_inst_ref = NULL;
+    }
 }
 
 /* Reset new plane state after drawing */
@@ -421,6 +426,7 @@ static int localpos(float object_x, float object_y, float object_z, float object
 /* Update published data used by gate and dgs */
 static void updaterefs(float now, float local_x, float local_y, float local_z)
 {
+#if 0
     int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
     int running = check_running();
 
@@ -576,6 +582,7 @@ static void updaterefs(float now, float local_x, float local_y, float local_z)
         /* Shouldn't be here if state<=IDLE */
         assert(0);
     }
+#endif
 }
 
 static float getgatefloat(XPLMDataRef inRefcon)
@@ -685,6 +692,7 @@ static float getgatefloat(XPLMDataRef inRefcon)
 
 static int getdgs(void)
 {
+#if 0
     float now, object_x, object_y, object_z;
     float local_x, local_y, local_z;
 
@@ -746,6 +754,7 @@ static int getdgs(void)
     localpos(gate_x, gate_y, gate_z, gate_h, &local_x, &local_y, &local_z);
 
     updaterefs(now, local_x, local_y, local_z);
+#endif
     return -1;
 }
 
@@ -841,13 +850,16 @@ static void find_nearest_ramp()
 
         // move vdgs some distance away
         vdgs_pos = VECT3(x + VDGS_RAMP_DIST * stand_dir_x, y, z + VDGS_RAMP_DIST * stand_dir_z);
+        state = TRACK;
     }
 }
 
 static void update_vdgs()
 {
-    if (nearest_ramp == NULL)
+    if (nearest_ramp == NULL) {
+        state = IDLE;
         return;
+    }
 
     XPLMDrawInfo_t drawinfo;
     float drefs[VDGS_DR_NUM];
@@ -867,28 +879,132 @@ static void update_vdgs()
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
     logMsg("local z, x %f, %f", local_z, local_x);
 
-    azimuth = ((int)(2.0 * local_x)) / 2.0;
-    if (azimuth > 4.0)
-        azimuth = 4.0;
-    else if (azimuth < -4.0)
-        azimuth = -4.0;
+    int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
+    int running = check_running();
+    float now = XPLMGetDataf(ref_total_running_time_sec);
 
-    logMsg("azimuth: %f", azimuth);
-    
-    drefs[VDGS_DR_STATUS] = 1;
-    drefs[VDGS_DR_TRACK] = 2;
-    drefs[VDGS_DR_DISTANCE] = ((int)((local_z - GOOD_Z)* 2.0)) / 2.0;
-    drefs[VDGS_DR_AZIMUTH] = azimuth;
-    drefs[VDGS_DR_LR] = azimuth < 0.0 ? 1 : 2;
+    status=id1=id2=id3=id4=lr=track=0;
+    azimuth=distance=distance2=0;
 
-    XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
-    logMsg("XPLMInstanceSetPosition");
+    switch (state)
+    {
+    case TRACK:
+        if (locgood)
+        {
+            state=GOOD;
+            timestamp=now;
+        }
+        else if (local_z<-GOOD_Z) {
+            timestamp = now;
+            state=BAD;
+        } else {
+            status=1;	/* plane id */
+            if (plane_type<4)
+                id1=plane_type+1;
+            else if (plane_type<8)
+                id2=plane_type-3;
+            else if (plane_type<12)
+                id3=plane_type-7;
+            else
+                id4=plane_type-11;
+            if (local_z-GOOD_Z > AZI_Z ||
+                fabsf(local_x) > AZI_X)
+                track=1;	/* lead-in only */
+            else
+            {
+                distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
+                azimuth=((float)((int)(local_x*2))) / 2;
+                if (azimuth>4)	azimuth=4;
+                if (azimuth<-4) azimuth=-4;
+
+                if (azimuth <= -0.5f)
+                    lr=1;
+                else if (azimuth >= 0.5f)
+                    lr=2;
+                else
+                    lr=0;
+
+                if (local_z-GOOD_Z <= REM_Z/2){
+                    track=3;
+                    distance2=distance;
+                } else {
+                    if (local_z-GOOD_Z > REM_Z)
+                        /* azimuth only */
+                        distance=REM_Z;
+                    track = 2;
+                    distance2 = distance - REM_Z/2;
+                }
+            }
+        }
+        break;
+
+    case GOOD:
+        if (!locgood)
+            state=TRACK;
+        else if (running) {
+            /* Stop */
+            lr=3;
+            status=2;
+        } else {
+            state=DOCKED;
+            timestamp = now;
+            status = 3;
+            lr = track = 0;
+        }
+        break;
+
+    case BAD:
+        if (now > timestamp + 5.0) {
+            resetidle();
+            break;
+        }
+
+        if (local_z>=-GOOD_Z)
+            state=TRACK;
+        else {
+            /* Too far */
+            lr=3;
+            status=4;
+        }
+        break;
+
+    case DOCKED:
+        if (now > timestamp + 5.0)
+            resetidle();
+        break;
+    }
+
+    logMsg("state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
+           statestr[state], status, track, lr, distance, distance2, azimuth);
+
+    if (state > IDLE) {
+        if (vdgs_inst_ref == NULL) {
+            vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[0], vdgs_dref_list);
+            if (vdgs_inst_ref == NULL) {
+                logMsg("error creating instance");
+                state = DISABLED;
+                return;
+            }
+        }
+
+        drefs[VDGS_DR_STATUS] = status;
+        drefs[VDGS_DR_TRACK] = track;
+        drefs[VDGS_DR_DISTANCE] = distance;
+        drefs[VDGS_DR_DISTANCE2] = distance2;
+        drefs[VDGS_DR_AZIMUTH] = azimuth;
+        drefs[VDGS_DR_LR] = lr;
+
+        XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
+    }
 }
 
 static float flight_loop_cb(float inElapsedSinceLastCall,
                 float inElapsedTimeSinceLastFlightLoop, int inCounter,
                 void *inRefcon)
 {
+    if (state == DISABLED)
+        return 0.0;
+
     float now = XPLMGetDataf(ref_total_running_time_sec);
     int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
 
@@ -909,14 +1025,11 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
                 if (arpt) {
                     logMsg("now on airport: %s", arpt->icao);
-                    vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[0], vdgs_dref_list);
-                    if (vdgs_inst_ref == NULL) {
-                        logMsg("error creating instance");
-                    }
                 }
             } else {
                 arpt = NULL;
                 nearest_ramp = NULL;
+                state = IDLE;
             }
 
         }
