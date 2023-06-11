@@ -51,10 +51,6 @@ static const float F2M=0.3048;	/* 1 ft [m] */
 static const float D2R=M_PI/180.0;
 static const float DEG2M = 111195.0;    // deg lat to m
 
-/* Rest location [m] of bridge door floor in AutoGate.obj */
-static const float OBJ_X= -7.5;
-static const float OBJ_Y=  4;
-
 /* Capture distances [m] (to door location, not ref point) */
 static const float CAP_X = 10;
 static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
@@ -71,11 +67,6 @@ static const float DGS_X = 10;
 static const float DGS_Z =-50;		/* s2.2 of Safedock Manual says 50m from nose */
 static const float DGS_H = 0.2f;	/* ~11 degrees. s2.3 of Safedock Manual says 9 or 12 degrees */
 
-static const float WAITTIME=1;	/* Time to wait before engaging */
-static const float DURATION=15;	/* Time to engage/disengage */
-
-static const float POLLTIME=5;	/* How often to check we're still in range of our gate */
-
 static const float VDGS_RAMP_DIST = 25.0;
 extern float gate_x, gate_y, gate_z, gate_h;		/* active gate */
 extern float lat, vert, moving;
@@ -83,11 +74,10 @@ extern float lat, vert, moving;
 /* types */
 typedef enum
 {
-    DISABLED=0, NEWPLANE, IDLE, IDFAIL, TRACK, GOOD, BAD, ENGAGE, DOCKED, DISENGAGE, DISENGAGED
+    DISABLED=0, NEWPLANE, IDLE, TRACK, GOOD, BAD, PARKED
 } state_t;
 
-const char * const statestr[] = { "Disabled", "NewPlane", "Idle", "IDFail", "Track",
-                                  "Good", "Bad", "Engage", "Docked", "Disengage", "Disengaged" };
+const char * const statestr[] = { "Disabled", "NewPlane", "Idle", "Track", "Good", "Bad", "Parked" };
 
 typedef struct {
     const char *key;
@@ -106,7 +96,6 @@ static const char pluginName[]="AutoVDGS";
 static const char pluginSig[] ="hotbso.AutoVDGS";
 static const char pluginDesc[]="Automatically provides";
 
-static XPLMWindowID windowId = NULL;
 static state_t state = DISABLED;
 static float timestamp;
 static int plane_type;
@@ -127,7 +116,6 @@ static XPLMDataRef ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRefs */
-static XPLMDataRef ref_vert, ref_lat, ref_moving;
 static XPLMDataRef ref_status, ref_icao, ref_id1, ref_id2, ref_id3, ref_id4, ref_lr, ref_track;
 static XPLMDataRef ref_azimuth, ref_distance, ref_distance2;
 
@@ -296,13 +284,6 @@ static void resetidle(void)
     }
 }
 
-/* Reset new plane state after drawing */
-static float newplanecallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon)
-{
-    if (state == NEWPLANE) state = IDLE;
-    return 0;	/* Don't call again */
-}
-
 static void newplane(void)
 {
     char acf_descrip[129];
@@ -394,367 +375,8 @@ static int check_running()
    return running_state;
 }
 
-
-/* Calculate location of plane's centreline opposite door in this object's space */
-static int localpos(float object_x, float object_y, float object_z, float object_h, float *local_x, float *local_y, float *local_z)
-{
-    float plane_x, plane_y, plane_z, plane_h;
-    float x, y, z;
-    float object_hcos, object_hsin;
-
-    plane_x=XPLMGetDataf(ref_plane_x);
-    plane_y=XPLMGetDataf(ref_plane_y);
-    plane_z=XPLMGetDataf(ref_plane_z);
-    plane_h=XPLMGetDataf(ref_plane_psi) * D2R;
-
-    /* Location of plane's centreline opposite door */
-    /* Calculation assumes plane is horizontal */
-    x=plane_x-door_z*sinf(plane_h);
-    y=plane_y+door_y;
-    z=plane_z+door_z*cosf(plane_h);
-
-    /* Location of centreline opposite door in this gate's space */
-    object_hcos = cosf(object_h);
-    object_hsin = sinf(object_h);
-    *local_x=object_hcos*(x-object_x)+object_hsin*(z-object_z);
-    *local_y=y-object_y;
-    *local_z=object_hcos*(z-object_z)-object_hsin*(x-object_x);
-
-    return 0;	/* Return value has no meaning */
-}
-
-/* Update published data used by gate and dgs */
-static void updaterefs(float now, float local_x, float local_y, float local_z)
-{
-#if 0
-    int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
-    int running = check_running();
-
-    status=id1=id2=id3=id4=lr=track=0;
-    azimuth=distance=distance2=0;
-
-    switch (state)
-    {
-    case IDFAIL:
-        lr=3;	/* Stop */
-        status=5;
-        break;
-
-    case TRACK:
-        if (locgood)
-        {
-            state=GOOD;
-            timestamp=now;
-        }
-        else if (local_z<-GOOD_Z)
-            state=BAD;
-        else
-        {
-            status=1;	/* plane id */
-            if (plane_type<4)
-                id1=plane_type+1;
-            else if (plane_type<8)
-                id2=plane_type-3;
-            else if (plane_type<12)
-                id3=plane_type-7;
-            else
-                id4=plane_type-11;
-            if (local_z-GOOD_Z > AZI_Z ||
-                fabsf(local_x) > AZI_X)
-                track=1;	/* lead-in only */
-            else
-            {
-                distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
-                azimuth=((float)((int)(local_x*2))) / 2;
-                if (azimuth>4)	azimuth=4;
-                if (azimuth<-4) azimuth=-4;
-                if (azimuth<=-0.5f)
-                    lr=1;
-                else if (azimuth>=0.5f)
-                    lr=2;
-                else
-                    lr=0;
-                if (local_z-GOOD_Z <= REM_Z/2)
-                {
-                    track=3;
-                    distance2=distance;
-                }
-                else
-                {
-                    if (local_z-GOOD_Z > REM_Z)
-                        /* azimuth only */
-                        distance=REM_Z;
-                    track=2;
-                    distance2=distance - REM_Z/2;
-                }
-            }
-        }
-        break;
-
-    case GOOD:
-        if (!locgood)
-            state=TRACK;
-        else if (running)
-        {
-            /* Stop */
-            lr=3;
-            status=2;
-        }
-        else
-        {
-            state=ENGAGE;
-            timestamp=now;
-        }
-        break;
-
-    case BAD:
-        if (local_z>=-GOOD_Z)
-            state=TRACK;
-        else
-        {
-            /* Too far */
-            lr=3;
-            status=4;
-        }
-        break;
-
-    case ENGAGE:
-        lr=3;
-        if (running)
-        {
-            /* abort - reverse animation */
-            state=DISENGAGE;
-            timestamp=now-(timestamp+WAITTIME+DURATION-now);
-        }
-        else if (now>timestamp+WAITTIME+DURATION)
-            state=DOCKED;
-        else if (now>timestamp+WAITTIME)
-        {
-            float ratio=(now-(timestamp+WAITTIME))/DURATION;
-            status=3;	/* OK */
-            lat =(door_x-OBJ_X) * ratio;
-            vert=(local_y-OBJ_Y) * ratio;
-            moving=1;
-        }
-        else
-            status=2;	/* Stop */
-        break;
-
-    case DOCKED:
-        /* Blank */
-        if (running)
-        {
-            state=DISENGAGE;
-            timestamp=now;
-        }
-        else
-        {
-            lat =door_x-OBJ_X;
-            vert=local_y-OBJ_Y;
-            moving=0;
-        }
-        break;
-
-    case DISENGAGE:
-        /* Blank */
-        if (now>timestamp+DURATION)
-        {
-            state=DISENGAGED;
-            lat=vert=moving=0;
-        }
-        else
-        {
-            float ratio=1 - (now-timestamp)/DURATION;
-            lat =(door_x-OBJ_X) * ratio;
-            vert=(local_y-OBJ_Y) * ratio;
-            moving=1;
-        }
-        break;
-
-    case DISENGAGED:
-        /* Blank */
-        if (local_z-GOOD_Z > AZI_Z || fabsf(local_x) > AZI_X)
-            /* Go back to lead-in */
-            state=TRACK;
-        break;
-
-    default:
-        /* Shouldn't be here if state<=IDLE */
-        assert(0);
-    }
-#endif
-}
-
-static float getgatefloat(XPLMDataRef inRefcon)
-{
-    float now;
-    float plane_x, plane_z;
-    float object_x, object_y, object_z, object_h;
-    float local_x, local_y, local_z;
-
-    now = XPLMGetDataf(ref_total_running_time_sec);
-    object_x = XPLMGetDataf(ref_draw_object_x);
-    object_y = XPLMGetDataf(ref_draw_object_y);
-    object_z = XPLMGetDataf(ref_draw_object_z);
-
-    if (last_gate_update==now && last_gate_x==object_x && last_gate_y==object_y && last_gate_z==object_z)
-    {
-        /* Same frame and object as last calculation */
-        return (gate_x==object_x && gate_y==object_y && gate_z==object_z) ? *(float*)inRefcon : 0;
-    }
-    else
-    {
-        last_gate_update = now;
-        last_gate_x = object_x;
-        last_gate_y = object_y;
-        last_gate_z = object_z;
-    }
-
-    if (state>IDLE && (gate_x!=object_x || gate_y!=object_y || gate_z!=object_z))
-    {
-        /* We're tracking and it's not by this gate */
-
-        if (now-gate_update > POLLTIME)
-        {
-            /* We haven't seen our gate in a while - check we're still in range in case we've been moved across the airport */
-            localpos(gate_x, gate_y, gate_z, gate_h, &local_x, &local_y, &local_z);
-            if (fabsf(local_x)>CAP_X || local_z<DGS_Z || local_z>CAP_Z)
-                resetidle();	/* Just gone out of range of the tracking gate */
-                /* Fall through */
-            else
-                return 0;
-        }
-        return 0;
-    }
-
-    plane_x=XPLMGetDataf(ref_plane_x);
-    plane_z=XPLMGetDataf(ref_plane_z);
-    object_h=XPLMGetDataf(ref_draw_object_psi) * D2R;
-
-    if (((object_x-plane_x) * (object_x-plane_x) + (object_z-plane_z) * (object_z-plane_z)) > (CAP_Z * CAP_Z) ||
-        localpos(object_x, object_y, object_z, object_h, &local_x, &local_y, &local_z) ||
-        fabsf(local_x)>CAP_X || local_z<DGS_Z || local_z>CAP_Z)
-    {
-        /* Not in range of this gate */
-
-        if (gate_x==object_x && gate_y==object_y && gate_z==object_z)
-            resetidle();	/* Just gone out of range of the tracking gate */
-
-        if (state == NEWPLANE)
-            XPLMSetFlightLoopCallbackInterval(newplanecallback, -1, 1, NULL);	/* Reset newplane state before next frame */
-
-        return 0;
-    }
-
-    /* In range of this gate */
-
-    if (gate_x!=object_x || gate_y!=object_y || gate_z!=object_z)
-    {
-        /* Just come into range */
-
-        if (state == NEWPLANE && fabsf(local_z) < NEW_Z)
-        {
-            /* Fudge plane's position to line up with this gate */
-            float object_hcos, object_hsin;
-
-            object_hcos = cosf(object_h);
-            object_hsin = sinf(object_h);
-            XPLMSetDataf(ref_plane_x, plane_x + local_z * object_hsin - local_x * object_hcos);
-            XPLMSetDataf(ref_plane_z, plane_z - local_z * object_hcos - local_x * object_hsin);
-            localpos(object_x, object_y, object_z, object_h, &local_x, &local_y, &local_z);	/* recalc */
-
-            int running = check_running();
-            state = running ? TRACK : DOCKED;
-        }
-        else if (!door_x)
-        {
-            state = IDFAIL;
-        }
-        else
-        {
-            /* Approaching gate */
-            state = TRACK;
-        }
-        gate_x=object_x;
-        gate_y=object_y;
-        gate_z=object_z;
-        gate_h=object_h;
-
-        if ((float*)inRefcon == &lat)	/* Standalone DGS dummy gate only uses vert */
-            gate_AutoVDGS = -1;		/* Relies on lat occurring in the .obj file before vert */
-    }
-
-    gate_update = now;
-    updaterefs(now, local_x, local_y, local_z);
-    return *(float*)inRefcon;
-}
-
-
 static int getdgs(void)
 {
-#if 0
-    float now, object_x, object_y, object_z;
-    float local_x, local_y, local_z;
-
-    if (state <= IDLE) return 0;	/* Only interested in DGSs if we're in range of a gate */
-
-    now = XPLMGetDataf(ref_total_running_time_sec);
-    object_x = XPLMGetDataf(ref_draw_object_x);
-    object_y = XPLMGetDataf(ref_draw_object_y);
-    object_z = XPLMGetDataf(ref_draw_object_z);
-
-    if (last_dgs_update==now && last_dgs_x==object_x && last_dgs_y==object_y && last_dgs_z==object_z)
-    {
-        /* Same frame and object as last calculation */
-        return (dgs_x==object_x && dgs_y==object_y && dgs_z==object_z);
-    }
-    else
-    {
-        last_dgs_update = now;
-        last_dgs_x = object_x;
-        last_dgs_y = object_y;
-        last_dgs_z = object_z;
-    }
-
-    if (!(dgs_x || dgs_y || dgs_z))
-    {
-        /* Haven't yet identified the active dgs */
-        float x, z;
-        float gate_hcos, gate_hsin;
-
-        float object_h = XPLMGetDataf(ref_draw_object_psi) * D2R;
-
-        /* Check DGS is pointing in the same direction as the gate, and within desired radius */
-        if (fabsf(object_h - gate_h) <= DGS_H &&
-            ((object_x-gate_x) * (object_x-gate_x) + (object_z-gate_z) * (object_z-gate_z)) <= (DGS_Z * DGS_Z))
-        {
-            /* Location of this DGS in the active gate's space */
-            gate_hcos = cosf(gate_h);
-            gate_hsin = sinf(gate_h);
-            x = gate_hcos*(object_x-gate_x) + gate_hsin*(object_z-gate_z);
-            z = gate_hcos*(object_z-gate_z) - gate_hsin*(object_x-gate_x);
-
-            if (fabsf(x)<=DGS_X && z<=0 && z>=DGS_Z)
-            {
-                dgs_x=object_x;
-                dgs_y=object_y;
-                dgs_z=object_z;
-            }
-            else
-                return 0;
-        }
-        else
-            return 0;
-    }
-    else if (dgs_x!=object_x || dgs_y!=object_y || dgs_z!=object_z)
-        /*  Have identified the active dgs and this isn't it */
-        return 0;
-
-    /* Re-calculate plane location - can't rely on values from getgate() since that will not be being called if gate no longer in view */
-    localpos(gate_x, gate_y, gate_z, gate_h, &local_x, &local_y, &local_z);
-
-    updaterefs(now, local_x, local_y, local_z);
-#endif
     return -1;
 }
 
@@ -940,13 +562,13 @@ static void update_vdgs()
 
     case GOOD:
         if (!locgood)
-            state=TRACK;
+            state = TRACK;
         else if (running) {
             /* Stop */
             lr=3;
             status=2;
         } else {
-            state=DOCKED;
+            state = PARKED;
             timestamp = now;
             status = 3;
             lr = track = 0;
@@ -968,10 +590,13 @@ static void update_vdgs()
         }
         break;
 
-    case DOCKED:
+    case PARKED:
         if (now > timestamp + 5.0)
             resetidle();
         break;
+        
+    default:
+        /* FALLTHROUGH */
     }
 
     logMsg("state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
@@ -1066,38 +691,6 @@ void posixify(char *path)
 #endif
 }
 
-#ifdef DEBUG
-static void drawdebug(XPLMWindowID inWindowID, void *inRefcon)
-{
-    char buf[128];
-    int left, top, right, bottom;
-    float color[] = { 1.0, 1.0, 1.0 };	/* RGB White */
-    float pos[3], gain;
-    int running = check_running();
-
-    XPLMGetWindowGeometry(inWindowID, &left, &top, &right, &bottom);
-
-    sprintf(buf, "State: %s %s %s", statestr[state], plane_type==15 ? "Unknown" : canonical[plane_type], running ? "Running" : "Parked");
-    XPLMDrawString(color, left + 5, top - 10, buf, 0, xplmFont_Basic);
-    sprintf(buf, "Door : %10.3f %10.3f %10.3f",       XPLMGetDataf(ref_acf_door_x), XPLMGetDataf(ref_acf_door_y), XPLMGetDataf(ref_acf_door_z));
-    XPLMDrawString(color, left + 5, top - 30, buf, 0, xplmFont_Basic);
-    sprintf(buf, "Plane: %10.3f %10.3f %10.3f %6.2f", XPLMGetDataf(ref_plane_x), XPLMGetDataf(ref_plane_y), XPLMGetDataf(ref_plane_z), XPLMGetDataf(ref_plane_psi));
-    XPLMDrawString(color, left + 5, top - 40, buf, 0, xplmFont_Basic);
-    sprintf(buf, "Gate : %10.3f %10.3f %10.3f %6.2f", gate_x, gate_y, gate_z, gate_h/D2R);
-    XPLMDrawString(color, left + 5, top - 50, buf, 0, xplmFont_Basic);
-    sprintf(buf, "DGS  : %10.3f %10.3f %10.3f", dgs_x, dgs_y, dgs_z);
-    XPLMDrawString(color, left + 5, top - 60, buf, 0, xplmFont_Basic);
-    sprintf(buf, "Time : %10.3f", timestamp);
-    XPLMDrawString(color, left + 5, top - 70, buf, 0, xplmFont_Basic);
-    sprintf(buf, "ID   : %1d %1d %1d %1d %c%c%c%c", id1, id2, id3, id4, icao[0], icao[1], icao[2], icao[3]);
-    XPLMDrawString(color, left + 5, top - 90, buf, 0, xplmFont_Basic);
-    sprintf(buf, "Gate : lat=%6.3f vert=%6.3f moving=%1.0f", lat, vert, moving);
-    XPLMDrawString(color, left + 5, top -100, buf, 0, xplmFont_Basic);
-    sprintf(buf, "DGS  : status=%1d track=%1d lr=%1d %4.1f %4.1f %4.1f", status, track, lr, azimuth, distance, distance2);
-    XPLMDrawString(color, left + 5, top -110, buf, 0, xplmFont_Basic);
-}
-#endif
-
 /* =========================== plugin entry points ===============================================*/
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
@@ -1152,10 +745,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
     /* Published Datarefs */
-    ref_vert     =floatref("hotbso/AutoVDGS/vert", getgatefloat, &vert);
-    ref_lat      =floatref("hotbso/AutoVDGS/lat",  getgatefloat, &lat);
-    ref_moving   =floatref("hotbso/AutoVDGS/moving", getgatefloat, &moving);
-
     ref_status   =  intref("hotbso/dgs/status",    getdgsint, &status);
     ref_icao  =intarrayref("hotbso/dgs/icao",      getdgsicao, icao);
     ref_id1      =  intref("hotbso/dgs/id1",       getdgsint, &id1);
@@ -1186,16 +775,12 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     windowId = XPLMCreateWindowEx(&cw);
 #endif
 
-    XPLMRegisterFlightLoopCallback(newplanecallback, 0, NULL);		/* For checking gate alignment on new location */
-
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
 }
 
 PLUGIN_API void XPluginStop(void)
 {
-    if (windowId) XPLMDestroyWindow(windowId);
-    XPLMUnregisterFlightLoopCallback(newplanecallback, NULL);
     XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
     XPLMDestroyProbe(ref_probe);
     if (vdgs_obj[0])
