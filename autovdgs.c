@@ -47,25 +47,18 @@
 
 
 /* Constants */
-static const float F2M=0.3048;	/* 1 ft [m] */
 static const float D2R=M_PI/180.0;
 static const float DEG2M = 111195.0;    // deg lat to m
 
-/* Capture distances [m] (to door location, not ref point) */
+/* Capture distances [m] (to stand) */
 static const float CAP_X = 10;
 static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
 static const float GOOD_Z= 0.5;
-static const float NEW_Z = 20;	/* Max distance to fudge new Ramp Start */
 
-/* DGS distances [m]     (to door location, not ref point) */
+/* DGS distances [m]     (to stand) */
 static const float AZI_X = 5;	/* Azimuth guidance */
 static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
-
-/* Permissable distance [m] of DGS from gate origin */
-static const float DGS_X = 10;
-static const float DGS_Z =-50;		/* s2.2 of Safedock Manual says 50m from nose */
-static const float DGS_H = 0.2f;	/* ~11 degrees. s2.3 of Safedock Manual says 9 or 12 degrees */
 
 static const float VDGS_RAMP_DIST = 25.0;
 extern float gate_x, gate_y, gate_z, gate_h;		/* active gate */
@@ -74,10 +67,10 @@ extern float lat, vert, moving;
 /* types */
 typedef enum
 {
-    DISABLED=0, NEWPLANE, IDLE, TRACK, GOOD, BAD, PARKED
+    DISABLED=0, IDLE, TRACK, GOOD, BAD, PARKED
 } state_t;
 
-const char * const statestr[] = { "Disabled", "NewPlane", "Idle", "Track", "Good", "Bad", "Parked" };
+const char * const statestr[] = { "Disabled", "Idle", "Track", "Good", "Bad", "Parked" };
 
 typedef struct {
     const char *key;
@@ -99,7 +92,6 @@ static const char pluginDesc[]="Automatically provides";
 static state_t state = DISABLED;
 static float timestamp;
 static int plane_type;
-static float door_x, door_y, door_z;		/* door offset relative to ref point */
 
 static char xpdir[512];
 static const char *psep;
@@ -111,7 +103,6 @@ static XPLMDataRef ref_beacon;
 static XPLMDataRef ref_draw_object_x, ref_draw_object_y, ref_draw_object_z, ref_draw_object_psi;
 static XPLMDataRef ref_acf_descrip, ref_acf_icao;
 static XPLMDataRef ref_acf_cg_y, ref_acf_cg_z;
-static XPLMDataRef ref_acf_door_x, ref_acf_door_y, ref_acf_door_z;
 static XPLMDataRef ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
@@ -176,43 +167,6 @@ static const char *vdgs_dref_list[] = {
 
 static XPLMInstanceRef vdgs_inst_ref;
 
-/* Known plane descriptions */
-static const db_t planedb[]={/* lng   lat  vert  type */
-    {"A300",	21.0, -8.0, -1.0,  0},
-    {"A310",	18.0, -8.0, -1.0,  1},
-    {"A318",	16.7, -6.0, -1.5,  2},
-    {"A319",	21.7, -6.0, -1.5,  2},	/* xpfw */
-    {"A320-200",16.7, -6.0, -1.5,  2},	/* xpfw */
-    {"A320",	18.3, -6.0, -1.4,  2},
-    {"A321-200", 2.5, -6.0, -1.5,  2},	/* xpfw */
-    {"A321",	17.5, -6.0, -1.4,  2},
-    {"A330",	   0,    0,    0,  3},
-    {"A340",	19.6, -8.0, -1.2,  4},
-    {"A350",	   0,    0,    0,  5},
-    {"A380",	23.0, -9.7, -6.0,  6}, /* first door */
-    //	{"A380",	56.5, -11,  -6.0,  6}, /* second door */
-    {"717",	   0,    0,    0,  7},
-    {"737-700",	15.0, -6.0, -1.2,  8},
-    {"737 800",	16.8, -5.2, -1.5,  8},	/* xpfw b26*/
-    {"737-800",	17.4, -6.0, -1.4,  8},
-    {"738", 	17.4, -6.0, -1.4,  8},
-    {"737", 	17.4, -6.0, -1.4,  8},
-    {"747 400", 30.9, -9.6, -2.2,  9},	/* xpfw */
-    {"747", 	31.8, -9.4, -3.8,  9},	/* XP840b6 first door */
-    {"757",	   0,    0,    0, 10},
-    {"767", 	18.2, -7.5, -1.5, 11},
-    {"777 200",	39.8, -9.0, -1.4, 12},	/* xpfw 777-200 ER & LR - note nose is at 18.39 */
-    {"777", 	21.7, -9.0, -2.4, 12},
-    {"787",	   0,    0,    0, 13},
-    {"RJ70",	 6.6, -5.3, -3.0, 14},
-    {"RJ 70",	 6.6, -5.3, -3.0, 14},
-    {"RJ85",	 5.3, -5.7, -2.0, 14},
-    {"RJ 85",	 5.3, -5.7, -2.0, 14},
-    {"RJ100",	 0.9, -5.7, -2.0, 14},
-    {"RJ 100",	 0.9, -5.7, -2.0, 14},
-    {"md-11",	15.9, -7.6, -1.6, 15},
-    {"MD11",	17.0, -7.7, -1.4, 15},
-};
 
 /* Known plane ICAOs */
 static const icao_t icaodb[]={
@@ -286,12 +240,10 @@ static void resetidle(void)
 
 static void newplane(void)
 {
-    char acf_descrip[129];
     char acf_icao[41];
     int i;
 
     resetidle();
-    acf_descrip[128]=0;		/* Not sure if XPLMGetDatab NULL terminates */
     acf_icao[40]=0;		/* Not sure if XPLMGetDatab NULL terminates */
 
     /* Find ICAO code */
@@ -304,50 +256,14 @@ static void newplane(void)
                 break;
             }
 
-    if (ref_acf_door_x!=NULL)
-    {
-        door_x=XPLMGetDataf(ref_acf_door_x);	/* 0 if unset */
-        door_y=XPLMGetDataf(ref_acf_door_y);
-        door_z=XPLMGetDataf(ref_acf_door_z);
-    }
+    if (isupper(acf_icao[0]) || isdigit(acf_icao[0]))
+        /* DGS objects fall back to using id1-4 datarefs if first character of ICAO field is null */
+        for (i=0; i<4; i++)
+            icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
     else
-        door_x=door_y=door_z=0;
-
-    if ((!door_x || plane_type==15) && XPLMGetDatab(ref_acf_descrip, acf_descrip, 0, 128))
-        /* Try descriptions */
-        for (i=0; i<sizeof(planedb)/sizeof(db_t); i++)
-            if (strstr(acf_descrip, planedb[i].key) && (door_x || planedb[i].lat))
-            {
-                if (plane_type==15)
-                    plane_type=planedb[i].type;
-                if (!door_x)
-                {
-                    door_x = F2M * planedb[i].lat;
-                    door_y = F2M * (planedb[i].vert - XPLMGetDataf(ref_acf_cg_y));	/* Adjust relative to static cog */
-                    door_z = F2M * (planedb[i].lng  - XPLMGetDataf(ref_acf_cg_z));	/* Adjust relative to static cog */
-                }
-                break;
-            }
-
-    if (!door_x)
-    {
-        state = IDLE;
-        icao[0]=icao[1]=icao[2]=icao[3]=0;
-    }
-    else
-    {
-        int i;
-        state = NEWPLANE;	/* Check for alignment at a gate during next frame */
-
-        if (isupper(acf_icao[0]) || isdigit(acf_icao[0]))
-            /* DGS objects fall back to using id1-4 datarefs if first character of ICAO field is null */
-            for (i=0; i<4; i++)
-                icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
-        else
-            /* Display canonical ICAO type */
-            for (i=0; i<4; i++)
-                icao[i] = canonical[plane_type][i];
-    }
+        /* Display canonical ICAO type */
+        for (i=0; i<4; i++)
+            icao[i] = canonical[plane_type][i];
 }
 
 static int check_running()
@@ -738,9 +654,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_acf_icao       =XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_acf_cg_y       =XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
     ref_acf_cg_z       =XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
-    ref_acf_door_x     =XPLMFindDataRef("sim/aircraft/view/acf_door_x");
-    ref_acf_door_y     =XPLMFindDataRef("sim/aircraft/view/acf_door_y");
-    ref_acf_door_z     =XPLMFindDataRef("sim/aircraft/view/acf_door_z");
     ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
     ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
