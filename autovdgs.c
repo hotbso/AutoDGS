@@ -44,7 +44,6 @@
 
 /* Constants */
 static const float D2R=M_PI/180.0;
-static const float DEG2M = 111195.0;    // deg lat to m
 
 /* Capture distances [m] (to stand) */
 static const float CAP_X = 10;
@@ -118,7 +117,7 @@ static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static vect3_t vdgs_pos;  // position + vector
 static const ramp_start_t *nearest_ramp;
 
-static int vdgs_type = 1;
+static int vdgs_type = 0;
 static XPLMObjectRef vdgs_obj[2];
 
 enum _VDGS_DREF {
@@ -333,19 +332,35 @@ static void find_nearest_ramp()
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
 
-    float lat = XPLMGetDataf(ref_plane_lat);
-    float lon = XPLMGetDataf(ref_plane_lon);
+    float plane_x = XPLMGetDataf(ref_plane_x);
+    float plane_z = XPLMGetDataf(ref_plane_z);
+
+    float plane_elevation = XPLMGetDataf(ref_plane_elevation);
+    float stand_y = 0.0;    // to avoid compiler warning
+
+    XPLMProbeInfo_t probeinfo;
+    probeinfo.structSize = sizeof(XPLMProbeInfo_t);
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
-        float dlat = DEG2M * (lat - ramp->pos.lat);
-        float dlon = DEG2M * (lon - ramp->pos.lon) * cos(D2R * ramp->pos.lat);
+        double x, y, z;
+        XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &x, &y, &z);
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
+            logMsg("probe failed");
+            return;
+        }
 
-        double d = sqrt(dlat * dlat + dlon * dlon);
+        float dx = plane_x - x;
+        float dz = plane_z - z;
+
+        float d = sqrt(dx * dx + dz * dz);
         if (d < dist) {
             dist = d;
             min_ramp = ramp;
+            stand_x = x;
+            stand_y = probeinfo.locationY;
+            stand_z = z;
         }
     }
 
@@ -353,23 +368,12 @@ static void find_nearest_ramp()
         nearest_ramp = min_ramp;
         logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
                min_ramp->hdgt, dist);
-        double x, y, z, foo, alt;
-        XPLMProbeInfo_t probeinfo;
-        probeinfo.structSize = sizeof(XPLMProbeInfo_t);
-        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, XPLMGetDataf(ref_plane_elevation), &x, &y, &z);
-        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
-            logMsg("probe failed");
-            return;
-        }
 
-        XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &foo, &foo, &alt);
-        logMsg("ramp alt: %f", alt);
-        XPLMWorldToLocal(min_ramp->pos.lat, min_ramp->pos.lon, alt, &x, &y, &z);
-        stand_x = x; stand_z = z; stand_hdg = min_ramp->hdgt;
+        stand_hdg = min_ramp->hdgt;
         stand_dir_x = sinf(D2R * (stand_hdg)); stand_dir_z = - cosf(D2R * stand_hdg);
 
         // move vdgs some distance away
-        vdgs_pos = VECT3(x + VDGS_RAMP_DIST * stand_dir_x, y, z + VDGS_RAMP_DIST * stand_dir_z);
+        vdgs_pos = VECT3(stand_x + VDGS_RAMP_DIST * stand_dir_x, stand_y, stand_z + VDGS_RAMP_DIST * stand_dir_z);
         state = TRACK;
     }
 }
@@ -480,7 +484,7 @@ static void update_vdgs()
             break;
 
         case BAD:
-            if (!running 
+            if (!running
                 && (now > timestamp + 5.0)) {
                 resetidle();
                 break;
@@ -499,7 +503,7 @@ static void update_vdgs()
             if (now > timestamp + 5.0)
                 resetidle();
             break;
-            
+
         default:
             /* FALLTHROUGH */
     }
