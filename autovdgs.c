@@ -32,18 +32,14 @@
 
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
-#include "XPLMCamera.h"
 #include "XPLMDataAccess.h"
-#include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMInstance.h"
 #include "XPLMNavigation.h"
-#include "XPLMScenery.h"
 #include "XPLMUtilities.h"
 
 #include <acfutils/assert.h>
 #include <acfutils/airportdb.h>
-
 
 
 /* Constants */
@@ -61,8 +57,6 @@ static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
 static const float VDGS_RAMP_DIST = 25.0;
-extern float gate_x, gate_y, gate_z, gate_h;		/* active gate */
-extern float lat, vert, moving;
 
 /* types */
 typedef enum
@@ -87,7 +81,7 @@ typedef struct {
 /* Globals */
 static const char pluginName[]="AutoVDGS";
 static const char pluginSig[] ="hotbso.AutoVDGS";
-static const char pluginDesc[]="Automatically provides";
+static const char pluginDesc[]="Automatically provides VDGS for gateway airports";
 
 static state_t state = DISABLED;
 static float timestamp;
@@ -100,9 +94,7 @@ static const char *psep;
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
 static XPLMDataRef ref_beacon;
-static XPLMDataRef ref_draw_object_x, ref_draw_object_y, ref_draw_object_z, ref_draw_object_psi;
-static XPLMDataRef ref_acf_descrip, ref_acf_icao;
-static XPLMDataRef ref_acf_cg_y, ref_acf_cg_z;
+static XPLMDataRef ref_acf_icao;
 static XPLMDataRef ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
@@ -116,14 +108,7 @@ static int icao[4];
 static float azimuth, distance, distance2;
 
 /* Internal state */
-static float last_gate_x, last_gate_y, last_gate_z;	/* last gate object examined */
-static float last_gate_update = 0;		/* and the time we examined it */
-float gate_x, gate_y, gate_z, gate_h;		/* active gate */
-static float gate_update=0;			/* and the time we examined it */
-int gate_AutoVDGS;				/* active gate is an AutoVDGS, not a standalone dummy */
-static float last_dgs_x, last_dgs_y, last_dgs_z;	/* last dgs object examined */
-static float last_dgs_update = 0;		/* and the time we examined it */
-static float dgs_x, dgs_y, dgs_z;		/* active DGS */
+static float now;           /* current timestamp */
 static float running_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* running state, last switch_pos, ts of last switch action */
 static airportdb_t airportdb;
 static airport_t *arpt;
@@ -225,11 +210,6 @@ static char canonical[16][5] = {
 static void resetidle(void)
 {
     state=IDLE;
-    gate_x=gate_y=gate_z=gate_h=gate_update=0;
-    gate_AutoVDGS=0;
-    dgs_x=dgs_y=dgs_z=0;
-    last_gate_x = last_gate_y = last_gate_z = last_gate_update = 0;
-    last_dgs_x = last_dgs_y = last_dgs_z = last_dgs_update = 0;
     status=id1=id2=id3=id4=lr=track=0;
     azimuth=distance=distance2=0;
 
@@ -272,8 +252,6 @@ static void newplane(void)
 
 static int check_running()
 {
-    float now = XPLMGetDataf(ref_total_running_time_sec);
-
     /* when checking the beacon guard against power transition when switching
        to the APU generator (e.g. for the ToLiss fleet.
        Report only state transitions when the new state persisted for 3 seconds */
@@ -423,7 +401,6 @@ static void update_vdgs()
 
     int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
     int running = check_running();
-    float now = XPLMGetDataf(ref_total_running_time_sec);
 
     status=id1=id2=id3=id4=lr=track=0;
     azimuth=distance=distance2=0;
@@ -561,7 +538,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     if (state == DISABLED)
         return 0.0;
 
-    float now = XPLMGetDataf(ref_total_running_time_sec);
+    now = XPLMGetDataf(ref_total_running_time_sec);
     int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
 
     if (og != on_ground && now > on_ground_ts + 10.0) {
@@ -661,14 +638,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_lon      =XPLMFindDataRef("sim/flightmodel/position/longitude");
     ref_plane_elevation=XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_beacon         =XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
-    ref_draw_object_x  =XPLMFindDataRef("sim/graphics/animation/draw_object_x");
-    ref_draw_object_y  =XPLMFindDataRef("sim/graphics/animation/draw_object_y");
-    ref_draw_object_z  =XPLMFindDataRef("sim/graphics/animation/draw_object_z");
-    ref_draw_object_psi=XPLMFindDataRef("sim/graphics/animation/draw_object_psi");
-    ref_acf_descrip    =XPLMFindDataRef("sim/aircraft/view/acf_descrip");
     ref_acf_icao       =XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
-    ref_acf_cg_y       =XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
-    ref_acf_cg_z       =XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
     ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
     ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
