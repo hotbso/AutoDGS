@@ -97,10 +97,6 @@ static XPLMDataRef ref_acf_icao;
 static XPLMDataRef ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
-/* Published DataRefs */
-static XPLMDataRef ref_status, ref_icao, ref_id1, ref_id2, ref_id3, ref_id4, ref_lr, ref_track;
-static XPLMDataRef ref_azimuth, ref_distance, ref_distance2;
-
 /* Published DataRef values */
 static int status, id1, id2, id3, id4, lr, track;
 static int icao[4];
@@ -131,10 +127,7 @@ enum _DGS_DREF {
     DGS_DR_AZIMUTH,
     DGS_DR_DISTANCE,
     DGS_DR_DISTANCE2,
-    DGS_DR_ICAO_0,
-    DGS_DR_ICAO_1,
-    DGS_DR_ICAO_2,
-    DGS_DR_ICAO_3,
+    DGS_DR_ICAO,
     DGS_DR_NUM             // # of drefs
 };
 
@@ -272,23 +265,16 @@ static int check_running()
    return running_state;
 }
 
-static int getdgs(void)
-{
-    return -1;
-}
-
+// dummy accessor routines
 static float getdgsfloat(XPLMDataRef inRefcon)
 {
-    return getdgs() ? *(float*)inRefcon : 0;
+    return -1.0;
 }
 
-static int getdgsint(XPLMDataRef inRefcon)
-{
-    return getdgs() ? *(int*)inRefcon : 0;
-}
-
+// the will obviously be called even with the instancing interface
 static int getdgsicao(XPLMDataRef inRefcon, int *outValues, int inOffset, int inMax)
 {
+    //logMsg("getdgsintv outValues %p, inOffset %d, inMax %d", outValues, inOffset, inMax);
     int i;
 
     if (outValues==NULL)
@@ -308,22 +294,6 @@ static int getdgsicao(XPLMDataRef inRefcon, int *outValues, int inOffset, int in
     return inMax;
 }
 
-
-static XPLMDataRef floatref(char *inDataName, XPLMGetDataf_f inReadFloat, float *inRefcon)
-{
-    return XPLMRegisterDataAccessor(inDataName, xplmType_Float, 0, NULL, NULL, inReadFloat, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, inRefcon, 0);
-}
-
-static XPLMDataRef intref(char *inDataName, XPLMGetDatai_f inReadInt, int *inRefcon)
-{
-    return XPLMRegisterDataAccessor(inDataName, xplmType_Int, 0, inReadInt, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, inRefcon, 0);
-}
-
-static XPLMDataRef intarrayref(char *inDataName, XPLMGetDatavi_f inReadIntArray, int *inRefcon)
-{
-    return XPLMRegisterDataAccessor(inDataName, xplmType_IntArray, 0, NULL, NULL, NULL, NULL, NULL, NULL, inReadIntArray, NULL, NULL, NULL, NULL, NULL, inRefcon, 0);
-}
-
 static void find_nearest_ramp()
 {
     if (arpt == NULL)
@@ -341,6 +311,9 @@ static void find_nearest_ramp()
 
     XPLMProbeInfo_t probeinfo;
     probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+
+    if (ref_probe == NULL)
+        ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
@@ -538,9 +511,6 @@ static float update_dgs()
         drefs[DGS_DR_AZIMUTH] = azimuth;
         drefs[DGS_DR_LR] = lr;
 
-        for (int i = 0; i < 4; i++)
-            drefs[DGS_DR_ICAO_0 +i] = icao[i];
-
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
@@ -583,6 +553,12 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 state = IDLE;
             }
 
+        } else {
+            // transition to airborne
+            if (ref_probe) {
+                XPLMDestroyProbe(ref_probe);
+                ref_probe = NULL;
+            }
         }
     }
 
@@ -658,20 +634,17 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_beacon         =XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_acf_icao       =XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
-    ref_probe    =XPLMCreateProbe(xplm_ProbeY);
 
-    /* Published Datarefs */
-    ref_status   =  intref("hotbso/dgs/status",    getdgsint, &status);
-    ref_icao  =intarrayref("hotbso/dgs/icao",      getdgsicao, icao);
-    ref_id1      =  intref("hotbso/dgs/id1",       getdgsint, &id1);
-    ref_id2      =  intref("hotbso/dgs/id2",       getdgsint, &id2);
-    ref_id3      =  intref("hotbso/dgs/id3",       getdgsint, &id3);
-    ref_id4      =  intref("hotbso/dgs/id4",       getdgsint, &id4);
-    ref_lr       =  intref("hotbso/dgs/lr",        getdgsint, &lr);
-    ref_track    =  intref("hotbso/dgs/track",     getdgsint, &track);
-    ref_azimuth  =floatref("hotbso/dgs/azimuth",   getdgsfloat, &azimuth);
-    ref_distance =floatref("hotbso/dgs/distance",  getdgsfloat, &distance);
-    ref_distance2=floatref("hotbso/dgs/distance2", getdgsfloat, &distance2);
+    /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
+    for (int i = 0; i < DGS_DR_ICAO; i++)
+        XPLMRegisterDataAccessor(dgs_dref_list[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
+                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+
+    // this is an array and it will be called
+    XPLMRegisterDataAccessor(dgs_dref_list[DGS_DR_ICAO], xplmType_IntArray, 0, NULL, NULL,
+                             NULL, NULL, NULL, NULL, getdgsicao,
+                             NULL, NULL, NULL, NULL, NULL, NULL, 0);
+
 
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {
@@ -692,7 +665,8 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 PLUGIN_API void XPluginStop(void)
 {
     XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
-    XPLMDestroyProbe(ref_probe);
+    if (ref_probe)
+        XPLMDestroyProbe(ref_probe);
 
     for (int i = 0; i < 2; i++)
         if (dgs_obj[i])
