@@ -46,8 +46,8 @@
 static const float D2R=M_PI/180.0;
 
 /* Capture distances [m] (to stand) */
-static const float CAP_X = 10;
-static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
+//static const float CAP_X = 10;
+//static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
 static const float GOOD_Z= 0.5;
 
 /* DGS distances [m]     (to stand) */
@@ -55,7 +55,7 @@ static const float AZI_X = 5;	/* Azimuth guidance */
 static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
-static const float VDGS_RAMP_DIST = 25.0;
+static const float DGS_RAMP_DIST = 25.0;
 
 /* types */
 typedef enum
@@ -78,9 +78,9 @@ typedef struct {
 
 
 /* Globals */
-static const char pluginName[]="AutoVDGS";
-static const char pluginSig[] ="hotbso.AutoVDGS";
-static const char pluginDesc[]="Automatically provides VDGS for gateway airports";
+static const char pluginName[]="AutoDGS";
+static const char pluginSig[] ="hotbso.AutoDGS";
+static const char pluginDesc[]="Automatically provides DGS for gateway airports";
 
 static state_t state = DISABLED;
 static float timestamp;
@@ -114,32 +114,32 @@ static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
 static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
-static vect3_t vdgs_pos;  // position + vector
+static vect3_t dgs_pos;  // position + vector
 static const ramp_start_t *nearest_ramp;
 
-static int vdgs_type = 1;
-static XPLMObjectRef vdgs_obj[2];
+static int dgs_type = 1;
+static XPLMObjectRef dgs_obj[2];
 
-enum _VDGS_DREF {
-    VDGS_DR_STATUS,
-    VDGS_DR_ID1,
-    VDGS_DR_ID2,
-    VDGS_DR_ID3,
-    VDGS_DR_ID4,
-    VDGS_DR_LR,
-    VDGS_DR_TRACK,
-    VDGS_DR_AZIMUTH,
-    VDGS_DR_DISTANCE,
-    VDGS_DR_DISTANCE2,
-    VDGS_DR_ICAO_0,
-    VDGS_DR_ICAO_1,
-    VDGS_DR_ICAO_2,
-    VDGS_DR_ICAO_3,
-    VDGS_DR_NUM             // # of drefs
+enum _DGS_DREF {
+    DGS_DR_STATUS,
+    DGS_DR_ID1,
+    DGS_DR_ID2,
+    DGS_DR_ID3,
+    DGS_DR_ID4,
+    DGS_DR_LR,
+    DGS_DR_TRACK,
+    DGS_DR_AZIMUTH,
+    DGS_DR_DISTANCE,
+    DGS_DR_DISTANCE2,
+    DGS_DR_ICAO_0,
+    DGS_DR_ICAO_1,
+    DGS_DR_ICAO_2,
+    DGS_DR_ICAO_3,
+    DGS_DR_NUM             // # of drefs
 };
 
 // keep exactly the same order as list above
-static const char *vdgs_dref_list[] = {
+static const char *dgs_dref_list[] = {
     "hotbso/dgs/status",
     "hotbso/dgs/id1",
     "hotbso/dgs/id2",
@@ -154,7 +154,7 @@ static const char *vdgs_dref_list[] = {
     NULL
 };
 
-static XPLMInstanceRef vdgs_inst_ref;
+static XPLMInstanceRef dgs_inst_ref;
 
 
 /* Known plane ICAOs */
@@ -215,9 +215,9 @@ static void resetidle(void)
     running_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
     beacon_on_ts = beacon_off_ts = -10.0;
 
-    if (vdgs_inst_ref) {
-        XPLMDestroyInstance(vdgs_inst_ref);
-        vdgs_inst_ref = NULL;
+    if (dgs_inst_ref) {
+        XPLMDestroyInstance(dgs_inst_ref);
+        dgs_inst_ref = NULL;
     }
 }
 
@@ -334,6 +334,7 @@ static void find_nearest_ramp()
 
     float plane_x = XPLMGetDataf(ref_plane_x);
     float plane_z = XPLMGetDataf(ref_plane_z);
+    float plane_psi = XPLMGetDataf(ref_plane_psi);
 
     float plane_elevation = XPLMGetDataf(ref_plane_elevation);
     float stand_y = 0.0;    // to avoid compiler warning
@@ -343,6 +344,9 @@ static void find_nearest_ramp()
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
+
+        if (fabs(plane_psi - ramp->hdgt > 70.0))  // stands in front of plane only
+            continue;
 
         double x, y, z;
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &x, &y, &z);
@@ -372,13 +376,13 @@ static void find_nearest_ramp()
         stand_hdg = min_ramp->hdgt;
         stand_dir_x = sinf(D2R * (stand_hdg)); stand_dir_z = - cosf(D2R * stand_hdg);
 
-        // move vdgs some distance away
-        vdgs_pos = VECT3(stand_x + VDGS_RAMP_DIST * stand_dir_x, stand_y, stand_z + VDGS_RAMP_DIST * stand_dir_z);
+        // move dgs some distance away
+        dgs_pos = VECT3(stand_x + DGS_RAMP_DIST * stand_dir_x, stand_y, stand_z + DGS_RAMP_DIST * stand_dir_z);
         state = TRACK;
     }
 }
 
-static float update_vdgs()
+static float update_dgs()
 {
     float loop_delay = 2.0;
 
@@ -390,13 +394,13 @@ static float update_vdgs()
     state_t old_state = state;
 
     XPLMDrawInfo_t drawinfo;
-    float drefs[VDGS_DR_NUM];
+    float drefs[DGS_DR_NUM];
     memset(drefs, 0, sizeof(drefs));
 
     drawinfo.structSize = sizeof(drawinfo);
-    drawinfo.x = vdgs_pos.x;
-    drawinfo.y = vdgs_pos.y;
-    drawinfo.z = vdgs_pos.z;
+    drawinfo.x = dgs_pos.x;
+    drawinfo.y = dgs_pos.y;
+    drawinfo.z = dgs_pos.z;
     drawinfo.heading = stand_hdg;
     drawinfo.pitch = drawinfo.roll = 0.0;
 
@@ -518,26 +522,26 @@ static float update_vdgs()
     }
 
     if (state > IDLE) {
-        if (vdgs_inst_ref == NULL) {
-            vdgs_inst_ref = XPLMCreateInstance(vdgs_obj[vdgs_type], vdgs_dref_list);
-            if (vdgs_inst_ref == NULL) {
+        if (dgs_inst_ref == NULL) {
+            dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dref_list);
+            if (dgs_inst_ref == NULL) {
                 logMsg("error creating instance");
                 state = DISABLED;
                 return 0.0;
             }
         }
 
-        drefs[VDGS_DR_STATUS] = status;
-        drefs[VDGS_DR_TRACK] = track;
-        drefs[VDGS_DR_DISTANCE] = distance;
-        drefs[VDGS_DR_DISTANCE2] = distance2;
-        drefs[VDGS_DR_AZIMUTH] = azimuth;
-        drefs[VDGS_DR_LR] = lr;
+        drefs[DGS_DR_STATUS] = status;
+        drefs[DGS_DR_TRACK] = track;
+        drefs[DGS_DR_DISTANCE] = distance;
+        drefs[DGS_DR_DISTANCE2] = distance2;
+        drefs[DGS_DR_AZIMUTH] = azimuth;
+        drefs[DGS_DR_LR] = lr;
 
         for (int i = 0; i < 4; i++)
-            drefs[VDGS_DR_ICAO_0 +i] = icao[i];
+            drefs[DGS_DR_ICAO_0 +i] = icao[i];
 
-        XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
+        XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
     return loop_delay;
@@ -584,7 +588,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 
     if (on_ground) {
         find_nearest_ramp();
-        loop_delay = update_vdgs();
+        loop_delay = update_dgs();
     }
 
     return loop_delay;
@@ -620,7 +624,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     strcpy(outSig,  pluginSig);
     strcpy(outDesc, pluginDesc);
 
-	log_init(XPLMDebugString, "AutoVDGS");
+	log_init(XPLMDebugString, "AutoDGS");
 
     logMsg("startup " VERSION);
 
@@ -669,14 +673,14 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_distance =floatref("hotbso/dgs/distance",  getdgsfloat, &distance);
     ref_distance2=floatref("hotbso/dgs/distance2", getdgsfloat, &distance2);
 
-    vdgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoVDGS/resources/Marshaller.obj");
-    if (vdgs_obj[0] == NULL) {
+    dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
+    if (dgs_obj[0] == NULL) {
         logMsg("error loading Marshaller");
         return 0;
     }
 
-    vdgs_obj[1] = XPLMLoadObject("Resources/plugins/AutoVDGS/resources/SafedockT2-6m-pole.obj");
-    if (vdgs_obj[1] == NULL) {
+    dgs_obj[1] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj");
+    if (dgs_obj[1] == NULL) {
         logMsg("error loading SafedockT2");
         return 0;
     }
@@ -691,8 +695,8 @@ PLUGIN_API void XPluginStop(void)
     XPLMDestroyProbe(ref_probe);
 
     for (int i = 0; i < 2; i++)
-        if (vdgs_obj[i])
-            XPLMUnloadObject(vdgs_obj[i]);
+        if (dgs_obj[i])
+            XPLMUnloadObject(dgs_obj[i]);
 }
 
 PLUGIN_API int XPluginEnable(void)

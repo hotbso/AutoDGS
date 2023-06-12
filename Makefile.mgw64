@@ -10,7 +10,7 @@ OBJDIR=./OBJ
 
 LIBACFUTILS_VERSION="hotbso subset"
 SDK=../SDK
-PLUGDIR=/e/X-Plane-12-clean/Resources/plugins/AutoVDGS
+PLUGDIR=/e/X-Plane-12-clean/Resources/plugins/AutoDGS
 OBJECTS=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o))
 
 LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
