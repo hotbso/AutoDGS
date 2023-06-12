@@ -117,7 +117,7 @@ static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static vect3_t vdgs_pos;  // position + vector
 static const ramp_start_t *nearest_ramp;
 
-static int vdgs_type = 0;
+static int vdgs_type = 1;
 static XPLMObjectRef vdgs_obj[2];
 
 enum _VDGS_DREF {
@@ -378,12 +378,16 @@ static void find_nearest_ramp()
     }
 }
 
-static void update_vdgs()
+static float update_vdgs()
 {
+    float loop_delay = 2.0;
+
     if (nearest_ramp == NULL) {
         state = IDLE;
-        return;
+        return loop_delay;
     }
+
+    state_t old_state = state;
 
     XPLMDrawInfo_t drawinfo;
     float drefs[VDGS_DR_NUM];
@@ -401,7 +405,6 @@ static void update_vdgs()
     float dz = stand_z - XPLMGetDataf(ref_plane_z);
     float local_z = dx * stand_dir_x + dz * stand_dir_z;
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
-    logMsg("local z, x %f, %f", local_z, local_x);
 
     int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
     int running = check_running();
@@ -418,12 +421,11 @@ static void update_vdgs()
             /* FALLTHROUGH */
 
         case TRACK:
-            if (locgood)
-            {
+            loop_delay = 0.5;
+            if (locgood) {
                 state=GOOD;
                 timestamp=now;
-            }
-            else if (local_z<-GOOD_Z) {
+            } else if (local_z<-GOOD_Z) {
                 timestamp = now;
                 state=BAD;
             } else {
@@ -440,8 +442,7 @@ static void update_vdgs()
                 if (local_z-GOOD_Z > AZI_Z ||
                     fabsf(local_x) > AZI_X)
                     track=1;	/* lead-in only */
-                else
-                {
+                else {
                     distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
                     azimuth=((float)((int)(local_x*2))) / 2;
                     if (azimuth>4)	azimuth=4;
@@ -454,9 +455,10 @@ static void update_vdgs()
                     else
                         lr=0;
 
-                    if (local_z-GOOD_Z <= REM_Z/2){
+                    if (local_z-GOOD_Z <= REM_Z/2) {
                         track=3;
                         distance2=distance;
+                        loop_delay = 0.25;
                     } else {
                         if (local_z-GOOD_Z > REM_Z)
                             /* azimuth only */
@@ -469,6 +471,7 @@ static void update_vdgs()
             break;
 
         case GOOD:
+            loop_delay = 0.5;
             if (!locgood)
                 state = TRACK;
             else if (running) {
@@ -508,8 +511,11 @@ static void update_vdgs()
             /* FALLTHROUGH */
     }
 
-    logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
-           nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
+    if (old_state != state) {
+        logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
+               nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
+        logMsg("local z, x %f, %f", local_z, local_x);
+    }
 
     if (state > IDLE) {
         if (vdgs_inst_ref == NULL) {
@@ -517,7 +523,7 @@ static void update_vdgs()
             if (vdgs_inst_ref == NULL) {
                 logMsg("error creating instance");
                 state = DISABLED;
-                return;
+                return 0.0;
             }
         }
 
@@ -533,6 +539,8 @@ static void update_vdgs()
 
         XPLMInstanceSetPosition(vdgs_inst_ref, &drawinfo, drefs);
     }
+
+    return loop_delay;
 }
 
 static float flight_loop_cb(float inElapsedSinceLastCall,
@@ -541,6 +549,8 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 {
     if (state == DISABLED)
         return 0.0;
+
+    float loop_delay = 2.0;
 
     now = XPLMGetDataf(ref_total_running_time_sec);
     int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
@@ -574,10 +584,10 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 
     if (on_ground) {
         find_nearest_ramp();
-        update_vdgs();
+        loop_delay = update_vdgs();
     }
 
-    return 2.0;
+    return loop_delay;
 }
 
 /* Convert path to posix style in-place */
