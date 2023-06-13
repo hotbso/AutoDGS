@@ -118,7 +118,7 @@ static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
 static const ramp_start_t *nearest_ramp;
 
-static int dgs_type = 1;
+static int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
 
 static int arriving = 0;
@@ -162,24 +162,6 @@ static void resetidle(void)
         XPLMDestroyInstance(dgs_inst_ref);
         dgs_inst_ref = NULL;
     }
-}
-
-static void newplane(void)
-{
-    char acf_icao[41];
-
-    resetidle();
-
-    memset(acf_icao, 0, sizeof(acf_icao));
-    if (ref_acf_icao)
-        XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
-
-    for (int i=0; i<4; i++)
-        icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
-
-    plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);
-
-    logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
 }
 
 static int check_running()
@@ -659,7 +641,6 @@ PLUGIN_API void XPluginStop(void)
 
 PLUGIN_API int XPluginEnable(void)
 {
-    newplane();
     return 1;
 }
 
@@ -669,8 +650,25 @@ PLUGIN_API void XPluginDisable(void)
     state=DISABLED;
 }
 
-PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, int inMessage, void *inParam)
+PLUGIN_API void
+XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 {
-    if (state!=DISABLED && inMessage==XPLM_MSG_AIRPORT_LOADED)
-        newplane();
+    UNUSED(in_from);
+
+    /* my plane loaded */
+    if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
+        char acf_icao[41];
+
+        resetidle();
+        memset(acf_icao, 0, sizeof(acf_icao));
+        if (ref_acf_icao)
+            XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
+
+        for (int i=0; i<4; i++)
+            icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
+
+        plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);
+
+        logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
+    }
 }
