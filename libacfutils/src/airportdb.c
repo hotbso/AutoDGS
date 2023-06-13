@@ -1575,7 +1575,7 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
                     if (cptr == NULL)
                         cptr = strrchr(marker_name, '/');
                     if (cptr) {
-                        lacf_strlcpy(cptr + 1, "use_autovdgs", 100);
+                        lacf_strlcpy(cptr + 1, "use_autodgs", 100);
                         // logMsg("marker: %s", marker_name);
                         FILE *f;
                         if ((f = fopen(marker_name, "r")) != NULL) {
