@@ -84,7 +84,6 @@ static const char pluginDesc[]="Automatically provides DGS for gateway airports"
 
 static state_t state = DISABLED;
 static float timestamp;
-static int plane_type;
 
 static char xpdir[512];
 static const char *psep;
@@ -98,7 +97,7 @@ static XPLMDataRef ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
-static int status, id1, id2, id3, id4, lr, track;
+static int status, track, lr;
 static int icao[4];
 static float azimuth, distance, distance2;
 
@@ -118,10 +117,6 @@ static XPLMObjectRef dgs_obj[2];
 
 enum _DGS_DREF {
     DGS_DR_STATUS,
-    DGS_DR_ID1,
-    DGS_DR_ID2,
-    DGS_DR_ID3,
-    DGS_DR_ID4,
     DGS_DR_LR,
     DGS_DR_TRACK,
     DGS_DR_AZIMUTH,
@@ -134,10 +129,6 @@ enum _DGS_DREF {
 // keep exactly the same order as list above
 static const char *dgs_dref_list[] = {
     "hotbso/dgs/status",
-    "hotbso/dgs/id1",
-    "hotbso/dgs/id2",
-    "hotbso/dgs/id3",
-    "hotbso/dgs/id4",
     "hotbso/dgs/lr",
     "hotbso/dgs/track",
     "hotbso/dgs/azimuth",
@@ -150,60 +141,11 @@ static const char *dgs_dref_list[] = {
 static XPLMInstanceRef dgs_inst_ref;
 
 
-/* Known plane ICAOs */
-static const icao_t icaodb[]={
-    {"A30",  0},
-    {"A3ST", 0},
-    {"A318", 2},
-    {"A319", 2},
-    {"A32",  2},
-    {"A310", 1},	/* Note after A318/A319 */
-    {"A33",  3},
-    {"A34",  4},
-    {"A35",  5},
-    {"A38",  6},
-    {"B71",  7},
-    {"MD8",  7},
-    {"MD9",  7},
-    {"B73",  8},
-    {"E737", 8},
-    {"B74",  9},
-    {"BSCA", 9},
-    {"B75",  10},
-    {"B76",  11},
-    {"E767", 11},
-    {"B77",  12},
-    {"B78",  13},
-    {"RJ",   14},
-    {"B46",  14},
-};
-
-/* Canonical ICAOs for known planes */
-static char canonical[16][5] = {
-    "A300",
-    "A310",
-    "A320",
-    "A330",
-    "A340",
-    "A350",
-    "A380",
-    "B717",
-    "B737",
-    "B747",
-    "B757",
-    "B767",
-    "B777",
-    "B787",
-    "AVRO",
-    "APRH",
-};
-
-
 static void resetidle(void)
 {
-    state=IDLE;
-    status=id1=id2=id3=id4=lr=track=0;
-    azimuth=distance=distance2=0;
+    state = IDLE;
+    status = lr = track = 0;
+    azimuth = distance = distance2 = 0;
 
     running_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
     beacon_on_ts = beacon_off_ts = -10.0;
@@ -217,29 +159,15 @@ static void resetidle(void)
 static void newplane(void)
 {
     char acf_icao[41];
-    int i;
 
     resetidle();
-    acf_icao[40]=0;		/* Not sure if XPLMGetDatab NULL terminates */
 
-    /* Find ICAO code */
-    plane_type=15;	/* unknown */
-    if (ref_acf_icao!=NULL && XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40))
-        for (i=0; i<sizeof(icaodb)/sizeof(icao_t); i++)
-            if (!strncmp(acf_icao, icaodb[i].key, strlen(icaodb[i].key)))
-            {
-                plane_type=icaodb[i].type;
-                break;
-            }
+    memset(acf_icao, 0, sizeof(acf_icao));
+    if (ref_acf_icao)
+        XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
 
-    if (isupper(acf_icao[0]) || isdigit(acf_icao[0]))
-        /* DGS objects fall back to using id1-4 datarefs if first character of ICAO field is null */
-        for (i=0; i<4; i++)
-            icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
-    else
-        /* Display canonical ICAO type */
-        for (i=0; i<4; i++)
-            icao[i] = canonical[plane_type][i];
+    for (int i=0; i<4; i++)
+        icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
 }
 
 static int check_running()
@@ -386,8 +314,8 @@ static float update_dgs()
     int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
     int running = check_running();
 
-    status=id1=id2=id3=id4=lr=track=0;
-    azimuth=distance=distance2=0;
+    status = lr = track = 0;
+    azimuth = distance = distance2 = 0;
 
     switch (state) {
         case IDLE:
@@ -407,14 +335,6 @@ static float update_dgs()
                 state=BAD;
             } else {
                 status=1;	/* plane id */
-                if (plane_type<4)
-                    id1=plane_type+1;
-                else if (plane_type<8)
-                    id2=plane_type-3;
-                else if (plane_type<12)
-                    id3=plane_type-7;
-                else
-                    id4=plane_type-11;
 
                 if (local_z-GOOD_Z > AZI_Z ||
                     fabsf(local_x) > AZI_X)
