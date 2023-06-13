@@ -340,6 +340,7 @@ static float update_dgs()
                     fabsf(local_x) > AZI_X)
                     track=1;	/* lead-in only */
                 else {
+                    // round to multiples of 0.5m
                     distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
                     azimuth=((float)((int)(local_x*2))) / 2;
                     if (azimuth>4)	azimuth=4;
@@ -490,6 +491,23 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     return loop_delay;
 }
 
+/* call back for cycle cmd */
+static int
+cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    if (dgs_inst_ref) {
+        XPLMDestroyInstance(dgs_inst_ref);
+        dgs_inst_ref = NULL;
+    }
+
+    dgs_type = (dgs_type + 1) % 2;
+    return 0;
+}
+
 /* Convert path to posix style in-place */
 void posixify(char *path)
 {
@@ -512,6 +530,7 @@ void posixify(char *path)
     for (c=path; *c; c++) if (*c=='\\') *c='/';
 #endif
 }
+
 
 /* =========================== plugin entry points ===============================================*/
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
@@ -577,6 +596,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
         logMsg("error loading SafedockT2");
         return 0;
     }
+
+    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
+    XPLMRegisterCommandHandler(cmdr, cmd_cycle_dgs_cb, 0, NULL);
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
