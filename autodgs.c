@@ -45,6 +45,7 @@
 
 /* Constants */
 static const float D2R=M_PI/180.0;
+static const float F2M=0.3048;	/* 1 ft [m] */
 
 /* Capture distances [m] (to stand) */
 //static const float CAP_X = 10;
@@ -94,6 +95,7 @@ static XPLMCommandRef cycle_dgs_cmdr;
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
+static XPLMDataRef ref_acf_cg_z;
 static XPLMDataRef ref_beacon;
 static XPLMDataRef ref_acf_icao;
 static XPLMDataRef ref_total_running_time_sec;
@@ -109,10 +111,11 @@ static float now;           /* current timestamp */
 static float running_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* running state, last switch_pos, ts of last switch action */
 static airportdb_t airportdb;
 static airport_t *arpt;
-static int on_ground;
+static int on_ground = 1;
 static float on_ground_ts;
 static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
+static float plane_ref_z;   // z value of plane's reference point
 static const ramp_start_t *nearest_ramp;
 
 static int dgs_type = 1;
@@ -173,6 +176,10 @@ static void newplane(void)
 
     for (int i=0; i<4; i++)
         icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
+
+    plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);
+
+    logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
 }
 
 static int check_running()
@@ -322,7 +329,7 @@ static float update_dgs()
     // xform plane pos into stand local coordinate system
     float dx = stand_x - XPLMGetDataf(ref_plane_x);
     float dz = stand_z - XPLMGetDataf(ref_plane_z);
-    float local_z = dx * stand_dir_x + dz * stand_dir_z;
+    float local_z = dx * stand_dir_x + dz * stand_dir_z - plane_ref_z;
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
     int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
@@ -535,7 +542,8 @@ cmd_set_arriving_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
         return 0;
 
     logMsg("set arriving");
-    arriving = 1;
+    on_ground = 0;
+    on_ground_ts = -1.0;
     return 0;
 }
 
@@ -597,6 +605,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_elevation=XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_beacon         =XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_acf_icao       =XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    ref_acf_cg_z       =XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
     ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
