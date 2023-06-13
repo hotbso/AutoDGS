@@ -118,6 +118,8 @@ static const ramp_start_t *nearest_ramp;
 static int dgs_type = 1;
 static XPLMObjectRef dgs_obj[2];
 
+static int arriving = 0;
+
 enum _DGS_DREF {
     DGS_DR_STATUS,
     DGS_DR_LR,
@@ -399,6 +401,7 @@ static float update_dgs()
         case BAD:
             if (!running
                 && (now > timestamp + 5.0)) {
+                arriving = 0;
                 resetidle();
                 break;
             }
@@ -413,8 +416,10 @@ static float update_dgs()
             break;
 
         case PARKED:
-            if (now > timestamp + 5.0)
+            if (now > timestamp + 5.0) {
+                arriving = 0;
                 resetidle();
+            }
             break;
 
         default:
@@ -468,6 +473,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
         logMsg("transition to on_ground: %d", on_ground);
 
         if (on_ground) {
+            arriving = 1;
             float lat = XPLMGetDataf(ref_plane_lat);
             float lon = XPLMGetDataf(ref_plane_lon);
             char airport_id[50];
@@ -488,6 +494,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 
         } else {
             // transition to airborne
+            arriving = 0;
             if (ref_probe) {
                 XPLMDestroyProbe(ref_probe);
                 ref_probe = NULL;
@@ -495,7 +502,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
         }
     }
 
-    if (on_ground) {
+    if (on_ground && arriving) {
         find_nearest_ramp();
         loop_delay = update_dgs();
     }
@@ -517,6 +524,18 @@ cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     }
 
     dgs_type = (dgs_type + 1) % 2;
+    return 0;
+}
+
+static int
+cmd_set_arriving_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    logMsg("set arriving");
+    arriving = 1;
     return 0;
 }
 
@@ -610,6 +629,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 
     cycle_dgs_cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
     XPLMRegisterCommandHandler(cycle_dgs_cmdr, cmd_cycle_dgs_cb, 0, NULL);
+
+    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/set_arriving", "For development only");
+    XPLMRegisterCommandHandler(cmdr, cmd_set_arriving_cb, 0, NULL);
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
