@@ -112,7 +112,7 @@ static airport_t *arpt;
 static int on_ground;
 static float on_ground_ts;
 static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
-static vect3_t dgs_pos;  // position + vector
+static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static const ramp_start_t *nearest_ramp;
 
 static int dgs_type = 1;
@@ -244,7 +244,7 @@ static void find_nearest_ramp()
     probeinfo.structSize = sizeof(XPLMProbeInfo_t);
 
     if (ref_probe == NULL)
-        ref_probe    =XPLMCreateProbe(xplm_ProbeY);
+        ref_probe = XPLMCreateProbe(xplm_ProbeY);
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
@@ -273,15 +273,24 @@ static void find_nearest_ramp()
     }
 
     if (min_ramp != nearest_ramp) {
-        nearest_ramp = min_ramp;
         logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
                min_ramp->hdgt, dist);
 
         stand_hdg = min_ramp->hdgt;
-        stand_dir_x = sinf(D2R * (stand_hdg)); stand_dir_z = - cosf(D2R * stand_hdg);
+        stand_dir_x =  sinf(D2R * stand_hdg);
+        stand_dir_z = -cosf(D2R * stand_hdg);
 
         // move dgs some distance away
-        dgs_pos = VECT3(stand_x + DGS_RAMP_DIST * stand_dir_x, stand_y, stand_z + DGS_RAMP_DIST * stand_dir_z);
+        dgs_pos_x = stand_x + DGS_RAMP_DIST * stand_dir_x;
+        dgs_pos_z = stand_z + DGS_RAMP_DIST * stand_dir_z;
+
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
+            logMsg("probe failed");
+            return;
+        }
+
+        dgs_pos_y = probeinfo.locationY;
+        nearest_ramp = min_ramp;
         state = TRACK;
     }
 }
@@ -302,9 +311,9 @@ static float update_dgs()
     memset(drefs, 0, sizeof(drefs));
 
     drawinfo.structSize = sizeof(drawinfo);
-    drawinfo.x = dgs_pos.x;
-    drawinfo.y = dgs_pos.y;
-    drawinfo.z = dgs_pos.z;
+    drawinfo.x = dgs_pos_x;
+    drawinfo.y = dgs_pos_y;
+    drawinfo.z = dgs_pos_z;
     drawinfo.heading = stand_hdg;
     drawinfo.pitch = drawinfo.roll = 0.0;
 
