@@ -33,6 +33,7 @@
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
 #include "XPLMDataAccess.h"
+#include "XPLMMenus.h"
 #include "XPLMGraphics.h"
 #include "XPLMInstance.h"
 #include "XPLMNavigation.h"
@@ -87,6 +88,8 @@ static float timestamp;
 
 static char xpdir[512];
 static const char *psep;
+
+static XPLMCommandRef cycle_dgs_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
@@ -508,6 +511,14 @@ cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+/* call back for menu */
+static void
+menu_cb(void *menu_ref, void *item_ref)
+{
+    if (item_ref == &cycle_dgs_cmdr)
+        XPLMCommandOnce(cycle_dgs_cmdr);
+}
+
 /* Convert path to posix style in-place */
 void posixify(char *path)
 {
@@ -597,8 +608,13 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
         return 0;
     }
 
-    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
-    XPLMRegisterCommandHandler(cmdr, cmd_cycle_dgs_cb, 0, NULL);
+    XPLMMenuID menu = XPLMFindPluginsMenu();
+    int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
+    XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
+    XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
+
+    cycle_dgs_cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
+    XPLMRegisterCommandHandler(cycle_dgs_cmdr, cmd_cycle_dgs_cb, 0, NULL);
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
