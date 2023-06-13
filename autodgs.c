@@ -522,21 +522,7 @@ menu_cb(void *menu_ref, void *item_ref)
 /* Convert path to posix style in-place */
 void posixify(char *path)
 {
-#if APL
-    if (*path!='/')
-    {
-        /* X-Plane 9 - screw around with HFS paths FFS */
-        int isfolder = (path[strlen(path)-1]==':');
-        CFStringRef hfspath = CFStringCreateWithCString(NULL, path, kCFStringEncodingMacRoman);
-        CFURLRef url = CFURLCreateWithFileSystemPath(NULL, hfspath, kCFURLHFSPathStyle, 0);
-        CFStringRef posixpath = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
-        CFStringGetCString(posixpath, path, PATH_MAX, kCFStringEncodingUTF8);
-        CFRelease(hfspath);
-        CFRelease(url);
-        CFRelease(posixpath);
-        if (isfolder && path[strlen(path)-1]!='/') { strcat(path, "/"); }	/* converting from HFS loses trailing separator */
-    }
-#elif IBM
+#if IBM
     char *c;
     for (c=path; *c; c++) if (*c=='\\') *c='/';
 #endif
