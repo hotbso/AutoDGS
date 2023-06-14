@@ -48,8 +48,8 @@ static const float D2R=M_PI/180.0;
 static const float F2M=0.3048;	/* 1 ft [m] */
 
 /* Capture distances [m] (to stand) */
-//static const float CAP_X = 10;
-//static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
+static const float CAP_X = 10;
+static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
 static const float GOOD_Z= 0.5;
 
 /* DGS distances [m]     (to stand) */
@@ -240,27 +240,57 @@ static void find_nearest_ramp()
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
-        if (fabs(plane_psi - ramp->hdgt > 70.0))  // stands in front of plane only
+        double s_x, s_y, s_z;
+        XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
+
+        float dx = s_x - plane_x;
+        float dz = s_z - plane_z;
+        float d = sqrt(dx * dx + dz * dz);
+        if (d > 170.0) // fast exit
             continue;
 
-        double x, y, z;
-        XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &x, &y, &z);
-        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, x, y, z, &probeinfo)) {
-            logMsg("probe failed");
-            return;
+        float s_dir_x =  sinf(D2R * ramp->hdgt);
+        float s_dir_z = -cosf(D2R * ramp->hdgt);
+        float local_z = dx * s_dir_x + dz * s_dir_z - plane_ref_z;
+        float local_x = dx * s_dir_z - dz * s_dir_x;
+
+        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
+
+        // behind
+        if (local_z < -4.0) {
+            logMsg("behind: %s", ramp->name);
+            continue;
         }
 
-        float dx = plane_x - x;
-        float dz = plane_z - z;
+        // check whether plane is in a +-50° sector relative to stand
+        if (local_z > 10.0) {
+            float angle = 0.0;
+            angle = atan(local_x / local_z) / D2R;
+            logMsg("angle: %s, %3.1f", ramp->name, angle);
+            if (fabsf(angle) > 50.0)
+                continue;
+        }
 
-        float d = sqrt(dx * dx + dz * dz);
         if (d < dist) {
             dist = d;
             min_ramp = ramp;
-            stand_x = x;
+            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
+            if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, s_x, s_y, s_z, &probeinfo)) {
+                logMsg("probe failed");
+                return;
+            }
+
+            stand_x = s_x;
             stand_y = probeinfo.locationY;
-            stand_z = z;
+            stand_z = s_z;
+            stand_dir_x = s_dir_x;
+            stand_dir_z = s_dir_z;
         }
+    }
+
+    if (min_ramp == NULL) {
+        nearest_ramp = NULL;
+        resetidle();
     }
 
     if (min_ramp != nearest_ramp) {
@@ -268,8 +298,6 @@ static void find_nearest_ramp()
                min_ramp->hdgt, dist);
 
         stand_hdg = min_ramp->hdgt;
-        stand_dir_x =  sinf(D2R * stand_hdg);
-        stand_dir_z = -cosf(D2R * stand_hdg);
 
         // move dgs some distance away
         dgs_pos_x = stand_x + DGS_RAMP_DIST * stand_dir_x;
@@ -314,7 +342,7 @@ static float update_dgs()
     float local_z = dx * stand_dir_x + dz * stand_dir_z - plane_ref_z;
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
-    int locgood=(fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
+    int locgood = (fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
     int running = check_running();
 
     status = lr = track = 0;
@@ -672,7 +700,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             plane_ref_z = - plane_ref_z;
         else
             plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);         // fall back to CG
-            
+
         logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
     }
 }
