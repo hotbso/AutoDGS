@@ -95,7 +95,7 @@ static XPLMCommandRef cycle_dgs_cmdr;
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
-static XPLMDataRef ref_acf_cg_z;
+static XPLMDataRef ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon;
 static XPLMDataRef ref_acf_icao;
 static XPLMDataRef ref_total_running_time_sec;
@@ -577,18 +577,19 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     }
 
     /* Datarefs */
-    ref_plane_x        =XPLMFindDataRef("sim/flightmodel/position/local_x");
-    ref_plane_y        =XPLMFindDataRef("sim/flightmodel/position/local_y");
-    ref_plane_z        =XPLMFindDataRef("sim/flightmodel/position/local_z");
-    ref_plane_psi      =XPLMFindDataRef("sim/flightmodel/position/psi");
-    ref_gear_fnrml     =XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
-    ref_plane_lat      =XPLMFindDataRef("sim/flightmodel/position/latitude");
-    ref_plane_lon      =XPLMFindDataRef("sim/flightmodel/position/longitude");
-    ref_plane_elevation=XPLMFindDataRef("sim/flightmodel/position/elevation");
-    ref_beacon         =XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
-    ref_acf_icao       =XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
-    ref_acf_cg_z       =XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
-    ref_total_running_time_sec=XPLMFindDataRef("sim/time/total_running_time_sec");
+    ref_plane_x        = XPLMFindDataRef("sim/flightmodel/position/local_x");
+    ref_plane_y        = XPLMFindDataRef("sim/flightmodel/position/local_y");
+    ref_plane_z        = XPLMFindDataRef("sim/flightmodel/position/local_z");
+    ref_plane_psi      = XPLMFindDataRef("sim/flightmodel/position/psi");
+    ref_gear_fnrml     = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
+    ref_plane_lat      = XPLMFindDataRef("sim/flightmodel/position/latitude");
+    ref_plane_lon      = XPLMFindDataRef("sim/flightmodel/position/longitude");
+    ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
+    ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
+    ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
+    ref_gear_z         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
+    ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
     for (int i = 0; i < DGS_DR_ICAO; i++)
@@ -667,8 +668,11 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         for (int i=0; i<4; i++)
             icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
 
-        plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);
-
+        if (1 == XPLMGetDatavf(ref_gear_z, &plane_ref_z, 0, 1))      // nose wheel
+            plane_ref_z = - plane_ref_z;
+        else
+            plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);         // fall back to CG
+            
         logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
     }
 }
