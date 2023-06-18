@@ -62,10 +62,10 @@ static const float DGS_RAMP_DIST = 25.0;
 /* types */
 typedef enum
 {
-    DISABLED=0, IDLE, TRACK, GOOD, BAD, PARKED
+    DISABLED=0, IDLE, WAITING, TRACK, GOOD, BAD, PARKED
 } state_t;
 
-const char * const statestr[] = { "Disabled", "Idle", "Track", "Good", "Bad", "Parked" };
+const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good", "Bad", "Parked" };
 
 typedef struct {
     const char *key;
@@ -93,7 +93,7 @@ static const char *psep;
 static XPLMCommandRef cycle_dgs_cmdr;
 
 /* Datarefs */
-static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z, ref_plane_psi;
+static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
 static XPLMDataRef ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon;
@@ -226,7 +226,6 @@ static void find_nearest_ramp()
 
     float plane_x = XPLMGetDataf(ref_plane_x);
     float plane_z = XPLMGetDataf(ref_plane_z);
-    float plane_psi = XPLMGetDataf(ref_plane_psi);
 
     float plane_elevation = XPLMGetDataf(ref_plane_elevation);
     float stand_y = 0.0;    // to avoid compiler warning
@@ -258,7 +257,7 @@ static void find_nearest_ramp()
 
         // behind
         if (local_z < -4.0) {
-            logMsg("behind: %s", ramp->name);
+            //logMsg("behind: %s", ramp->name);
             continue;
         }
 
@@ -266,7 +265,7 @@ static void find_nearest_ramp()
         if (local_z > 10.0) {
             float angle = 0.0;
             angle = atan(local_x / local_z) / D2R;
-            logMsg("angle: %s, %3.1f", ramp->name, angle);
+            //logMsg("angle: %s, %3.1f", ramp->name, angle);
             if (fabsf(angle) > 50.0)
                 continue;
         }
@@ -310,7 +309,7 @@ static void find_nearest_ramp()
 
         dgs_pos_y = probeinfo.locationY;
         nearest_ramp = min_ramp;
-        state = TRACK;
+        state = WAITING;
     }
 }
 
@@ -324,17 +323,6 @@ static float update_dgs()
     }
 
     state_t old_state = state;
-
-    XPLMDrawInfo_t drawinfo;
-    float drefs[DGS_DR_NUM];
-    memset(drefs, 0, sizeof(drefs));
-
-    drawinfo.structSize = sizeof(drawinfo);
-    drawinfo.x = dgs_pos_x;
-    drawinfo.y = dgs_pos_y;
-    drawinfo.z = dgs_pos_z;
-    drawinfo.heading = stand_hdg;
-    drawinfo.pitch = drawinfo.roll = 0.0;
 
     // xform plane pos into stand local coordinate system
     float dx = stand_x - XPLMGetDataf(ref_plane_x);
@@ -350,11 +338,16 @@ static float update_dgs()
 
     switch (state) {
         case IDLE:
+            break;
+
+        case WAITING:
             if (running
-                && (local_z-GOOD_Z <= AZI_Z)
-                && (fabsf(local_x) <= AZI_X))
-                track=1;
-            /* FALLTHROUGH */
+                && (local_z-GOOD_Z <= CAP_Z)
+                && (fabsf(local_x) <= CAP_X)) {
+                    state = TRACK;
+                    /* FALLTHROUGH */
+                } else
+                   break;
 
         case TRACK:
             loop_delay = 0.5;
@@ -450,6 +443,17 @@ static float update_dgs()
     }
 
     if (state > IDLE) {
+        XPLMDrawInfo_t drawinfo;
+        float drefs[DGS_DR_NUM];
+        memset(drefs, 0, sizeof(drefs));
+
+        drawinfo.structSize = sizeof(drawinfo);
+        drawinfo.x = dgs_pos_x;
+        drawinfo.y = dgs_pos_y;
+        drawinfo.z = dgs_pos_z;
+        drawinfo.heading = stand_hdg;
+        drawinfo.pitch = drawinfo.roll = 0.0;
+
         if (dgs_inst_ref == NULL) {
             dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dref_list);
             if (dgs_inst_ref == NULL) {
@@ -608,7 +612,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_x        = XPLMFindDataRef("sim/flightmodel/position/local_x");
     ref_plane_y        = XPLMFindDataRef("sim/flightmodel/position/local_y");
     ref_plane_z        = XPLMFindDataRef("sim/flightmodel/position/local_z");
-    ref_plane_psi      = XPLMFindDataRef("sim/flightmodel/position/psi");
     ref_gear_fnrml     = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
     ref_plane_lat      = XPLMFindDataRef("sim/flightmodel/position/latitude");
     ref_plane_lon      = XPLMFindDataRef("sim/flightmodel/position/longitude");
