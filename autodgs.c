@@ -453,8 +453,13 @@ static float update_dgs()
         drefs[DGS_DR_AZIMUTH] = azimuth;
         drefs[DGS_DR_LR] = lr;
 
-        if (state == TRACK)
-            for (int i = 0; i < 4; i++) drefs[DGS_DR_ICAO_0 + i] = icao[i];
+        if (state == TRACK) {
+            for (int i = 0; i < 4; i++)
+                drefs[DGS_DR_ICAO_0 + i] = icao[i];
+
+            if (isalpha(icao[3]))
+                drefs[DGS_DR_ICAO_3] += 0.8;    // bug in VDGS
+        }
 
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
