@@ -130,7 +130,10 @@ enum _DGS_DREF {
     DGS_DR_AZIMUTH,
     DGS_DR_DISTANCE,
     DGS_DR_DISTANCE2,
-    DGS_DR_ICAO,
+    DGS_DR_ICAO_0,
+    DGS_DR_ICAO_1,
+    DGS_DR_ICAO_2,
+    DGS_DR_ICAO_3,
     DGS_DR_NUM             // # of drefs
 };
 
@@ -142,7 +145,10 @@ static const char *dgs_dref_list[] = {
     "hotbso/dgs/azimuth",
     "hotbso/dgs/distance",
     "hotbso/dgs/distance2",
-    "hotbso/dgs/icao",          // that's an array of 4
+    "hotbso/dgs/icao_0",
+    "hotbso/dgs/icao_1",
+    "hotbso/dgs/icao_2",
+    "hotbso/dgs/icao_3",
     NULL
 };
 
@@ -191,29 +197,6 @@ static int check_running()
 static float getdgsfloat(XPLMDataRef inRefcon)
 {
     return -1.0;
-}
-
-// the will obviously be called even with the instancing interface
-static int getdgsicao(XPLMDataRef inRefcon, int *outValues, int inOffset, int inMax)
-{
-    //logMsg("getdgsintv outValues %p, inOffset %d, inMax %d", outValues, inOffset, inMax);
-    int i;
-
-    if (outValues==NULL)
-        return 4;
-    else if (inMax<=0 || inOffset<0 || inOffset>=4)
-        return 0;
-
-    if (inMax+inOffset > 4)
-        inMax = 4-inOffset;
-
-    /* We get called a lot, so don't bother checking for updated values */
-    if (state != TRACK)	/* Only report when active and tracking */
-        for (i=0; i<inMax; outValues[i++] = 0);
-    else
-        for (i=0; i<inMax; i++) outValues[i] = icao[inOffset+i];
-
-    return inMax;
 }
 
 static void find_nearest_ramp()
@@ -470,6 +453,9 @@ static float update_dgs()
         drefs[DGS_DR_AZIMUTH] = azimuth;
         drefs[DGS_DR_LR] = lr;
 
+        if (state == TRACK)
+            for (int i = 0; i < 4; i++) drefs[DGS_DR_ICAO_0 + i] = icao[i];
+
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
@@ -623,15 +609,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
-    for (int i = 0; i < DGS_DR_ICAO; i++)
+    for (int i = 0; i < DGS_DR_NUM; i++)
         XPLMRegisterDataAccessor(dgs_dref_list[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
-
-    // this is an array and it will be called
-    XPLMRegisterDataAccessor(dgs_dref_list[DGS_DR_ICAO], xplmType_IntArray, 0, NULL, NULL,
-                             NULL, NULL, NULL, NULL, getdgsicao,
-                             NULL, NULL, NULL, NULL, NULL, NULL, 0);
-
 
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {

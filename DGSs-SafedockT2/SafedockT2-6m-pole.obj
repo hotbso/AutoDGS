@@ -1506,17 +1506,17 @@ ANIM_begin
 	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	0 1	hotbso/dgs/status
 	TRIS	480 192
 	ANIM_begin
-		ANIM_hide	0 31	hotbso/dgs/icao[0]
+		ANIM_hide	0 31	hotbso/dgs/icao_0
 		ANIM_begin
-			ANIM_hide	33 255	hotbso/dgs/icao[1]
+			ANIM_hide	33 255	hotbso/dgs/icao_1
 			TRIS	672 6
 		ANIM_end
 		ANIM_begin
-			ANIM_hide	33 255	hotbso/dgs/icao[2]
+			ANIM_hide	33 255	hotbso/dgs/icao_2
 			TRIS	678 6
 		ANIM_end
 		ANIM_begin
-			ANIM_hide	33 255	hotbso/dgs/icao[3]
+			ANIM_hide	33 255	hotbso/dgs/icao_3
 			TRIS	684 6
 		ANIM_end
 	ANIM_end
@@ -1640,7 +1640,7 @@ ANIM_begin
 	TRIS	990 12
 ANIM_end
 ANIM_begin
-	ANIM_hide	1 255	hotbso/dgs/icao[0]
+	ANIM_hide	1 255	hotbso/dgs/icao_0
 	ANIM_begin
 		ANIM_trans	   0.0000    6.2500    0.1637	   0.0000    6.2500    0.1637	0 0	no_ref
 		ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  72.00	0 1	hotbso/dgs/id1
@@ -1663,17 +1663,17 @@ ANIM_begin
 	ANIM_end
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 66	hotbso/dgs/icao[0]
-	ANIM_hide	73 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 66	hotbso/dgs/icao_0
+	ANIM_hide	73 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao[0]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao_0
 	TRIS	1386 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 53	hotbso/dgs/icao[0]
-	ANIM_hide	67 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 53	hotbso/dgs/icao_0
+	ANIM_hide	67 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao[0]
+	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao_0
 		ANIM_rotate_key	54	  0.00
 		ANIM_rotate_key	57	180.00
 		ANIM_rotate_key	61	210.00
@@ -1683,66 +1683,66 @@ ANIM_begin
 	TRIS	1422 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 72	hotbso/dgs/icao[0]
-	ANIM_hide	79 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 72	hotbso/dgs/icao_0
+	ANIM_hide	79 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao[0]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao_0
 	TRIS	1458 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 78	hotbso/dgs/icao[0]
-	ANIM_hide	85 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 78	hotbso/dgs/icao_0
+	ANIM_hide	85 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao[0]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao_0
 	TRIS	1494 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 84	hotbso/dgs/icao[0]
-	ANIM_hide	91 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 84	hotbso/dgs/icao_0
+	ANIM_hide	91 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao[0]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao_0
 	TRIS	1530 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 47	hotbso/dgs/icao[0]
-	ANIM_hide	54 255	hotbso/dgs/icao[0]
+	ANIM_hide	0 47	hotbso/dgs/icao_0
+	ANIM_hide	54 255	hotbso/dgs/icao_0
 	ANIM_trans	  -0.1800    6.2500    0.1388	  -0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao[0]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao_0
 	TRIS	1566 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 47	hotbso/dgs/icao[1]
-	ANIM_hide	54 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 47	hotbso/dgs/icao_1
+	ANIM_hide	54 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao[1]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao_1
 	TRIS	1602 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 84	hotbso/dgs/icao[1]
-	ANIM_hide	91 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 84	hotbso/dgs/icao_1
+	ANIM_hide	91 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao[1]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao_1
 	TRIS	1638 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 78	hotbso/dgs/icao[1]
-	ANIM_hide	85 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 78	hotbso/dgs/icao_1
+	ANIM_hide	85 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao[1]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao_1
 	TRIS	1674 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 72	hotbso/dgs/icao[1]
-	ANIM_hide	79 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 72	hotbso/dgs/icao_1
+	ANIM_hide	79 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao[1]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao_1
 	TRIS	1710 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 53	hotbso/dgs/icao[1]
-	ANIM_hide	67 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 53	hotbso/dgs/icao_1
+	ANIM_hide	67 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao[1]
+	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao_1
 		ANIM_rotate_key	54	  0.00
 		ANIM_rotate_key	57	180.00
 		ANIM_rotate_key	61	210.00
@@ -1752,24 +1752,24 @@ ANIM_begin
 	TRIS	1746 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 66	hotbso/dgs/icao[1]
-	ANIM_hide	73 255	hotbso/dgs/icao[1]
+	ANIM_hide	0 66	hotbso/dgs/icao_1
+	ANIM_hide	73 255	hotbso/dgs/icao_1
 	ANIM_trans	  -0.0600    6.2500    0.1388	  -0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao[1]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao_1
 	TRIS	1782 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 66	hotbso/dgs/icao[2]
-	ANIM_hide	73 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 66	hotbso/dgs/icao_2
+	ANIM_hide	73 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	67 68	hotbso/dgs/icao[2]
+	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	67 68	hotbso/dgs/icao_2
 	TRIS	1818 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 53	hotbso/dgs/icao[2]
-	ANIM_hide	67 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 53	hotbso/dgs/icao_2
+	ANIM_hide	67 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao[2]
+	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao_2
 		ANIM_rotate_key	54	  0.00
 		ANIM_rotate_key	57	180.00
 		ANIM_rotate_key	61	210.00
@@ -1779,73 +1779,73 @@ ANIM_begin
 	TRIS	1854 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 78	hotbso/dgs/icao[2]
-	ANIM_hide	85 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 78	hotbso/dgs/icao_2
+	ANIM_hide	85 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	79 80	hotbso/dgs/icao[2]
+	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	79 80	hotbso/dgs/icao_2
 	TRIS	1890 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 84	hotbso/dgs/icao[2]
-	ANIM_hide	91 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 84	hotbso/dgs/icao_2
+	ANIM_hide	91 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	85 86	hotbso/dgs/icao[2]
+	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	85 86	hotbso/dgs/icao_2
 	TRIS	1926 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 47	hotbso/dgs/icao[2]
-	ANIM_hide	54 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 47	hotbso/dgs/icao_2
+	ANIM_hide	54 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	48 49	hotbso/dgs/icao[2]
+	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	48 49	hotbso/dgs/icao_2
 	TRIS	1962 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 72	hotbso/dgs/icao[2]
-	ANIM_hide	79 255	hotbso/dgs/icao[2]
+	ANIM_hide	0 72	hotbso/dgs/icao_2
+	ANIM_hide	79 255	hotbso/dgs/icao_2
 	ANIM_trans	   0.0600    6.2500    0.1388	   0.0600    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	73 74	hotbso/dgs/icao[2]
+	ANIM_rotate	   1.0000   -0.0000   -0.0000	  0.00  60.00	73 74	hotbso/dgs/icao_2
 	TRIS	1998 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 72	hotbso/dgs/icao[3]
-	ANIM_hide	79 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 72	hotbso/dgs/icao_3
+	ANIM_hide	79 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao[3]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	73 74	hotbso/dgs/icao_3
 	TRIS	2034 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 47	hotbso/dgs/icao[3]
-	ANIM_hide	54 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 47	hotbso/dgs/icao_3
+	ANIM_hide	54 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao[3]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	48 49	hotbso/dgs/icao_3
 	TRIS	2070 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 84	hotbso/dgs/icao[3]
-	ANIM_hide	91 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 84	hotbso/dgs/icao_3
+	ANIM_hide	91 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao[3]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	85 86	hotbso/dgs/icao_3
 	TRIS	2106 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 78	hotbso/dgs/icao[3]
-	ANIM_hide	85 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 78	hotbso/dgs/icao_3
+	ANIM_hide	85 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao[3]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	79 80	hotbso/dgs/icao_3
 	TRIS	2142 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 66	hotbso/dgs/icao[3]
-	ANIM_hide	73 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 66	hotbso/dgs/icao_3
+	ANIM_hide	73 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao[3]
+	ANIM_rotate	   1.0000    0.0000    0.0000	  0.00  60.00	67 68	hotbso/dgs/icao_3
 	TRIS	2178 36
 ANIM_end
 ANIM_begin
-	ANIM_hide	0 53	hotbso/dgs/icao[3]
-	ANIM_hide	67 255	hotbso/dgs/icao[3]
+	ANIM_hide	0 53	hotbso/dgs/icao_3
+	ANIM_hide	67 255	hotbso/dgs/icao_3
 	ANIM_trans	   0.1800    6.2500    0.1388	   0.1800    6.2500    0.1388	0 0	no_ref
-	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao[3]
+	ANIM_rotate_begin	   1.0000   -0.0000   -0.0000	hotbso/dgs/icao_3
 		ANIM_rotate_key	54	  0.00
 		ANIM_rotate_key	57	180.00
 		ANIM_rotate_key	61	210.00
