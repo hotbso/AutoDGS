@@ -90,15 +90,13 @@ static float timestamp;
 static char xpdir[512];
 static const char *psep;
 
-static XPLMCommandRef cycle_dgs_cmdr;
+static XPLMCommandRef cycle_dgs_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
 static XPLMDataRef ref_acf_cg_z, ref_gear_z;
-static XPLMDataRef ref_beacon;
-static XPLMDataRef ref_acf_icao;
-static XPLMDataRef ref_total_running_time_sec;
+static XPLMDataRef ref_beacon, ref_acf_icao, ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -392,6 +390,7 @@ static float update_dgs()
                 timestamp = now;
                 status = 3;
                 lr = track = 0;
+                XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
 
@@ -644,6 +643,8 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 
     XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/set_arriving", "For development only");
     XPLMRegisterCommandHandler(cmdr, cmd_set_arriving_cb, 0, NULL);
+
+    toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
     return 1;
