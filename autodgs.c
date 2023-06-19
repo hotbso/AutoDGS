@@ -108,7 +108,7 @@ static float azimuth, distance, distance2;
 
 /* Internal state */
 static float now;           /* current timestamp */
-static float running_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* running state, last switch_pos, ts of last switch action */
+static float beacon_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* beacon state, last switch_pos, ts of last switch action */
 static airportdb_t airportdb;
 static airport_t *arpt;
 static int on_ground = 1;
@@ -161,7 +161,7 @@ static void resetidle(void)
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
 
-    running_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
+    beacon_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
     beacon_on_ts = beacon_off_ts = -10.0;
 
     if (dgs_inst_ref) {
@@ -170,7 +170,7 @@ static void resetidle(void)
     }
 }
 
-static int check_running()
+static int check_beacon()
 {
     /* when checking the beacon guard against power transition when switching
        to the APU generator (e.g. for the ToLiss fleet.
@@ -181,16 +181,16 @@ static int check_running()
             beacon_on_ts = now;
             beacon_last_pos = 1;
         } else if (now > beacon_on_ts + 3.0)
-            running_state = 1;
+            beacon_state = 1;
     } else {
         if (beacon_last_pos) {
             beacon_off_ts = now;
             beacon_last_pos = 0;
         } else if (now > beacon_off_ts + 3.0)
-            running_state = 0;
+            beacon_state = 0;
    }
 
-   return running_state;
+   return beacon_state;
 }
 
 // dummy accessor routines
@@ -314,7 +314,7 @@ static float update_dgs()
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
     int locgood = (fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
-    int running = check_running();
+    int beacon = check_beacon();
 
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
@@ -324,13 +324,17 @@ static float update_dgs()
             break;
 
         case WAITING:
-            if (running
-                && (local_z-GOOD_Z <= CAP_Z)
-                && (fabsf(local_x) <= CAP_X)) {
+            if (beacon) {
+                if ((local_z-GOOD_Z <= CAP_Z)
+                    && (fabsf(local_x) <= CAP_X)) {
                     state = TRACK;
                     /* FALLTHROUGH */
                 } else
                    break;
+            } else { // not beacon
+                state = PARKED;
+                break;
+            }
 
         case TRACK:
             loop_delay = 0.5;
@@ -379,7 +383,7 @@ static float update_dgs()
             loop_delay = 0.5;
             if (!locgood)
                 state = TRACK;
-            else if (running) {
+            else if (beacon) {
                 /* Stop */
                 lr=3;
                 status=2;
@@ -392,7 +396,7 @@ static float update_dgs()
             break;
 
         case BAD:
-            if (!running
+            if (!beacon
                 && (now > timestamp + 5.0)) {
                 arriving = 0;
                 resetidle();
