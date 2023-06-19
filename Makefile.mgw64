@@ -19,10 +19,6 @@ LACFU_OBJECTS=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o)))
 CC=x86_64-w64-mingw32-gcc
 LD=x86_64-w64-mingw32-gcc
 
-COMMON_CFLAGS+= -g0 -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow -DWINDOWS -DWIN32 \
-    -Ilibacfutils/src/ \
-	-I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DIBM=1 -DVERSION=\"$(VERSION)\"
-
 COMMON_CFLAGS=-O2 -s -Wall -fdiagnostics-color -Wno-format-overflow \
     -D_POSIX_C_SOURCE  \
     -DIBM -DWINDOWS -DWIN32 -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00 \
@@ -34,7 +30,7 @@ CFLAGS=-mdll $(COMMON_CFLAGS)
 LACFU_CFLAGS=-DUNICODE -DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(COMMON_CFLAGS)
 
 LDFLAGS=-shared -static-libgcc -static -lpthread
-LIBS=-L$(SDK)/Libraries/Win -lDbghelp -lpsapi -lXPLM_64 -lXPWidgets_64 -lz -liconv
+LIBS=-L$(SDK)/Libraries/Win -lDbghelp -lpsapi -lXPLM_64 -lz -liconv
 
 
 all: $(TARGET)

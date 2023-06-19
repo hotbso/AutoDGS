@@ -69,12 +69,6 @@ const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good"
 
 typedef struct {
     const char *key;
-    const float lng, lat, vert;
-    const int type;
-} db_t;
-
-typedef struct {
-    const char *key;
     const int type;
 } icao_t;
 
