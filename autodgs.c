@@ -413,7 +413,7 @@ static float update_dgs()
             break;
 
         default:
-            /* FALLTHROUGH */
+            break;
     }
 
     if (old_state != state) {
@@ -586,7 +586,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 
 
     char cache_path[512];
-    sprintf(cache_path, "%sOutput%scaches%sAutoVDGS.cache", xpdir, psep, psep);
+    sprintf(cache_path, "%sOutput%scaches%sAutoDGS.cache", xpdir, psep, psep);
     fix_pathsep(cache_path);                        /* libacfutils requires a canonical path sep */
     airportdb_create(&airportdb, xpdir, cache_path);
     airportdb.ifr_only = B_TRUE;
