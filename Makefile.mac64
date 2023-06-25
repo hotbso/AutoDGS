@@ -1,0 +1,62 @@
+include version.mak
+
+SDK=../SDK
+OBJDIR=./OBJ
+
+LIBACFUTILS_VERSION="hotbso subset"
+TARGET=mac.xpl
+HEADERS=$(wildcard *.h)
+SOURCES=$(wildcard *.c)
+OBJECTS_arm=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o_arm))
+OBJECTS_x86=$(OBJECTS_arm:.o_arm=.o_x86)
+
+LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
+LACFU_OBJECTS_arm=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o_arm)))
+LACFU_OBJECTS_x86=$(LACFU_OBJECTS_arm:.o_arm=.o_x86)
+
+ARCH_x86= -target x86_64-apple-macos10.11
+ARCH_arm= -target arm64-apple-macos11
+
+
+DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden -ffast-math -DNDEBUG
+
+CFLAGS+=-O2 -Wall -I$(SDK)/CHeaders/XPLM -Ilibacfutils/src -DVERSION=\"$(VERSION)\" $(DEFS)
+LACFU_CFLAGS=-DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(CFLAGS)
+
+LNFLAGS+=-dynamiclib -shared -rdynamic -fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
+
+# https://pewpewthespells.com/blog/static_and_dynamic_libraries.html
+LIBS+= -F $(SDK)/Libraries/Mac -framework XPLM
+
+# ships with macOS
+LIBS+=-liconv
+
+#test:
+#    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
+
+all: $(TARGET)
+    $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
+
+$(OBJDIR)/%.o_arm: %.c
+	$(CC) $(ARCH_arm) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_x86: %.c
+	$(CC) $(ARCH_x86) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_arm: libacfutils/src/%.c
+	$(CC) $(ARCH_arm) $(LACFU_CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_x86: libacfutils/src/%.c
+	$(CC) $(ARCH_x86) $(LACFU_CFLAGS) -o $@ -c $<
+
+$(TARGET)_arm: $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
+	$(CC) -o $@ $(ARCH_arm) $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
+
+$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
+	$(CC) -o $@ $(ARCH_x86) $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
+
+$(TARGET): $(TARGET)_arm $(TARGET)_x86
+	lipo -create -output $@ $(TARGET)_arm $(TARGET)_x86
+
+clean:
+	rm -f $(TARGET) $(TARGET)_arm $(TARGET)_x86 $(OBJDIR)/*.o_*
