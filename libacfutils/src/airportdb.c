@@ -736,6 +736,11 @@ find_all_apt_dats(const airportdb_t *db, list_t *list)
 				continue;
 			scn_name = &line[13];
 			strip_space(scn_name);
+
+            /* we append the default apt.dat later, so no double entry */
+            if (0 == strcmp(scn_name, "Custom Scenery/Global Airports/"))
+                continue;
+
 			fix_pathsep(scn_name);
 			e = safe_malloc(sizeof (*e));
 			e->fname = mkpathname(db->xpdir, scn_name,
@@ -1569,20 +1574,22 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
                     arpt->is_global_arpt = 1;    /* fill_in_dups means we are reading the global apt.dat */
                 } else {
                     int len = strlen(apt_dat_fname) + 100;
-                    char *marker_name = alloca(len);
+                    char *marker_name = safe_malloc(len);
                     lacf_strlcpy(marker_name, apt_dat_fname, len);
                     char *cptr = strrchr(marker_name, '\\');
                     if (cptr == NULL)
                         cptr = strrchr(marker_name, '/');
                     if (cptr) {
                         lacf_strlcpy(cptr + 1, "use_autodgs", 100);
-                        // logMsg("marker: %s", marker_name);
+                        //logMsg("marker: %s", marker_name);
                         FILE *f;
                         if ((f = fopen(marker_name, "r")) != NULL) {
                             fclose(f);
                             arpt->is_global_arpt = 1;
                         }
                     }
+
+                    free(marker_name);
                 }
 
                 logMsg("ident: %s, %p, is_global_arpt: %d, %s", arpt->ident, arpt, arpt->is_global_arpt, apt_dat_fname);
