@@ -20,9 +20,13 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2021 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
-
+/**
+ * \file
+ * This file contains helper functions mostly concerned with text and
+ * string processing.
+ */
 #ifndef	_ACF_UTILS_HELPERS_H_
 #define	_ACF_UTILS_HELPERS_H_
 
@@ -37,6 +41,7 @@
 #include <dirent.h>	/* to bring in DIR, opendir, readdir & friends */
 #include <unistd.h>
 #endif
+#include <time.h>
 
 #if	IBM
 #include <windows.h>
@@ -55,74 +60,186 @@
 extern "C" {
 #endif
 
-/* generic parser validator helpers */
-
+/**
+ * @return True if `pos` is a validate geographic coordinate (the latitude,
+ *	longitude and elevation are sensible values). This is using the
+ *	is_valid_lat(), is_valid_lon() and is_valid_elev() functions.
+ *	Please note that this only accepts elevation values between -2000
+ *	and +30000. If your elevations are in, e.g. feet, 30000 is a very
+ *	low max elevation value to check against. In that case, you should
+ *	use IS_VALID_GEO_POS2(), or write a custom check macro that
+ *	uses the is_valid_alt_ft() check function instead.
+ * @see is_valid_lat()
+ * @see is_valid_lon()
+ * @see is_valid_elev()
+ * @see is_valid_alt_ft()
+ */
 #define	IS_VALID_GEO_POS3(pos) \
-	(is_valid_lat((pos).lat) && is_valid_lat((pos).lat) && \
+	(is_valid_lat((pos).lat) && is_valid_lon((pos).lon) && \
 	is_valid_elev((pos).elev))
+/**
+ * Same as IS_VALID_GEO_POS3(), but for 2-space geographic coordinates
+ * without elevation.
+ * @see is_valid_lat()
+ * @see is_valid_lon()
+ */
 #define	IS_VALID_GEO_POS2(pos) \
-	(is_valid_lat((pos).lat) && is_valid_lat((pos).lat))
-
+	(is_valid_lat((pos).lat) && is_valid_lon((pos).lon))
+/**
+ * @return True if `lat` is a valid latitude value. That means the value
+ *	is not NAN and lay between -90 and +90 (inclusive).
+ */
 static inline bool_t
 is_valid_lat(double lat)
 {
 	return (!isnan(lat) && fabs(lat) <= 90);
 }
-
+/**
+ * \deprecated
+ * Synonym for is_valid_lat().
+ */
 static inline bool_t
 is_valid_lat_polar(double lat)
 {
 	return (!isnan(lat) && fabs(lat) <= 90);
 }
-
+/**
+ * @return True if `lon` is a valid longitude value. That means the value
+ *	is not NAN and lay between -180 and +180 (inclusive).
+ */
 static inline bool_t
 is_valid_lon(double lon)
 {
 	return (!isnan(lon) && fabs(lon) <= 180.0);
 }
-
+/**
+ * @return True if `elev` is a valid elevation value in meters. That means
+ *	the value is not NAN and is between `MIN_ELEV` (-2000) and `MAX_ELEV`
+ *	(30000) inclusive. The range check is really just to make sure the
+ *	value is within sensible limits.
+ * @see is_valid_alt_ft()
+ */
 static inline bool_t
 is_valid_elev(double elev)
 {
 	return (!isnan(elev) && elev >= MIN_ELEV && elev <= MAX_ELEV);
 }
 
+#ifdef	LACF_ENABLE_LEGACY_IS_VALID_ALT
+#define	is_valid_alt(alt)	is_valid_alt_ft(alt)
+#endif
+/**
+ * @return True if `alt_ft` is a valid altitude value. That means the value
+ *	is not NAN and is between `MIN_ALT` (-2000) and `MAX_ALT` (100000)
+ *	inclusive. The range check is really just to make sure the value is
+ *	within sensible limits.
+ * @see is_valid_elev()
+ */
 static inline bool_t
-is_valid_alt(double alt)
+is_valid_alt_ft(double alt_ft)
 {
-	return (!isnan(alt) && alt >= MIN_ALT && alt <= MAX_ALT);
+	return (!isnan(alt_ft) && alt_ft >= MIN_ALT && alt_ft <= MAX_ALT);
 }
-
+/**
+ * Variant of is_valid_alt_ft() but expects the input altitude to be in
+ * meters.
+ * @see is_valid_alt_ft()
+ */
+static inline bool_t
+is_valid_alt_m(double alt_m)
+{
+	return (!isnan(alt_m) && alt_m >= MIN_ALT / 3.2808398950131 &&
+	    alt_m <= MAX_ALT / 3.2808398950131);
+}
+/**
+ * @return True if `spd` is a valid speed value. That means the value
+ *	is not NAN and is between 0 and `MAX_SPD` (1000) inclusive. This
+ *	expects the speed value to be in knots.
+ */
 static inline bool_t
 is_valid_spd(double spd)
 {
 	return (!isnan(spd) && spd >= 0.0 && spd <= MAX_SPD);
 }
-
+/**
+ * @return True if `hdg` is a valid heading value. That means the value
+ *	is not NAN and is between 0 and 360 (inclusive).
+ */
 static inline bool_t
 is_valid_hdg(double hdg)
 {
 	return (!isnan(hdg) && hdg >= 0.0 && hdg <= 360.0);
 }
-
-#define	rel_hdg(h1, h2)	rel_hdg_impl(h1, h2, __FILE__, __LINE__)
-#define	rel_hdg_impl	ACFSYM(rel_hdg_impl)
+/**
+ * Calculates relative heading from `hdg1` to `hdg2`. Both heading values
+ * MUST be valid headings (pass the is_valid_hdg() check), otherwise
+ * an assertion failure is triggered.
+ * @return The number of degrees to turn from `hdg1` to `hdg2` "the shortest
+ *	way". That means, if `hdg2` is "to the right" of `hdg1` (i.e. less
+ *	than +180 degrees), the return value is in the positive range
+ *	of +0 to +180 inclusive. Conversely, if the target is to the left,
+ *	the return value will be between -0 and -180 inclusive. Please
+ *	note that due to angle wrapping, you cannot simply add the result
+ *	of rel_hdg() onto another heading and expect the result to be
+ *	valid, such as:
+ *```
+ * double new_hdg = hdg1 + rel_hdg(hdg1, hdg2);
+ *```
+ * The value in `new_hdg` could well be >360 or <0 in this case.
+ *	To properly add headings together and end up with something that
+ *	passes the is_valid_hdg() test again, you always want to
+ *	re-normalize the result using normalize_hdg():
+ *```
+ * double new_hdg = normalize_hdg(hdg1 + rel_hdg(hdg1, hdg2));
+ * // new_hdg will now be equivalent to hdg2
+ *```
+ * @see normalize_hdg()
+ */
+#define	rel_hdg(hdg1, hdg2)	rel_hdg_impl(hdg1, hdg2, __FILE__, __LINE__)
 API_EXPORT double rel_hdg_impl(double hdg1, double hdg2, const char *file,
     int line);
 
+/**
+ * Renormalizes a heading value that lies outside of the 0-360 inclusive
+ * range. Basically this takes care of undoing "angle wrapping".
+ *
+ * #### Example:
+ *```
+ * normalize_hdg(90)  => 90
+ * normalize_hdg(-90) => 270
+ * normalize_hdg(400) => 40
+ * normalize_hdg(NAN) => NAN
+ *```
+ */
 static inline double
 normalize_hdg(double hdg)
 {
-	while (hdg < 0.0)
+	if (isnan(hdg))
+		return (hdg);
+	hdg = fmod(hdg, 360);
+	/* Flip negative into positive */
+	if (hdg < 0.0)
 		hdg += 360.0;
-	while (hdg >= 360.0)
-		hdg -= 360.0;
 	/* Necessary to avoid FP rounding errors */
-	if (hdg < 0.0 || hdg > 360.0)
+	if (hdg <= 0.0 || hdg > 360.0) {
 		hdg = clamp(hdg, 0, 360);
+		/* Avoid negative zero */
+		if (hdg == -0.0)
+			hdg = 0.0;
+	}
 	return (hdg);
 }
-
+/**
+ * Renormalizes a longitude value. This is similar to normalize_hdg(), but
+ * instead of resolving angle wrapping into the 0-360 range, this resolves
+ * the output to be between -180..+180 (inclusive):
+ *```
+ * normalize_lon(100) => 100
+ * normalize_lon(200) => -160
+ * normalize_lon(300) => -60
+ * normalize_lon(400) => 40
+ *```
+ */
 static inline double
 normalize_lon(double lon)
 {
@@ -133,80 +250,90 @@ normalize_lon(double lon)
 	return (clamp(lon, -180, 180));
 }
 
-static inline bool_t
-is_valid_arc_radius(double radius)
-{
-	return (radius >= MIN_ARC_RADIUS && radius <= MAX_ARC_RADIUS);
-}
-
-static inline bool_t
-is_valid_bool(bool_t b)
-{
-	return (b == B_FALSE || b == B_TRUE);
-}
-
-#define	is_valid_icao_code		ACFSYM(is_valid_icao_code)
 API_EXPORT bool_t is_valid_icao_code(const char *icao);
-#define	is_valid_iata_code		ACFSYM(is_valid_iata_code)
 API_EXPORT bool_t is_valid_iata_code(const char *iata);
-#define	extract_icao_country_code	ACFSYM(extract_icao_country_code)
 API_EXPORT const char *extract_icao_country_code(const char *icao);
 
-#define	is_valid_xpdr_code	ACFSYM(is_valid_xpdr_code)
 API_EXPORT bool_t is_valid_xpdr_code(int code);
-#define	is_valid_vor_freq	ACFSYM(is_valid_vor_freq)
 API_EXPORT bool_t is_valid_vor_freq(double freq_mhz);
+/**
+ * Same as is_valid_vor_freq(), but takes an integer frequency in Hz
+ * instead of a floating-point value in MHz.
+ * @see is_valid_vor_freq()
+ */
 static inline bool_t
 is_valid_vor_freq_hz(uint32_t freq_hz)
 {
 	return (is_valid_vor_freq(freq_hz / 1000000.0));
 }
+/**
+ * Same as is_valid_vor_freq(), but takes an integer frequency in kHz
+ * instead of a floating-point value in MHz.
+ * @see is_valid_vor_freq()
+ */
 static inline bool_t
 is_valid_vor_freq_khz(uint32_t freq_khz)
 {
 	return (is_valid_vor_freq(freq_khz / 1000.0));
 }
-#define	is_valid_loc_freq	ACFSYM(is_valid_loc_freq)
+
 API_EXPORT bool_t is_valid_loc_freq(double freq_mhz);
+/**
+ * Same as is_valid_loc_freq(), but takes an integer frequency in Hz
+ * instead of a floating-point value in MHz.
+ * @see is_valid_loc_freq()
+ */
 static inline bool_t
 is_valid_loc_freq_hz(uint32_t freq_hz)
 {
 	return (is_valid_loc_freq(freq_hz / 1000000.0));
 }
+/**
+ * Same as is_valid_loc_freq(), but takes an integer frequency in kHz
+ * instead of a floating-point value in MHz.
+ * @see is_valid_loc_freq()
+ */
 static inline bool_t
 is_valid_loc_freq_khz(uint32_t freq_khz)
 {
 	return (is_valid_loc_freq(freq_khz / 1000.0));
 }
-#define	is_valid_ndb_freq	ACFSYM(is_valid_ndb_freq)
+
 API_EXPORT bool_t is_valid_ndb_freq(double freq_khz);
+/**
+ * Same as is_valid_ndb_freq(), but takes an integer frequency in Hz
+ * instead of a floating-point value in kHz.
+ * @see is_valid_loc_freq()
+ */
 static inline bool_t is_valid_ndb_freq_hz(uint32_t freq_hz)
 {
 	return (is_valid_ndb_freq(freq_hz / 1000.0));
 }
-#define	is_valid_tacan_freq	ACFSYM(is_valid_tacan_freq)
+
 API_EXPORT bool_t is_valid_tacan_freq(double freq_mhz);
-#define	is_valid_rwy_ID	ACFSYM(is_valid_rwy_ID)
 API_EXPORT bool_t is_valid_rwy_ID(const char *rwy_ID);
-#define	copy_rwy_ID	ACFSYM(copy_rwy_ID)
 API_EXPORT void copy_rwy_ID(const char *src, char dst[4]);
 
 /* AIRAC date functions */
-#define	airac_cycle2eff_date	ACFSYM(airac_cycle2eff_date)
 API_EXPORT const char *airac_cycle2eff_date(int cycle);
-#define	airac_cycle2eff_date2	ACFSYM(airac_cycle2eff_date2)
 API_EXPORT time_t airac_cycle2eff_date2(int cycle);
-#define	airac_cycle2exp_date	ACFSYM(airac_cycle2exp_date)
 API_EXPORT bool_t airac_cycle2exp_date(int cycle, char buf[16],
     time_t *cycle_end_p);
-#define	airac_time2cycle	ACFSYM(airac_time2cycle)
 API_EXPORT int airac_time2cycle(time_t t);
 
 /* CSV file & string processing helpers */
-/*
+/**
  * Grabs the next non-empty, non-comment line from a file, having stripped
  * away all leading and trailing whitespace. Any tab characters are also
- * replaced with spaces.
+ * replaced with spaces. Comments are lines that start with a '#' character.
+ * Also, any text following a '#' on a line is stripped away and considered
+ * a comment.
+ *
+ * This function is useful for writing a custom config file parser. It can
+ * also be used to consume X-Plane OBJ and similar files, or generally any
+ * text-based data file which uses '#' for comments. See also
+ * conf_create_empty(), conf_read_file() and the conf.h file for a
+ * fully-featured config system already included with libacfutils.
  *
  * @param fp File from which to retrieve the line.
  * @param linep Line buffer which will hold the new line. If the buffer pointer
@@ -216,9 +343,10 @@ API_EXPORT int airac_time2cycle(time_t t);
  *	allocated.
  * @param linenum The current line number. Will be advanced by 1 for each
  *	new line read.
- *
  * @return The number of characters in the line (after stripping whitespace)
  *	without the terminating NUL.
+ * @see conf_create_empty()
+ * @see conf_read_file()
  */
 UNUSED_ATTR static ssize_t
 parser_get_next_line(FILE *fp, char **linep, size_t *linecap, unsigned *linenum)
@@ -244,18 +372,29 @@ parser_get_next_gzline(void *gz_fp, char **linep, size_t *linecap,
 }
 #endif	/* defined(ACFUTILS_BUILD) || defined(ACFUTILS_GZIP_PARSER) */
 
+/**
+ * Legacy bridge to parser_get_next_quoted_str2() function without
+ * the optional second argument.
+ * @see parser_get_next_quoted_str2()
+ */
 UNUSED_ATTR static char *
 parser_get_next_quoted_str(FILE *fp)
 {
 	return (parser_get_next_quoted_str2(fp, NULL));
 }
 
-#define	explode_line			ACFSYM(explode_line)
 API_EXPORT ssize_t explode_line(char *line, char delim, char **comps,
     size_t capacity);
-#define	append_format			ACFSYM(append_format)
 API_EXPORT void append_format(char **str, size_t *sz,
     PRINTF_FORMAT(const char *format), ...) PRINTF_ATTR(3);
+/**
+ * Converts all whitespace in a string into plain ASCII space characters.
+ * This allows for easier splitting of a string at whitespace boundaries
+ * using functions such as strsplit(). First run the input to be split
+ * through normalize_whitespace() to make sure that any tabs are converted
+ * into plain ASCII spaces first and then use strsplit() to separate the
+ * line using the " " separator as the field delimeter.
+ */
 static inline void
 normalize_whitespace(char *str)
 {
@@ -266,45 +405,35 @@ normalize_whitespace(char *str)
 }
 
 /* string processing helpers */
-#define	strsplit			ACFSYM(strsplit)
 API_EXPORT char **strsplit(const char *input, const char *sep,
     bool_t skip_empty, size_t *num);
-#define	DESTROY_STRLIST(comps, len) \
+/**
+ * Invokes the free_strlist() function on the macro arguments and
+ * then sets both arguments to `NULL` and `0` respectively, to help
+ * prevent inadvertent reuse.
+ */
+#define	DESTROY_STRLIST(comps, num) \
 	do { \
-		free_strlist((comps), (len)); \
+		free_strlist((comps), (num)); \
 		(comps) = NULL; \
-		(len) = 0; \
+		(num) = 0; \
 	} while (0)
-#define	free_strlist			ACFSYM(free_strlist)
-API_EXPORT void free_strlist(char **comps, size_t len);
-#define	unescape_percent		ACFSYM(unescape_percent)
+API_EXPORT void free_strlist(char **comps, size_t num);
 API_EXPORT void unescape_percent(char *str);
 
-#define	mkpathname			ACFSYM(mkpathname)
 API_EXPORT char *mkpathname(const char *comp, ...) SENTINEL_ATTR;
-#define	mkpathname_v			ACFSYM(mkpathname_v)
 API_EXPORT char *mkpathname_v(const char *comp, va_list ap);
-#define	fix_pathsep			ACFSYM(fix_pathsep)
 API_EXPORT void fix_pathsep(char *str);
 
-#define	path_last_comp_subst		ACFSYM(path_last_comp_subst)
 API_EXPORT char *path_last_comp_subst(const char *path, const char *replace);
-#define	path_last_comp			ACFSYM(path_last_comp)
 API_EXPORT char *path_last_comp(const char *path);
-#define	path_ext_subst			ACFSYM(path_ext_subst)
 API_EXPORT char *path_ext_subst(const char *path, const char *ext);
-#define	path_normalize		ACFSYM(path_normalize)
 API_EXPORT void path_normalize(char *path);
 
-#define	file2str			ACFSYM(file2str)
 API_EXPORT char *file2str(const char *comp, ...) SENTINEL_ATTR;
-#define	file2str_ext			ACFSYM(file2str_ext)
 API_EXPORT char *file2str_ext(long *len_p, const char *comp, ...) SENTINEL_ATTR;
-#define	file2str_name			ACFSYM(file2str_name)
 API_EXPORT char *file2str_name(long *len_p, const char *filename);
-#define	file2buf			ACFSYM(file2buf)
 API_EXPORT void *file2buf(const char *filename, size_t *bufsz);
-#define	filesz				ACFSYM(filesz)
 API_EXPORT ssize_t filesz(const char *filename);
 
 /*
@@ -318,6 +447,10 @@ API_EXPORT ssize_t filesz(const char *filename);
 #endif
 void lacf_strlcpy(char *restrict dest, const char *restrict src, size_t cap);
 
+/**
+ * Portable version of the POSIX basename() function.
+ * @see @see [basename()](https://linux.die.net/man/3/basename)
+ */
 static inline const char *
 lacf_basename(const char *str)
 {
@@ -334,16 +467,17 @@ lacf_basename(const char *str)
 	return (&sep[1]);
 }
 
-/*
- * C getline is a POSIX function, so on Windows, we need to roll our own.
+/**
+ * Portable version of the POSIX getline() function.
+ * @see [getline()](https://linux.die.net/man/3/getline)
  */
 UNUSED_ATTR static ssize_t
-lacf_getline(char **line_p, size_t *cap_p, FILE *fp)
+lacf_getline(char **lineptr, size_t *n, FILE *stream)
 {
 #if	defined(ACFUTILS_BUILD) || defined(ACFUTILS_GZIP_PARSER)
-	return (lacf_getline_impl(line_p, cap_p, fp, B_FALSE));
+	return (lacf_getline_impl(lineptr, n, stream, B_FALSE));
 #else
-	return (lacf_getline_impl(line_p, cap_p, fp));
+	return (lacf_getline_impl(lineptr, n, stream));
 #endif
 }
 
@@ -352,33 +486,20 @@ lacf_getline(char **line_p, size_t *cap_p, FILE *fp)
 #define	getline				lacf_getline
 #endif
 
-#define	strtolower			ACFSYM(strtolower)
 API_EXPORT void strtolower(char *str);
-#define	strtoupper			ACFSYM(strtoupper)
 API_EXPORT void strtoupper(char *str);
 
-#define	sprintf_alloc			ACFSYM(sprintf_alloc)
-static inline char *sprintf_alloc(PRINTF_FORMAT(const char *fmt), ...)
-    PRINTF_ATTR(1);
-
-#define	vsprintf_alloc			ACFSYM(vsprintf_alloc)
-static inline char *vsprintf_alloc(const char *fmt, va_list ap);
-
-static inline char *
-sprintf_alloc(const char *fmt, ...)
-{
-	va_list ap;
-	char *str;
-
-	ASSERT(fmt != NULL);
-
-	va_start(ap, fmt);
-	str = vsprintf_alloc(fmt, ap);
-	va_end(ap);
-
-	return (str);
-}
-
+/**
+ * Variant of sprintf_alloc(), but which takes a va_list argument list
+ * as its second argument, to allow nesting it in other variadic functions.
+ * @param fmt Format string conforming to printf() formatting syntax. The
+ *	remaining arguments must match the requirements of the format string.
+ * @param ap Argument list containing all the arguments required by `fmt`.
+ * @return A newly allocated string holding the result of the printf
+ *	operation. Please note that the allocation is done using the
+ *	caller's heap allocator, so you should use the normal free()
+ *	function to free the associated memory, NOT lacf_free().
+ */
 static inline char *
 vsprintf_alloc(const char *fmt, va_list ap)
 {
@@ -399,8 +520,38 @@ vsprintf_alloc(const char *fmt, va_list ap)
 	return (str);
 }
 
-/*
- * Portable version of BSD & POSIX strcasecmp.
+/**
+ * Convenience function which allocates a new string of sufficient storage
+ * to hold a printf-formatted string. This removes the need to run the
+ * standard library C sprintf once to find out the length of a string,
+ * allocate storage, and then run it again to fill the storage.
+ * @param fmt Format string conforming to printf() formatting syntax. The
+ *	remaining arguments must match the requirements of the format string.
+ * @return A newly allocated string holding the result of the printf
+ *	operation. Please note that the allocation is done using the
+ *	caller's heap allocator, so you should use the normal free()
+ *	function to free the associated memory, NOT lacf_free().
+ */
+PRINTF_ATTR(1) static inline char *
+sprintf_alloc(PRINTF_FORMAT(const char *fmt), ...)
+{
+	va_list ap;
+	char *str;
+
+	ASSERT(fmt != NULL);
+
+	va_start(ap, fmt);
+	str = vsprintf_alloc(fmt, ap);
+	va_end(ap);
+
+	return (str);
+}
+
+/**
+ * Portable version of BSD & POSIX strcasecmp().
+ * This is a case-insensitive variant strcmp().
+ * @see [strcmp()](https://linux.die.net/man/3/strcmp)
+ * @see [strcasecmp()](https://linux.die.net/man/3/strcasecmp)
  */
 static inline int
 lacf_strcasecmp(const char *s1, const char *s2)
@@ -436,8 +587,10 @@ lacf_strcasecmp(const char *s1, const char *s2)
 	return (res);
 }
 
-/*
- * Portable version of BSD & POSIX strcasestr.
+/**
+ * Portable version of BSD & POSIX strcasestr().
+ * This is a case-insensitive variant strstr().
+ * @see [strstr() and strcasestr()](https://linux.die.net/man/3/strstr)
  */
 static inline char *
 lacf_strcasestr(const char *haystack, const char *needle)
@@ -478,6 +631,38 @@ lacf_strcasestr(const char *haystack, const char *needle)
 	return (res);
 }
 
+/**
+ * Calculates the number of digits after a decimal point for a printf
+ * format string to make the number appear with a fixed number of digits
+ * as a whole.
+ * @param x The input number that is to be formatted. This should be the
+ *	same number as that which will be used in the printf format
+ *	value.
+ * @param digits The number of digits that the final number should have.
+ *
+ * #### Example:
+ *
+ * Say we want a number to take up room for 4 digits, adding decimal
+ * digits after the point as necessary to padd the number:
+ *
+ * - 0.001 becomes "0.00" - rounding is applied as appropriate
+ * - 0.01 becomes "0.01"
+ * - 0.1 becomes "0.10"
+ * - 1 becomes "5.00"
+ * - 10 becomes "10.0"
+ * - 100 becomes "100" - this is rounded to less than 4 digits, since
+ *	adding a '.0' at the end would overflow the desired length.
+ * - 1000 remains as "1000"
+ *
+ * For numbers greater than 9999, the final number will have more than
+ * 4 digits. Use the fixed_decimals() function to achieve the above
+ * effect in a printf format as follows:
+ *```
+ * double foo = 1.1;
+ * printf("The number is %.*f\n", fixed_decimals(foo, 4), foo);
+ * // this prints "The number is 1.10"
+ *```
+ */
 static inline int
 fixed_decimals(double x, int digits)
 {
@@ -491,38 +676,68 @@ fixed_decimals(double x, int digits)
 	return (clampi(digits - ceil(log10(x)), 0, digits));
 }
 
-#define	utf8_charlen	ACFSYM(utf8_charlen)
-API_EXPORT size_t utf8_charlen(const char *str);
-#define	utf8_strlen	ACFSYM(utf8_strlen)
-API_EXPORT size_t utf8_strlen(const char *str);
+API_EXPORT size_t utf8_char_get_num_bytes(const char *str);
+API_EXPORT size_t utf8_get_num_chars(const char *str);
 
-/*
- * return x rounded up to the nearest power-of-2.
+/**
+ * @return `x` rounded up to the nearest power-of-2.
  */
 #define	P2ROUNDUP(x)	(-(-(x) & -(1 << highbit64(x))))
-/* Round `x' to the nearest multiple of `y' */
+/** Rounds `x` to the nearest multiple of `y` */
 static inline double
 roundmul(double x, double y)
 {
 	return (round(x / y) * y);
 }
-/* Round `x' DOWN to the nearest multiple of `y' */
+/** Rounds `x` DOWN to the nearest multiple of `y` */
 static inline double
 floormul(double x, double y)
 {
 	return (floor(x / y) * y);
 }
+/**
+ * Helper macro to either set or reset a bit field in an integer.
+ * @param out_var The integer variable where the bitfield will be set or reset.
+ * @param bit_mask A mask of the bitfield to be manipulated. These are the
+ *	bits that will be set or reset.
+ * @param bit_value An condition value. If non-zero, the bits in `bit_mask`
+ *	will be set to 1 in `out_var`. If zero, the bits in `bit_mask` will
+ *	be reset to 0 in `out_var`.
+ *
+ * #### Example
+ *```
+ * #define FOO_FEATURE_FLAG 0x1
+ * #define BAR_FEATURE_FLAG 0x2
+ * int feature_flags = 0;
+ *
+ * SET_BITFIELD_1(feature_flags, FOO_FEATURE_FLAG, B_TRUE);
+ * // feature_flags will now be 0x1 (FOO_FEATURE_FLAG set)
+ * SET_BITFIELD_1(feature_flags, BAR_FEATURE_FLAG, B_TRUE);
+ * // feature_flags will now be 0x3 (FOO_FEATURE_FLAG | BAR_FEATURE_FLAG)
+ * SET_BITFIELD_1(feature_flags, FOO_FEATURE_FLAG, B_FALSE);
+ * // feature_flags will now be 0x2 (BAR_FEATURE_FLAG)
+ *```
+ * A more natural way to use this macro is to use the return value of
+ * a check function the third argument:
+ *```
+ * SET_BITFIELD_1(feature_flags, FOO_FEATURE_FLAG, foo_feature_is_on());
+ * // feature_flags will now either have FOO_FEATURE_FLAG bit set or
+ * // cleared, depending on the return value of foo_feature_is_on().
+ *```
+ */
+#define	SET_BITFIELD_1(out_var, bit_mask, bit_value) \
+	do { \
+		if (bit_value) \
+			(out_var) |= (bit_mask); \
+		else \
+			(out_var) &= ~(bit_mask); \
+	} while (0)
 
 /* file/directory manipulation */
-#define	file_eixsts			ACFSYM(file_exists)
 API_EXPORT bool_t file_exists(const char *path, bool_t *isdir);
-#define	create_directory		ACFSYM(create_directory)
 API_EXPORT bool_t create_directory(const char *dirname);
-#define	create_directory_recursive	ACFSYM(create_directory_recursive)
 API_EXPORT bool_t create_directory_recursive(const char *dirname);
-#define	remove_directory		ACFSYM(remove_directory)
 API_EXPORT bool_t remove_directory(const char *dirname);
-#define	remove_file			ACFSYM(remove_file)
 API_EXPORT bool_t remove_file(const char *filename, bool_t notfound_ok);
 
 API_EXPORT char *lacf_dirname(const char *filename);
@@ -540,11 +755,8 @@ typedef struct {
 	struct dirent	de;
 } DIR;
 
-#define	opendir		ACFSYM(opendir)
 API_EXPORT DIR *opendir(const char *path);
-#define	readdir		ACFSYM(readdir)
 API_EXPORT struct dirent *readdir(DIR *dirp);
-#define	closedir	ACFSYM(closedir)
 API_EXPORT void closedir(DIR *dirp);
 
 #define	sleep(x)	SleepEx((x) * 1000, FALSE)
@@ -554,7 +766,6 @@ API_EXPORT void closedir(DIR *dirp);
 
 #if	IBM
 
-#define	win_perror	ACFSYM(win_perror)
 API_EXPORT void win_perror(DWORD err, PRINTF_FORMAT(const char *fmt), ...)
     PRINTF_ATTR(2);
 
@@ -563,15 +774,33 @@ API_EXPORT void win_perror(DWORD err, PRINTF_FORMAT(const char *fmt), ...)
 API_EXPORT void lacf_qsort_r(void *base, size_t nmemb, size_t size,
     int (*compar)(const void *, const void *, void *), void *arg);
 
+/**
+ * This function is a portable and thread-safe version of the gmtime()
+ * function. The problem with plain standard C gmtime() is that it is not
+ * thread-safe, because the returned argument is a pointer into a shared
+ * memory buffer, allocated inside of the standard C library. As such,
+ * time calls occurring in other threads might clobber the buffer.
+ *
+ * The lacf_gmtime_r() function calls the platform-specific thread-safe
+ * version of gmtime(). On macOS and Linux, this uses the gmtime_r()
+ * function, whereas on Windows, this uses the _gmtime64_s() function.
+ *
+ * @param tim Pointer to a `time_t`, which is to be converted.
+ * @param tm Pointer to a `struct tm` structure, which will be
+ *	filled with the broken-down UTC time corresponding to `tim`.
+ * @return True if the underlying gmtime_r() call succeeded.
+ * @see [gmtime()](https://linux.die.net/man/3/gmtime)
+ */
+static inline bool_t
+lacf_gmtime_r(const time_t *tim, struct tm *tm)
+{
 #if	defined(__STDC_LIB_EXT1__) || IBM
-#define	lacf_gmtime_r(__time__, __tm__)	_gmtime64_s((__tm__), (__time__))
-#define	LACF_GMTIME_CHK(__time__, __tm__) \
-	(_gmtime64_s((__tm__), (__time__)) == 0)
-#else
-#define	lacf_gmtime_r			gmtime_r
-#define	LACF_GMTIME_CHK(__time__, __tm__) \
-	(gmtime_r((__time__), (__tm__)) != NULL)
-#endif
+	return (_gmtime64_s(tm, tim) == 0);
+#else	/* !defined(__STDC_LIB_EXT1__) && !IBM */
+	return (gmtime_r(tim, tm) != NULL);
+#endif	/* !defined(__STDC_LIB_EXT1__) && !IBM */
+}
+
 
 #ifdef	__cplusplus
 }

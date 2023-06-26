@@ -15,6 +15,16 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
+/*
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
+ */
+/**
+ * \file
+ * A generic CRC64 implementation from OpenSolaris. Be sure to call
+ * crc64_init() before using it. Then just call crc64() and pass it the
+ * data you want checksummed. Also includes a fast & light-weight
+ * portable pseudo random number generator.
+ */
 
 #ifndef	_ACF_UTILS_CRC64_H_
 #define	_ACF_UTILS_CRC64_H_
@@ -23,32 +33,29 @@
 #include <stdint.h>
 
 #include "acfutils/assert.h"
+#include "acfutils/core.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-#define	crc64_init		ACFSYM(crc64_init)
 API_EXPORT void crc64_init();
 
+/**
+ * Initializes the starting CRC64 value for subsequent calls to crc64_append().
+ */
 static inline void
 crc64_state_init(uint64_t *crc)
 {
 	ASSERT(crc != NULL);
 	*crc = (uint64_t)-1;
 }
-#define	crc64_append		ACFSYM(crc64_append)
 API_EXPORT uint64_t crc64_append(uint64_t crc, const void *input, size_t sz);
-#define	crc64			ACFSYM(crc64)
 API_EXPORT uint64_t crc64(const void *input, size_t sz);
 
-#define	crc64_srand		ACFSYM(crc64_srand)
 API_EXPORT void crc64_srand(uint64_t seed);
-#define	crc64_rand		ACFSYM(crc64_rand)
 API_EXPORT uint64_t crc64_rand(void);
-#define	crc64_rand_fract	ACFSYM(crc64_rand_fract)
 API_EXPORT double crc64_rand_fract(void);
-#define	crc64_rand_normal	ACFSYM(crc64_rand_normal)
 API_EXPORT double crc64_rand_normal(double sigma);
 
 #ifdef	__cplusplus

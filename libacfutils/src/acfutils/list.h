@@ -22,6 +22,17 @@
  * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
+/*
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
+ */
+/**
+ * \file
+ * This is a general-purpose doubly-linked list system. It is designed
+ * to be easy to integrate into pre-existing data structures and has many
+ * functions to manipulate and examine the  linked list.
+ * @see list_t
+ * @see list_create()
+ */
 
 #ifndef	_ACF_UTILS_LIST_H_
 #define	_ACF_UTILS_LIST_H_
@@ -33,7 +44,29 @@
 extern "C" {
 #endif
 
+/**
+ * \struct list_node_t
+ * You must embed a member of this type somewhere in any data
+ * structure which is to be contained within a linked list. The
+ * list uses this member to store member references.
+ * @see list_create()
+ * @see list_next()
+ * @see list_link_active()
+ */
 typedef struct list_node list_node_t;
+/**
+ * \struct list_t
+ * This is the linked list object itself. You want to embed this
+ * in your parent structures which contain the linked list, or
+ * dynamically allocate it.
+ *
+ * Before using the linked list, it must be initialized using
+ * list_create(). After you are done with the list, you must
+ * deinitialize it using list_destroy(). Items in the list can
+ * be added using the `list_insert_*` and `list_remove_*`
+ * functions. The list can be traversed using list_head(),
+ * list_tail(), list_next() and list_prev().
+ */
 typedef struct list list_t;
 
 API_EXPORT void list_create(list_t *, size_t, size_t);

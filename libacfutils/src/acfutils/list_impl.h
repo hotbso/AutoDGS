@@ -23,6 +23,11 @@
  * Copyright 2003 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
+/**
+ * \file
+ * @note This is an internal implementation file and shouldn't be
+ *	included directly. You want to include list.h instead.
+ */
 
 #ifndef	_ACF_UTILS_LIST_IMPL_H_
 #define	_ACF_UTILS_LIST_IMPL_H_
@@ -33,11 +38,13 @@
 extern "C" {
 #endif
 
+/** See list_node_t for more information. */
 struct list_node {
 	struct list_node *list_next;
 	struct list_node *list_prev;
 };
 
+/** See list_t for more information. */
 struct list {
 	size_t	list_size;
 	size_t	list_offset;

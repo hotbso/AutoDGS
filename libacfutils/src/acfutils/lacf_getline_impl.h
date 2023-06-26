@@ -20,7 +20,12 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2021 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
+ */
+/**
+ * \file
+ * This is an internal implementation file.
+ * @note Don't include lacf_getline_impl.h directly. Include helpers.h instead.
  */
 
 #ifndef	_ACF_UTILS_LACF_GETLINE_IMPL_H_
@@ -41,6 +46,10 @@
 extern "C" {
 #endif
 
+/**
+ * Implementation of lacf_getline().
+ * @note Do not call lacf_getline_impl() directly. Call lacf_getline() instead.
+ */
 #if	defined(ACFUTILS_BUILD) || defined(ACFUTILS_GZIP_PARSER)
 UNUSED_ATTR static ssize_t
 lacf_getline_impl(char **line_p, size_t *cap_p, void *fp, bool_t compressed)

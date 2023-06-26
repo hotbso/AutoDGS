@@ -20,7 +20,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2020 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
 
 #include <errno.h>
@@ -189,6 +189,7 @@ static struct {
  * How to turn to get from hdg1 to hdg2 with positive being right and negative
  * being left. Always turns the shortest way around (<= 180 degrees).
  */
+/** Do not call directly. Use the rel_hdg() macro instead. */
 double
 rel_hdg_impl(double hdg1, double hdg2, const char *file, int line)
 {
@@ -207,6 +208,11 @@ rel_hdg_impl(double hdg1, double hdg2, const char *file, int line)
 	}
 }
 
+/**
+ * @return True if `code` is a valid transponder code in decimal format:
+ * - The code's numerical value is between 0 and 7777 inclusive
+ * - Each digit is between 0 and 7 inclusive
+ */
 API_EXPORT bool_t
 is_valid_xpdr_code(int code)
 {
@@ -217,6 +223,12 @@ is_valid_xpdr_code(int code)
 	    ((code / 1000) % 10) <= 7);
 }
 
+/**
+ * @return True if `freq_mhz` is a valid VOR station frequency in MHz:
+ * - sits in the 108.00-117.95 MHz band (inclusive) with correct channel
+ *	spacing and
+ * - is NOT a localizer frequency
+ */
 bool_t
 is_valid_vor_freq(double freq_mhz)
 {
@@ -239,6 +251,12 @@ is_valid_vor_freq(double freq_mhz)
 	return (B_TRUE);
 }
 
+/**
+ * @return True if `freq_mhz` is a valid localizer station frequency in MHz:
+ * - sits in the 108.10-111.95 MHz band (inclusive) with correct channel
+ *	spacing and
+ * - is NOT a VOR frequency
+ */
 bool_t
 is_valid_loc_freq(double freq_mhz)
 {
@@ -254,6 +272,10 @@ is_valid_loc_freq(double freq_mhz)
 	return (B_TRUE);
 }
 
+/**
+ * @deprecated
+ * Rough guess for whether `freq_mhz` is a valid TACAN frequency.
+ */
 bool_t
 is_valid_tacan_freq(double freq_mhz)
 {
@@ -266,6 +288,11 @@ is_valid_tacan_freq(double freq_mhz)
 	return (B_TRUE);
 }
 
+/**
+ * @return True if `freq_khz` is a valid NDB station frequency in kHz.
+ *	NDBs do not have fixed spacing, so this only checks for whether
+ *	the frequency is in a reasonable range (177 - 1750 kHz).
+ */
 bool_t
 is_valid_ndb_freq(double freq_khz)
 {
@@ -274,12 +301,12 @@ is_valid_ndb_freq(double freq_khz)
 	return (freq_hz >= 177000 && freq_hz <= 1750000);
 }
 
-/*
+/**
  * Checks if a string is a valid ICAO airport code. ICAO airport codes always:
- * 1) are 4 characters long
- * 2) are all upper case
- * 3) contain only the letters A-Z
- * 4) may not start with I, J, Q or X
+ * - are 4 characters long
+ * - are all upper case
+ * - contain only the letters A-Z
+ * - may not start with I, J, Q or X
  */
 bool_t
 is_valid_icao_code(const char *icao)
@@ -298,12 +325,12 @@ is_valid_icao_code(const char *icao)
 	return (B_TRUE);
 }
 
-/*
+/**
  * Checks if a string is a valid IATA airport code. ICAO airport codes always:
- * 1) are 3 characters long
- * 2) are all upper case
- * 3) contain only the letters A-Z
- * 4) may not start with Q
+ * - are 3 characters long
+ * - are all upper case
+ * - contain only the letters A-Z
+ * - may not start with Q
  */
 bool_t
 is_valid_iata_code(const char *iata)
@@ -319,13 +346,13 @@ is_valid_iata_code(const char *iata)
 	return (B_TRUE);
 }
 
-/*
- * Extracts the country code portion from an ICAO airport code. Because the
- * returned string pointer for any given country code is always the same, it
- * is possible to simply compare country code correspondence using a simple
- * pointer value comparison. If the ICAO country code is not known, returns
- * NULL instead.
- * If the passed string isn't a valid ICAO country code, returns NULL as well.
+/**
+ * @return The country code corresponding to an ICAO airport code.
+ * The returned string's storage is statically allocated and thus
+ * doesn't need to be freed. If the ICAO country code is not known,
+ * returns NULL instead. Also returns NULL if the passed string isn't
+ * a valid ICAO airport code.
+ * @see is_valid_icao_code()
  */
 const char *
 extract_icao_country_code(const char *icao)
@@ -341,12 +368,12 @@ extract_icao_country_code(const char *icao)
 	return (NULL);
 }
 
-/*
+/**
  * Checks a runway ID for correct formatting. Runway IDs are
  * 2- or 3-character strings conforming to the following format:
- *	*) Two-digit runway heading between 01 and 36. Headings less
- *	   than 10 are always prefixed by a '0'. "00" is NOT valid.
- *	*) An optional parallel runway discriminator, one of 'L', 'R' or 'C'.
+ * - Two-digit runway heading between 01 and 36. Headings less than 10
+ *	are always prefixed by a '0'. "00" is NOT valid.
+ * - An optional parallel runway discriminator, one of 'L', 'R', 'C' or 'T'.
  */
 bool_t
 is_valid_rwy_ID(const char *rwy_ID)
@@ -360,19 +387,22 @@ is_valid_rwy_ID(const char *rwy_ID)
 	if (hdg == 0 || hdg > 36)
 		return (B_FALSE);
 	if (len == 3) {
-		if (rwy_ID[2] != 'R' && rwy_ID[2] != 'L' && rwy_ID[2] != 'C')
+		if (rwy_ID[2] != 'R' && rwy_ID[2] != 'L' && rwy_ID[2] != 'C' &&
+		    rwy_ID[2] != 'T') {
 			return (B_FALSE);
+		}
 	}
 
 	return (B_TRUE);
 }
 
-/*
+/**
  * Copies a runway identifier from an unknown source to a 4-character runway
  * identifier buffer. This also performs the following transformations on the
  * runway identifier:
- * 1) if the runway identifier had a trailing 'T', it is stripped
- * 2) if the runway was a US single-digit runway number, a '0' is prepended
+ * 1. if the runway identifier had a trailing 'T', it is stripped
+ * 2. if the runway was a US single-digit runway number, a '0' is prepended
+ *
  * The function performs no validity checking other than making sure that the
  * output buffer is not overflown. The caller is responsible for validating
  * the result after copy_rwy_ID() returns using is_valid_rwy_ID().
@@ -443,6 +473,14 @@ cycle2start(int i)
 	return (lacf_timegm(&cyc_tm));
 }
 
+/**
+ * Translates an AIRAC cycle number into a shorthand start date string,
+ * from which the AIRAC cycle becomes "effective."
+ * @param cycle The AIRAC cycle number, e.g. 2210.
+ * @return A statically allocated string (which you don't need to free),
+ *	describing the cycle start date in a human-readable format.
+ *	For example, AIRAC cycle 2210 will return "06-OCT".
+ */
 const char *
 airac_cycle2eff_date(int cycle)
 {
@@ -453,6 +491,10 @@ airac_cycle2eff_date(int cycle)
 	return (NULL);
 }
 
+/**
+ * Translates an AIRAC cycle number into the start `time_t` (Unixtime)
+ * from which the AIRAC cycle goes into effect.
+ */
 time_t
 airac_cycle2eff_date2(int cycle) {
 	for (int i = 0; airac_eff_dates[i].cycle != -1; i++) {
@@ -462,6 +504,24 @@ airac_cycle2eff_date2(int cycle) {
 	return (-1u);
 }
 
+/**
+ * Translates an AIRAC cycle into the end date, at which the cycle
+ * expires. That is the last day on which the cycle is still valid.
+ * This will always be the 1 day before the next cycle becomes
+ * effective.
+ * @param cycle The AIRAC cycle for which to determine the expiry date.
+ * @param buf Optional output string, which will be filled with a
+ *	short human-readable date description. For example, AIRAC
+ *	cycle 2210 will return "02-NOV" here. If you don't need this,
+ *	set this argument to NULL.
+ * @param cycle_end_p Optional output parameter, which will be filled
+ *	with the `time_t` (Unixtime) of the last second when the AIRAC
+ *	cycle is still effective, i.e. 23:59:59 UTC of the last day of
+ *	the AIRAC cycle. 1 second later, the next AIRAC cycle becomes
+ *	effective. If you don't need this value, set this to NULL.
+ * @return `B_TRUE` if the AIRAC cycle expiry time is known, `B_FALSE`
+ *	otherwise.
+ */
 bool_t
 airac_cycle2exp_date(int cycle, char buf[16], time_t *cycle_end_p)
 {
@@ -489,6 +549,10 @@ airac_cycle2exp_date(int cycle, char buf[16], time_t *cycle_end_p)
 	return (B_FALSE);
 }
 
+/**
+ * @return The AIRAC cycle number which should be effective at a given
+ *	`time_t` (Unixtime). If the cycle is unknown, returns -1 instead.
+ */
 int
 airac_time2cycle(time_t t)
 {
@@ -500,7 +564,9 @@ airac_time2cycle(time_t t)
 	return (-1);
 }
 
-/*
+/**
+ * @deprecated Use strsplit() instead.
+ *
  * Breaks up a line into components delimited by a character.
  *
  * @param line The input line to break up. The buffer will be modified
@@ -509,12 +575,12 @@ airac_time2cycle(time_t t)
  * @param delim The delimiter character (e.g. ',').
  * @param comps A list of pointers that will be set to point to the
  *	start of each substring.
- * @param capacity The component capacity of `comps'. If more input
- *	components are encountered than is space in `comps', the array
+ * @param capacity The component capacity of `comps`. If more input
+ *	components are encountered than is space in `comps`, the array
  *	is not overflown.
  *
  * @return The number of components in the input string (at least 1).
- *	If the `comps' array was too small, returns the number of
+ *	If the `comps` array was too small, returns the number of
  *	components that would have been needed to process the input
  *	string fully as a negative value.
  */
@@ -540,15 +606,45 @@ explode_line(char *line, char delim, char **comps, size_t capacity)
 	return (toomany ? -i : i);
 }
 
-/*
- * Splits up an input string by separator into individual components.
- * The input string is `input' and the separator string is `sep'. The
- * skip_empty flag indicates whether to skip empty components (i.e.
- * two occurences of the separator string are next to each other).
- * Returns an array of pointers to the component strings and the number
- * of components in the `num' return parameter. The array of pointers
- * as well as the strings themselves are safe_malloc'd and should be freed
- * by the caller. Use free_strlist for that.
+/**
+ * Splits up an input string by a separator into individual components.
+ *
+ * @param input The input string to be split up.
+ * @param sep The separator string. The function looks for sequences of
+ *	`sep` in `input` and any portions of the input which occur between
+ *	separators are split out.
+ * @param skip_empty This flag indicates whether to skip empty components
+ *	(i.e. two occurences of the separator string which are next to each
+ *	other). If set to `B_TRUE`, the resulting array will not contain
+ *	empty strings where two consecutive separators were in the input.
+ * @param num A mandatory return parameter, which will be set to the number
+ *	of components in the output array.
+ * @return An array of strings and the number of components in the `num'
+ *	return parameter. The array of strings must be freed by the caller
+ *	using the free_strlist() function.
+ *
+ * Example usage with `skip_empty` set to `B_FALSE`:
+ *```
+ * const char *input = "foo,bar,,baz";
+ *
+ * size_t num;
+ * char **comps = strsplit(input, ",", B_FALSE, &num);
+ * // comps = { "foo", "bar", "", "baz" } and num = 4
+ *
+ * // Free the result when done
+ * free_strlist(comps, num);
+ *```
+ * Example of effect of `skip_empty` argument:
+ *```
+ * const char *input = "foo,bar,,baz";
+ *
+ * size_t num;
+ * char **comps = strsplit(input, ",", B_TRUE, &num);
+ * // comps = { "foo", "bar", "baz" } and num = 3
+ *
+ * // Free the result when done
+ * free_strlist(comps, num);
+ *```
  */
 char **
 strsplit(const char *input, const char *sep, bool_t skip_empty, size_t *num)
@@ -597,23 +693,39 @@ strsplit(const char *input, const char *sep, bool_t skip_empty, size_t *num)
 	return (result);
 }
 
-/*
- * Frees a string array returned by strsplit.
+/**
+ * Frees a string array returned by strsplit().
+ * @param comps The components array returned by strsplit().
+ * @param num The number of string components in `comps` as returned
+ *	by strsplit() in the `num` return parameter.
  */
 void
-free_strlist(char **comps, size_t len)
+free_strlist(char **comps, size_t num)
 {
 	if (comps == NULL)
 		return;
-	for (size_t i = 0; i < len; i++)
+	for (size_t i = 0; i < num; i++)
 		free(comps[i]);
 	free(comps);
 }
 
-/*
+/**
  * Appends a printf-like formatted string to the end of *str, reallocating
- * the buffer as needed to contain it. The value of *str is modified to
+ * the buffer as needed to contain it. The value of `*str` is modified to
  * point to the appropriately reallocated buffer.
+ *
+ * You should free the string using lacf_free() when you are done.
+ *
+ * #### Example
+ *```
+ * char *str = NULL;
+ * size_t sz = 0;
+ * int foo = 5;
+ * float bar = 10.5;
+ * append_format(&str, &sz, "Hello World: %d. ", foo);
+ * append_format(&str, &sz, "How are you %.1f?", bar);
+ * // str = "Hello World: 5. How are you 10.5?"
+ *```
  */
 void
 append_format(char **str, size_t *sz, const char *format, ...)
@@ -632,10 +744,10 @@ append_format(char **str, size_t *sz, const char *format, ...)
 	va_end(ap);
 }
 
-/*
+/**
  * Unescapes a string that uses '%XX' escape sequences, where 'XX' are two
  * hex digits denoting the ASCII code of the character to be inserted in
- * place of the escape sequence. The argument 'str' is shortened appropriately.
+ * place of the escape sequence. The argument `str` is shortened appropriately.
  */
 void
 unescape_percent(char *str)
@@ -654,6 +766,9 @@ unescape_percent(char *str)
 	}
 }
 
+/**
+ * Converts all characters in `str` to lowercase using tolower().
+ */
 API_EXPORT void
 strtolower(char *str)
 {
@@ -661,6 +776,9 @@ strtolower(char *str)
 		str[i] = tolower(str[i]);
 }
 
+/**
+ * Converts all characters in `str` to uppercase using toupper().
+ */
 API_EXPORT void
 strtoupper(char *str)
 {
@@ -668,8 +786,15 @@ strtoupper(char *str)
 		str[i] = toupper(str[i]);
 }
 
+/**
+ * Given a pointer to a single UTF-8-encoded character, returns the number
+ * of **bytes** occupied by the character. Please note that this doesn't go
+ * through the entire string, but instead only looks at a single character.
+ * Use utf_get_num_chars() to count the number of characters in an entire
+ * UTF-8 string
+ */
 API_EXPORT size_t
-utf8_charlen(const char *str)
+utf8_char_get_num_bytes(const char *str)
 {
 	if ((str[0] & 0xe0) == 0xc0 && str[1] != 0)
 		return (2);
@@ -681,20 +806,28 @@ utf8_charlen(const char *str)
 	return (1);
 }
 
+/**
+ * Counts the number of characters in a UTF-8-encoded string. Please
+ * note that due to the multi-byte nature of UTF-8, this can be less
+ * than the number of bytes occupied by the string. The input string
+ * MUST be NUL-terminated.
+ */
 API_EXPORT size_t
-utf8_strlen(const char *str)
+utf8_get_num_chars(const char *str)
 {
-	const char *s;
-	for (s = str; s[0] != 0;)
-		s += utf8_charlen(str);
-	return (s - str);
+	size_t num_chars = 0;
+	for (const char *s = str; s[0] != 0; num_chars++)
+		s += utf8_char_get_num_bytes(str);
+	return (num_chars);
 }
 
-/*
- * Creates a file path string from individual path components. The
+/**
+ * Allocates a file path string from individual path components. The
  * components are provided as separate filename arguments and the list needs
- * to be terminated with a NULL argument. The returned string can be freed
- * via free().
+ * to be terminated with a NULL argument. The returned string must be freed
+ * using lacf_free(). The path components are separated using the
+ * appropriate path separator for the host platform ('\' on Windows, '/' on
+ * macOS and Linux).
  */
 char *
 mkpathname(const char *comp, ...)
@@ -709,6 +842,10 @@ mkpathname(const char *comp, ...)
 	return (res);
 }
 
+/**
+ * Same as mkpathname() but takes a `va_list` argument to allow for nesting
+ * inside of another variadic function.
+ */
 char *
 mkpathname_v(const char *comp, va_list ap)
 {
@@ -742,7 +879,7 @@ mkpathname_v(const char *comp, va_list ap)
 	return (str);
 }
 
-/*
+/**
  * For some inexplicable reason, on Windows X-Plane can return paths via the
  * API which are a mixture of Windows- & Unix-style path separators. This
  * function fixes that by flipping all path separators to the appropriate
@@ -762,13 +899,14 @@ fix_pathsep(char *str)
 	}
 }
 
-/*
- * Strips the last path component from `path' and replaces with with `replace'.
+/**
+ * Strips the last path component from `path` and replaces with with `replace`.
  * Example:
- *	path = "/foo/bar"
- *	replace = "baz"
- *	result = "/foo/baz"
- * The returned value must be freed using lacf_free.
+ *```
+ * char *result = path_last_comp_subst("/foo/bar", "baz");
+ * // result = "/foo/baz"
+ *```
+ * The returned value must be freed using lacf_free().
  */
 char *
 path_last_comp_subst(const char *path, const char *replace)
@@ -793,9 +931,10 @@ path_last_comp_subst(const char *path, const char *replace)
 	return (result);
 }
 
-/*
+/**
  * Returns the last path component of the path. If the path contains no
- * separators, returns the entire input path.
+ * separators, returns the entire input path. The returned value is
+ * a pointer into `path`, and so shouldn't be freed by the caller.
  */
 char *
 path_last_comp(const char *path)
@@ -812,11 +951,11 @@ path_last_comp(const char *path)
 	return (last);
 }
 
-/*
+/**
  * Takes `path' and substitutes its path extension (any characters following
- * the last '.') with `ext'. If the path doesn't contain a path extension,
+ * the last '.') with `ext`. If the path doesn't contain a path extension,
  * it is appended. The newly allocated path is returned to the caller.
- * The caller is responsible for freeing this path using lacf_free.
+ * The caller is responsible for freeing this path using lacf_free().
  */
 char *
 path_ext_subst(const char *path, const char *ext)
@@ -852,10 +991,11 @@ find_prev_path_sep(char *path, char *elem)
 	return (NULL);
 }
 
-/*
+/**
  * Locates all instances of '//', '\\', '..' and '.' and eliminates them from
  * the path, resolving directory returns as necessary. This also first flips
- * all path separators to the platform-appropriate type using fix_pathsep.
+ * all path separators to the platform-appropriate type using fix_pathsep().
+ * The `path` argument is modified in place.
  */
 void
 path_normalize(char *path)
@@ -886,6 +1026,9 @@ path_normalize(char *path)
 	}
 }
 
+/**
+ * @deprecated Use file2str_name() instead.
+ */
 char *
 file2str(const char *comp, ...)
 {
@@ -902,6 +1045,9 @@ file2str(const char *comp, ...)
 	return (str);
 }
 
+/**
+ * @deprecated Use file2str_name() instead.
+ */
 char *
 file2str_ext(long *len_p, const char *comp, ...)
 {
@@ -917,6 +1063,23 @@ file2str_ext(long *len_p, const char *comp, ...)
 	return (str);
 }
 
+/**
+ * Reads the contents of a file and returns them. Please note that this
+ * function should ONLY be used for text files which are less than 256MB
+ * in size. Use file2buf() to read larger files, or files containing
+ * binary data.
+ * @param len_p Mandatory return argument, which will be filled with the
+ *	actual length of the file in bytes (minus a terminating NUL byte).
+ *	This can be larger than a simple strlen() on the return value might
+ *	suggest, if the file contains a stray NUL byte somewhere inside.
+ * @param filename The full path to the file to be read.
+ * @return The contents of the file as a C string. The string is always
+ *	guaranteed to be NUL-terminated. You must free this string using
+ *	lacf_free() when done. If the file cannot be read, this function
+ *	returns `NULL` instead and the `errno` variable will contain the
+ *	exact error which occurred.
+ * @see file2buf()
+ */
 char *
 file2str_name(long *len_p, const char *filename)
 {
@@ -949,6 +1112,21 @@ file2str_name(long *len_p, const char *filename)
 	return (contents);
 }
 
+/**
+ * Reads the contents of a file and returns them in a memory buffer.
+ * Please note that this function has no limit on the size of file it
+ * will read, so you must use it with care so as not to overload the
+ * memory subsystem by trying to read a giant file which won't fit
+ * into memory.
+ * @param filename The full path to the file to be read.
+ * @param bufsz Mandatory return argument, which will be filled with
+ *	the number of bytes in the file.
+ * @return The file's contents allocated into a memory buffer. Use
+ *	lacf_free() to free the the buffer when done. If an error
+ *	occurred trying to read the file, the function returns `NULL`
+ *	instead and the `errno` variable will contain the exact error
+ *	which occurred.
+ */
 API_EXPORT void *
 file2buf(const char *filename, size_t *bufsz)
 {
@@ -983,19 +1161,21 @@ file2buf(const char *filename, size_t *bufsz)
 	return (buf);
 }
 
+/**
+ * @return The size of the file at path `filename` in bytes. If the file
+ *	size cannot be determined, this returns -1 instead. This function
+ *	doesn't open the file for reading, so don't assume that filesz()
+ *	returning a valid size indicates file read access.
+ */
 ssize_t
 filesz(const char *filename)
 {
-	ssize_t s;
-	FILE *fp = fopen(filename, "rb");
+	struct stat st;
 
-	if (fp == NULL)
+	ASSERT(filename != NULL);
+	if (stat(filename, &st) != 0)
 		return (-1);
-	fseek(fp, 0, SEEK_END);
-	s = ftell(fp);
-	fclose(fp);
-
-	return (s);
+	return (st.st_size);
 }
 
 #if	IBM
@@ -1029,9 +1209,11 @@ win_perror(DWORD err, const char *fmt, ...)
 
 #endif	/* IBM */
 
-/*
- * Returns true if the file exists. If `isdir' is non-NULL, if the file
- * exists, isdir is set to indicate if the file is a directory.
+/**
+ * @return `B_TRUE` if the file exists, `B_FALSE` otherwise.
+ * @param filename The full path to the file to check.
+ * @param isdir Optional return parameter which if not NULL, will be
+ *	set to indicate whether the file is a directory.
  */
 bool_t
 file_exists(const char *filename, bool_t *isdir)
@@ -1067,8 +1249,8 @@ file_exists(const char *filename, bool_t *isdir)
 #endif	/* !IBM */
 }
 
-/*
- * Creates an empty directory at `dirname' with default permissions.
+/**
+ * Creates an empty directory at `dirname` with default permissions.
  */
 bool_t
 create_directory(const char *dirname)
@@ -1095,8 +1277,8 @@ create_directory(const char *dirname)
 	return (B_TRUE);
 }
 
-/*
- * Same as create_directory, but creates all intermediate directories
+/**
+ * Same as create_directory(), but creates all intermediate directories
  * on the way as well.
  */
 bool_t
@@ -1181,8 +1363,9 @@ errout:
 
 #endif	/* IBM */
 
-/*
- * Recursive directory removal, including all its contents.
+/**
+ * Removes a directory, including all its contents.
+ * @return `B_TRUE` if successful, `B_FALSE` otherwise.
  */
 bool_t
 remove_directory(const char *dirname)
@@ -1248,6 +1431,17 @@ errout:
 #endif	/* !IBM */
 }
 
+/**
+ * Removes a single file.
+ * @param filename Full path to the file to be removed. Please note that
+ *	this must be a file and not a directory. Use remove_directory()
+ *	to remove directories instead.
+ * @param notfound_ok If set to `B_TRUE`, the function will return with
+ *	a success indication, even if the file doesn't exist. Otherwise,
+ *	the file not existing is considered an error.
+ * @return `B_TRUE` if removing the file was successful (or the file
+ *	didn't exist, provided that `notfound_ok` was set to `B_TRUE`).
+ */
 bool_t
 remove_file(const char *filename, bool_t notfound_ok)
 {
@@ -1272,6 +1466,10 @@ remove_file(const char *filename, bool_t notfound_ok)
 #endif	/* !IBM */
 }
 
+/**
+ * Portable version of the POSIX dirname() function.
+ * @see [dirname()](https://linux.die.net/man/3/dirname)
+ */
 API_EXPORT char *
 lacf_dirname(const char *filename)
 {
@@ -1420,6 +1618,11 @@ qsort_r_impl(void *base, long lo, long hi, size_t size,
 	}
 }
 
+/**
+ * Portable version of glibc's qsort_r() function. This is a thread-safe
+ * and reentrant version of standard C's qsort() function.
+ * @see [qsort_r()](https://linux.die.net/man/3/qsort_r)
+ */
 void
 lacf_qsort_r(void *base, size_t nmemb, size_t size,
     int (*compar)(const void *, const void *, void *), void *arg)
@@ -1431,6 +1634,12 @@ lacf_qsort_r(void *base, size_t nmemb, size_t size,
 	}
 }
 
+/**
+ * Portable version of BSD's strlcpy() function. You should use this
+ * when copying a string into a fixed-length buffer, to guarantee that
+ * the output is always NUL-terminated.
+ * @see [strlcpy()](https://linux.die.net/man/3/strlcpy)
+ */
 void
 lacf_strlcpy(char *restrict dest, const char *restrict src, size_t cap)
 {

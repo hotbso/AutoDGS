@@ -13,8 +13,9 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2018 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
+/** \file */
 
 #ifndef _ACFUTILS_BASE64_H_
 #define _ACFUTILS_BASE64_H_

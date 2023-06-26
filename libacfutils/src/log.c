@@ -29,6 +29,8 @@
 #include <execinfo.h>   /* used for stack tracing */
 #endif	/* !IBM */
 
+#include <XPLMUtilities.h>
+
 #include <acfutils/assert.h>
 #include <acfutils/helpers.h>
 #include <acfutils/log.h>
@@ -69,8 +71,28 @@ static DWORD num_modules;
 #endif	/* IBM */
 
 static logfunc_t log_func = NULL;
-static const char *log_prefix = NULL;
+static char *log_prefix = NULL;
 
+/**
+ * Initializes the libacfutils logging subsystem. You must call this
+ * before any other subsystem of libacfutils. Typically, you would do
+ * this at the start of your plugin load callback (`XPluginStart()`).
+ * This is to make sure that if any of libacfutils' subsystems or your
+ * own code needs to log errors, they can. Without initialization, any
+ * logging calls will cause the app to crash with a call to abort().
+ *
+ * At the end of your plugin's unload, deinitialize the logging
+ * subsystem using log_fini().
+ *
+ * @param func A callback function which will be called for every log
+ *	message that will be emitted. You can provide your own logging
+ *	function, or use log_xplm_cb() to simply emit any log messages
+ *	to the X-Plane Log.txt.
+ * @param prefix A logging prefix name, which will be prepended to every
+ *	log message. This is to help disambiguate which plugin is
+ *	emitting a particular message. A good choice here is something
+ *	that is a short name of your plugin, e.g. "my_plugin".
+ */
 void
 log_init(logfunc_t func, const char *prefix)
 {
@@ -78,20 +100,42 @@ log_init(logfunc_t func, const char *prefix)
 	if (func == NULL || prefix == NULL)
 		abort();
 	log_func = func;
-	log_prefix = prefix;
+	log_prefix = safe_strdup(prefix);
 #if	IBM
 	mutex_init(&backtrace_lock);
 #endif
 }
 
+/**
+ * Deinitializes the logging system. You must call this at the end of your
+ * plugin's unload function (`XPluginStop()`) to properly free any memory
+ * resources used by the logging system.
+ */
 void
 log_fini(void)
 {
+	free(log_prefix);
+	log_prefix = NULL;
 #if	IBM
 	mutex_destroy(&backtrace_lock);
 #endif
 }
 
+/**
+ * A simple logging callback function suitable for passing to log_init()
+ * in its first argument. This function simply emits the input string
+ * to the X-Plane Log.txt file via XPLMDebugString().
+ */
+void
+log_xplm_cb(const char *str)
+{
+	XPLMDebugString(str);
+}
+
+/**
+ * Log implementation function. Do not call directly. Use the logMsg() macro.
+ * @see logMsg()
+ */
 void
 log_impl(const char *filename, int line, const char *fmt, ...)
 {
@@ -101,6 +145,10 @@ log_impl(const char *filename, int line, const char *fmt, ...)
 	va_end(ap);
 }
 
+/**
+ * Log implementation function. Do not call directly. Use the logMsg_v() macro.
+ * @see logMsg_v()
+ */
 void
 log_impl_v(const char *filename, int line, const char *fmt, va_list ap)
 {
@@ -132,6 +180,45 @@ log_impl_v(const char *filename, int line, const char *fmt, va_list ap)
 
 	free(buf);
 }
+
+/**
+ * \func void log_backtrace(int skip_frames)
+ * Logs a backtrace of the current stack to the logging system. This is
+ * typically called from an assertion failure handler to try and gather
+ * debugging information, before the app is terminated.
+ *
+ * This function uses OS-specific facilities to try and determine the
+ * function names and offsets of each stack frame.
+ *
+ * - On macOS and Linux, this facility utilizes the `backtrace()` and
+ *	`backtrace_symbols()` functions from the platforms' respective
+ *	C libraries. These attempt to use any embedded symbol information
+ *	inside of the binary to determine function names and offsets.
+ * - On Windows, binaries unfortunately almost never ship with symbol
+ *	information for internal symbols not exposed via `dllexport`.
+ *	Therefore, to support getting *some* semblance of useful
+ *	information, libacfutils utilizes a custom symbol table provided
+ *	by you. This symbol table can be generated from a compiled binary
+ *	containing DWARF2 debug information using the `mksyms` shell
+ *	script contained in the `tools` directory of the libacfutils
+ *	source repo. Please note, that MSVC doesn't generate DWARF2
+ *	debug information and therefore this utility cannot be used for
+ *	binaries compiled with MSVC. The generated file data should be
+ *	redirected to a file named `syms.txt` and placed next to the
+ *	Windows XPL file for the plugin and shipped with the plugin,
+ *	like this:
+ *```
+ * $ tools/mksyms win.xpl > syms.txt
+ *```
+ *
+ * @param skip_frames Number of stack frames to skip off the top of the
+ *	stack before printing the remaining frames. Sometimes a crash
+ *	handler is invoked from within an exception or signal handling
+ *	callback. This would place a bunch of useless stack frames near
+ *	the top of the backtrace, resulting in a backtrace that's hard
+ *	to read. Use this argument to skip them, if you know for sure
+ *	how many there are.
+ */
 
 #if	IBM
 

@@ -13,7 +13,12 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2017 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
+ */
+/**
+ * \file
+ * This file contains LOTS of utility functions and types to handle various
+ * geometric operations.
  */
 
 #ifndef	_ACF_UTILS_GEOM_H_
@@ -29,52 +34,57 @@
 extern "C" {
 #endif
 
-/*
+/**
  * Geographic (spherical) coordinates.
  */
 typedef struct {
-	double	lat;	/* degrees, increasing north */
-	double	lon;	/* degrees, increasing east */
-	double	elev;	/* meters, increasing away from surface */
+	double	lat;	/**< degrees, increasing north */
+	double	lon;	/**< degrees, increasing east */
+	double	elev;	/**< meters or feet, increasing away from MSL */
 } geo_pos3_t;
 
-/*
- * Simplified version of geo_pos3_t without an elevation component.
+/**
+ * Simplified version of \ref geo_pos3_t without an elevation component.
  */
 typedef struct {
-	double	lat;
-	double	lon;
+	double	lat;	/**< degrees, increasing north */
+	double	lon;	/**< degrees, increasing east */
 } geo_pos2_t;
 
-/*
- * More compact versions of the geo_pos*_t types. These use single
- * precision floating point to save a bit on memory.
+/**
+ * More compact version of \ref geo_pos3_t using single-precision
+ * floating point coordinates to save a bit on memory.
  */
 typedef struct {
-	float	lat;
-	float	lon;
-	float	elev;
+	float	lat;	/**< degrees, increasing north */
+	float	lon;	/**< degrees, increasing east */
+	float	elev;	/**< meters or feet, increasing away from MSL */
 } geo_pos3_32_t;
+/**
+ * More compact version of \ref geo_pos2_t using single-precision
+ * floating point coordinates to save a bit on memory.
+ */
 typedef struct {
-	float	lat;
-	float	lon;
+	float	lat;	/**< degrees, increasing north */
+	float	lon;	/**< degrees, increasing east */
 } geo_pos2_32_t;
 
-/*
- * Generic 3-space vector. Looking down onto a plane embedded in euclidian
+/**
+ * A generic 3-space vector. Looking down onto a plane embedded in euclidian
  * 3-space, the axes are:
  * x: left-to-right (increasing right)
  * y: down-to-up (increasing up)
  * z: away-towards viewer (increasing towards viewer)
- *
+ *```
  *			Y (incr up)
  *			^
  *			|
  *			|
  *			|
  *			x-------->
- *			Z	 X (incr right)
+ *			Z        X (incr right)
  *	(incr towards us)
+ *```
  */
 typedef struct {
 	double	x;
@@ -82,39 +92,54 @@ typedef struct {
 	double	z;
 } vect3_t;
 
+/** Same as \ref vect3_t, but using extended precision double values. */
 typedef struct {
 	long double	x;
 	long double	y;
 	long double	z;
 } vect3l_t;
 
-/*
+/**
  * Generic 2-space vector. On euclidian 2-space, axes are:
  * x: left-to-right (increasing right)
  * y: down-to-up (increasing up)
- *
- *	Y (incr up)
- *	^
- *	|
- *	|
- *	|
- *	 -------->
- *		 X (incr right)
+ *```
+ * Y (incr up)
+ * ^
+ * |
+ * |
+ * |
+ * +------->
+ *         X (incr right)
+ *```
  */
 typedef struct vect2_s {
 	double	x;
 	double	y;
 } vect2_t;
 
+/**
+ * Ellipsoid parameters. Ellipsoids are often used to translate between
+ * geographic coordinates and 3-space Euclidian coordinate systems, such
+ * as ECEF. The vast majority of the time, you will simply want to use
+ * the standard \ref wgs84 ellipsoid.
+ *
+ * @see fpp_init()
+ * @see geo2ecef_mtr()
+ */
 typedef struct {
-	double	a;	/* semi-major axis of the ellipsoid in meters */
-	double	b;	/* semi-minor axis of the ellipsoid in meters */
-	double	f;	/* flattening */
-	double	ecc;	/* first eccentricity */
-	double	ecc2;	/* first eccentricity squared */
-	double	r;	/* mean radius in meters */
+	double	a;	/**< Semi-major axis of the ellipsoid in meters */
+	double	b;	/**< Semi-minor axis of the ellipsoid in meters */
+	double	f;	/**< Flattening */
+	double	ecc;	/**< First eccentricity */
+	double	ecc2;	/**< First eccentricity squared */
+	double	r;	/**< Mean radius in meters */
 } ellip_t;
 
+/**
+ * Object used to hold bezier curves. Create using bezier_alloc() and
+ * free using bezier_free().
+ */
 typedef struct {
 	size_t	n_pts;
 	vect2_t	*pts;
@@ -123,78 +148,137 @@ typedef struct {
 /*
  * Unit conversions
  */
-#define	RAD2DEG_RATIO	(M_PI / 180)		/* 1 rad / 180 deg */
-#define	DEG2RAD_RATIO	(180 / M_PI)		/* 180 deg / 1 rad */
-#define	DEG2RAD(d)	((d) * RAD2DEG_RATIO)	/* degrees to radians */
-#define	RAD2DEG(r)	((r) * DEG2RAD_RATIO)	/* radians to degrees */
+/** Internal. Use DEG2RAD() and RAD2DEG() instead. */
+#define	RAD2DEG_RATIO	(M_PI / 180.0)
+/** Internal. Use DEG2RAD() and RAD2DEG() instead. */
+#define	DEG2RAD_RATIO	(180.0 / M_PI)
+/** Converts degrees to radians. */
+#define	DEG2RAD(d)	((d) * RAD2DEG_RATIO)
+/** Converts radians to degrees. */
+#define	RAD2DEG(r)	((r) * DEG2RAD_RATIO)
 
 /*
  * Coordinate constructors.
  */
+/** @return A \ref geo_pos2_t with `lat` and `lon`. */
 #define	GEO_POS2(lat, lon)		((geo_pos2_t){(lat), (lon)})
+/** @return A \ref geo_pos3_t with `lat`, `lon` and `elev`. */
 #define	GEO_POS3(lat, lon, elev)	((geo_pos3_t){(lat), (lon), (elev)})
+/** @return A \ref geo_pos3_32_t with `lat`, `lon` and `elev`. */
 #define	GEO_POS3_F32(lat, lon, elev)	((geo_pos3_f32_t){(lat), (lon), (elev)})
+/** @return A \ref geo_pos2_32_t with `lat` and `lon`. */
 #define	GEO_POS2_F32(lat, lon)		((geo_pos2_f32_t){(lat), (lon)})
+/**
+ * Converts any object in `geo3` with the fields `lat`, `lon` and `elev`
+ * into a \ref geo_pos3_t.
+ */
 #define	TO_GEO3(geo3)		\
 	((geo_pos3_t){(geo3).lat, (geo3).lon, (geo3).elev})
+/**
+ * Converts any object in `geo2` with the fields `lat` and `lon` into a
+ * \ref geo_pos2_t.
+ */
 #define	TO_GEO2(geo2)		\
 	((geo_pos2_t){(geo2).lat, (geo2).lon})
+/** Same as TO_GEO3() but returns a \ref geo_pos3_32_t instead. */
 #define	TO_GEO3_32(geo3)	\
 	((geo_pos3_32_t){(geo3).lat, (geo3).lon, (geo3).elev})
+/** Same as TO_GEO2() but returns a \ref geo_pos2_32_t instead. */
 #define	TO_GEO2_32(geo2)	\
 	((geo_pos3_32_t){(geo3).lat, (geo3).lon})
+/** @return A \ref vect2_t with `x` and `y` coordinates. */
 #define	VECT2(x, y)			((vect2_t){(x), (y)})
+/** @return A \ref vect3_t with `x`, `y` and `z` coordinates. */
 #define	VECT3(x, y, z)			((vect3_t){(x), (y), (z)})
+/** @return A \ref vect3l_t with `x`, `y` and `z` coordinates. */
 #define	VECT3L(x, y, z)			((vect3l_t){(x), (y), (z)})
+/** @return True if 2-space coordinates `a` and `b` are equal. */
 #define	VECT2_EQ(a, b)			((a).x == (b).x && (a).y == (b).y)
+/** @return True if 3-space coordinates `a` and `b` are equal. */
 #define	VECT3_EQ(a, b)	\
 	((a).x == (b).x && (a).y == (b).y && (a).z == (b).z)
+/** @return True if 2-space coordinates `a` and `b` are parallel. */
 #define	VECT2_PARALLEL(a, b)	\
 	(((a).y == 0 && (b).y == 0) || (((a).x / (a).y) == ((b).x / (b).y)))
 
 /*
  * Special coordinate values and tests for these special values.
  */
+/** @return A \ref vect2_t with all coordinates set to 0. */
 #define	ZERO_VECT2		((vect2_t){0.0, 0.0})
+/** @return A \ref vect3_t with all coordinates set to 0. */
 #define	ZERO_VECT3		((vect3_t){0.0, 0.0, 0.0})
+/** @return A \ref vect3l_t with all coordinates set to 0. */
 #define	ZERO_VECT3L		((vect3l_t){0.0, 0.0, 0.0})
+/** @return A \ref vect2_t with all coordinates set to `NAN`. */
 #define	NULL_VECT2		((vect2_t){NAN, NAN})
+/** @return A \ref vect3_t with all coordinates set to `NAN`. */
 #define	NULL_VECT3		((vect3_t){NAN, NAN, NAN})
+/** @return A \ref vect3l_t with all coordinates set to `NAN`. */
 #define	NULL_VECT3L		((vect3l_t){NAN, NAN, NAN})
+/** @return A \ref geo_pos3_t with all coordinates set to `NAN`. */
 #define	NULL_GEO_POS3		((geo_pos3_t){NAN, NAN, NAN})
+/** @return A \ref geo_pos2_t with all coordinates set to `NAN`. */
 #define	NULL_GEO_POS2		((geo_pos2_t){NAN, NAN})
+/** @return True if the X coordinate of vector `a` is `NAN`. */
 #define	IS_NULL_VECT(a)		(isnan((a).x))
+/** @return True if either the X or Y coordinate of vector `a` is `NAN`. */
 #define	IS_NULL_VECT2(a)	(isnan((a).x) || isnan((a).y))
+/** @return True if either the X, Y or Z coordinate of vector `a` is `NAN`. */
 #define	IS_NULL_VECT3(a)	(isnan((a).x) || isnan((a).y) || isnan((a).z))
+/** @return True if all coordinates of vector `a` are finite. */
 #define	IS_FINITE_VECT2(a)	(isfinite((a).x) && isfinite((a).y))
+/** @return True if all coordinates of vector `a` are finite. */
 #define	IS_FINITE_VECT3(a)	\
 	(isfinite((a).x) && isfinite((a).y) && isfinite((a).z))
+/** @return True if the `lat` coordinate of `a` is `NAN`. */
 #define	IS_NULL_GEO_POS(a)	(isnan((a).lat))
+/** @return True if any coordinate of `a` is `NAN`. */
 #define	IS_NULL_GEO_POS2(a)	\
 	(isnan((a).lat) || isnan((a).lon))
+/** @return True if any coordinate of `a` is `NAN`. */
 #define	IS_NULL_GEO_POS3(a)	\
 	(isnan((a).lat) || isnan((a).lon) || isnan((a).elev))
+/** @return True if all coordinates of `a` are zero. */
 #define	IS_ZERO_VECT2(a)	((a).x == 0.0 && (a).y == 0.0)
+/** @return True if all coordinates of `a` are zero. */
 #define	IS_ZERO_VECT3(a)	((a).x == 0.0 && (a).y == 0.0 && (a).z == 0.0)
-
+/**
+ * Extends a 2-space \ref vect2_t into a \ref vect3_t by adding a Z coordinate.
+ */
 #define	VECT2_TO_VECT3(v, z)	((vect3_t){(v).x, (v).y, (z)})
+/**
+ * Cuts a 3-space \ref vect3_t down into a \ref vect2_t by stripping
+ * away the Z coordinate.
+ */
 #define	VECT3_TO_VECT2(v)	((vect2_t){(v).x, (v).y})
+/** Converts a \ref vect3l_t into a \ref vect3_t by type-casting to `double`. */
 #define	VECT3L_TO_VECT3(v)	((vect3_t){(v).x, (v).y, (v).z})
+/**
+ * Converts a \ref vect3_t into a \ref vect3l_t by type-casting to
+ * `long double`.
+ */
 #define	VECT3_TO_VECT3L(v)	((vect3l_t){(v).x, (v).y, (v).z})
-
+/**
+ * Extends a 2-space \ref geo_pos2_t `v` into a \ref geo_pos3_t by
+ * appending the elevation coordinate `a`.
+ */
 #define	GEO2_TO_GEO3(v, a)	((geo_pos3_t){(v).lat, (v).lon, (a)})
+/** Same as TO_GEO2(). */
 #define	GEO3_TO_GEO2(v)		((geo_pos2_t){(v).lat, (v).lon})
+/** Converts a geo_pos3_t using feet for elevation into meters. */
 #define	GEO3_FT2M(g)		GEO_POS3((g).lat, (g).lon, FEET2MET((g).elev))
+/** Converts a geo_pos3_t using meters for elevation into feet. */
 #define	GEO3_M2FT(g)		GEO_POS3((g).lat, (g).lon, MET2FEET((g).elev))
+/** @return True if 3-space geographic coordinates `p1` and `p2` are equal. */
 #define	GEO3_EQ(p1, p2)	\
 	((p1).lat == (p2).lat && (p1).lon == (p2).lon && \
 	(p1).elev == (p2).elev)
+/** @return True if 2-space geographic coordinates `p1` and `p2` are equal. */
 #define	GEO2_EQ(p1, p2)		((p1).lat == (p2).lat && (p1).lon == (p2).lon)
 
-#define	EARTH_MSL		6371200		/* meters */
-#ifndef	ABS
-#define	ABS(x)	((x) > 0 ? (x) : -(x))
-#endif
+/** Mean radius Earth at sea level in meters. */
+#define	EARTH_MSL		6371200
 
 /* Math debugging */
 #if	1
@@ -203,25 +287,21 @@ typedef struct {
 #define	PRINT_VECT3L(v)	printf(#v "(%Lf, %Lf, %Lf)\n", v.x, v.y, v.z)
 #define	PRINT_GEO2(p)	printf(#p "(%f, %f)\n", p.lat, p.lon)
 #define	PRINT_GEO3(p)	printf(#p "(%f, %f, %f)\n", p.lat, p.lon, p.elev)
-#define	DEBUG_PRINT(...)	printf(__VA_ARGS__)
 #else
 #define	PRINT_VECT2(v)
 #define	PRINT_VECT3(v)
 #define	PRINT_GEO2(p)
 #define	PRINT_GEO3(p)
-#define	DEBUG_PRINT(...)
 #endif
 
 /*
  * The standard WGS84 ellipsoid.
  */
-#define	wgs84	ACFSYM(wgs84)
 API_EXPORT_DATA const ellip_t wgs84;
 
 /*
  * Small helpers.
  */
-#define	is_on_arc	ACFSYM(is_on_arc)
 API_EXPORT bool_t is_on_arc(double angle_x, double angle1, double angle2,
     bool_t cw);
 
@@ -342,9 +422,7 @@ API_EXPORT bool_t point_in_poly(vect2_t pt, const vect2_t *poly) PURE_ATTR;
 /*
  * Converting between headings and direction vectors on a 2D plane.
  */
-#define	hdg2dir	ACFSYM(hdg2dir)
 API_EXPORT vect2_t hdg2dir(double truehdg) PURE_ATTR;
-#define	dir2hdg	ACFSYM(dir2hdg)
 API_EXPORT double dir2hdg(vect2_t dir) PURE_ATTR;
 
 /*
@@ -382,9 +460,7 @@ API_EXPORT vect3_t sph_xlate_vect(vect3_t pos, const sph_xlate_t *xlate)
 /*
  * Great circle functions.
  */
-#define	gc_distance	ACFSYM(gc_distance)
 API_EXPORT double gc_distance(geo_pos2_t start, geo_pos2_t end);
-#define	gc_point_hdg	ACFSYM(gc_point_hdg)
 API_EXPORT double gc_point_hdg(geo_pos2_t start, geo_pos2_t end);
 
 /*

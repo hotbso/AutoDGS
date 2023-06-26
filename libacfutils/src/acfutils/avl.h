@@ -36,7 +36,9 @@ extern "C" {
 #define	_AVL_IMPL_INCLUDED_FROM_AVL_H
 #include "avl_impl.h"
 
-/*
+/**
+ * \file
+ *
  * This is a generic implemenatation of AVL trees for use in the Solaris kernel.
  * The interfaces provide an efficient way of implementing an ordered set of
  * data structures.
@@ -61,11 +63,11 @@ extern "C" {
  *	or prev node	 constant	between constant and O(log(n))
  *
  *
- * The data structure nodes are anchored at an "avl_tree_t" (the equivalent
+ * The data structure nodes are anchored at an \ref avl_tree_t (the equivalent
  * of a list header) and the individual nodes will have a field of
  * type "avl_node_t" (corresponding to list pointers).
  *
- * The type "avl_index_t" is used to indicate a position in the list for
+ * The type \ref avl_index_t is used to indicate a position in the list for
  * certain calls.
  *
  * The usage scenario is generally:
@@ -100,27 +102,30 @@ extern "C" {
  */
 
 
-/*
+/**
  * Type used for the root of the AVL tree.
  */
 typedef struct avl_tree avl_tree_t;
 
-/*
+/**
  * The data nodes in the AVL tree must have a field of this type.
  */
 typedef struct avl_node avl_node_t;
 
-/*
+/**
  * An opaque type used to locate a position in the tree where a node
  * would be inserted.
  */
 typedef uintptr_t avl_index_t;
 
 
-/*
+/**
  * Direction constants used for avl_nearest().
  */
 #define	AVL_BEFORE	(0)
+/**
+ * Direction constants used for avl_nearest().
+ */
 #define	AVL_AFTER	(1)
 
 
@@ -138,84 +143,90 @@ typedef uintptr_t avl_index_t;
  *	};
  */
 
-/*
- * Initialize an AVL tree. Arguments are:
+/**
+ * Initialize an AVL tree.
  *
- * tree   - the tree to be initialized
- * compar - function to compare two nodes, it must return exactly: -1, 0, or +1
- *          -1 for <, 0 for ==, and +1 for >
- * size   - the value of sizeof(struct my_type)
- * offset - the value of OFFSETOF(struct my_type, my_link)
+ * @param tree the tree to be initialized
+ * @param compar function to compare two nodes, it must return exactly:
+ * -1, 0, or +1. -1 for <, 0 for ==, and +1 for >
+ * @param size the value of sizeof(struct my_type)
+ * @param offset the value of OFFSETOF(struct my_type, my_link)
  */
 API_EXPORT extern void avl_create(avl_tree_t *tree,
 	int (*compar) (const void *, const void *), size_t size, size_t offset);
 
 
-/*
- * Find a node with a matching value in the tree. Returns the matching node
- * found. If not found, it returns NULL and then if "where" is not NULL it sets
- * "where" for use with avl_insert() or avl_nearest().
+/**
+ * Find a node with a matching value in the tree.
  *
- * node   - node that has the value being looked for
- * where  - position for use with avl_nearest() or avl_insert(), may be NULL
+ * @param node node that has the value being looked for
+ * @param where position for use with avl_nearest() or avl_insert(), may be NULL
+ *
+ * @return The matching node found. If not found, it returns NULL and
+ * then if "where" is not NULL it sets "where" for use with avl_insert()
+ * or avl_nearest().
  */
 API_EXPORT extern void *avl_find(const avl_tree_t *tree, const void *node,
     avl_index_t *where);
 
-/*
+/**
  * Insert a node into the tree.
  *
- * node   - the node to insert
- * where  - position as returned from avl_find()
+ * @param node the node to insert
+ * @param where position as returned from avl_find()
  */
 API_EXPORT extern void avl_insert(avl_tree_t *tree, void *node,
     avl_index_t where);
 
-/*
+/**
  * Insert "new_data" in "tree" in the given "direction" either after
  * or before the data "here".
  *
- * This might be usefull for avl clients caching recently accessed
+ * This might be useful for avl clients caching recently accessed
  * data to avoid doing avl_find() again for insertion.
  *
- * new_data	- new data to insert
- * here		- existing node in "tree"
- * direction	- either AVL_AFTER or AVL_BEFORE the data "here".
+ * @param new_data new data to insert
+ * @param here existing node in "tree"
+ * @param direction either AVL_AFTER or AVL_BEFORE the data "here".
  */
 API_EXPORT extern void avl_insert_here(avl_tree_t *tree, void *new_data,
     void *here, int direction);
 
 
-/*
- * Return the first or last valued node in the tree. Will return NULL
+/**
+ * @return The first valued node in the tree. Will return NULL
  * if the tree is empty.
- *
  */
 API_EXPORT extern void *avl_first(const avl_tree_t *tree);
+/**
+ * @return The last valued node in the tree. Will return NULL if the
+ * tree is empty.
+ */
 API_EXPORT extern void *avl_last(const avl_tree_t *tree);
 
-
-/*
- * Return the next or previous valued node in the tree.
- * AVL_NEXT() will return NULL if at the last node.
- * AVL_PREV() will return NULL if at the first node.
- *
- * node   - the node from which the next or previous node is found
+/**
+ * @return the next or previous valued node in the tree. Will return NULL
+ * if at the last node.
+ * @param node the node from which the next or previous node is found
  */
 #define	AVL_NEXT(tree, node)	avl_walk(tree, node, AVL_AFTER)
+/**
+ * @return the previous valued node in the tree. Will return NULL if at
+ * the first node.
+ * @param node the node from which the next or previous node is found
+ */
 #define	AVL_PREV(tree, node)	avl_walk(tree, node, AVL_BEFORE)
 
-
-/*
+/**
  * Find the node with the nearest value either greater or less than
- * the value from a previous avl_find(). Returns the node or NULL if
- * there isn't a matching one.
+ * the value from a previous avl_find().
  *
- * where     - position as returned from avl_find()
- * direction - either AVL_BEFORE or AVL_AFTER
+ * @param where position as returned from avl_find()
+ * @param direction either AVL_BEFORE or AVL_AFTER
+ * @return the node or NULL if there isn't a matching one.
  *
- * EXAMPLE get the greatest node that is less than a given value:
- *
+ * Example: get the greatest node that is less than a given value:
+ *```
  *	avl_tree_t *tree;
  *	struct my_data look_for_value = {....};
  *	struct my_data *node;
@@ -227,29 +238,31 @@ API_EXPORT extern void *avl_last(const avl_tree_t *tree);
  *		less = AVL_PREV(tree, node);
  *	else
  *		less = avl_nearest(tree, where, AVL_BEFORE);
+ *```
  */
 API_EXPORT extern void *avl_nearest(const avl_tree_t *tree, avl_index_t where,
     int direction);
 
 
-/*
+/**
  * Add a single node to the tree.
+ *
  * The node must not be in the tree, and it must not
  * compare equal to any other node already in the tree.
  *
- * node   - the node to add
+ * @param node the node to add
  */
 API_EXPORT extern void avl_add(avl_tree_t *tree, void *node);
 
 
-/*
+/**
  * Remove a single node from the tree.  The node must be in the tree.
  *
- * node   - the node to remove
+ * @param node the node to remove
  */
 API_EXPORT extern void avl_remove(avl_tree_t *tree, void *node);
 
-/*
+/**
  * Reinsert a node only if its order has changed relative to its nearest
  * neighbors. To optimize performance avl_update_lt() checks only the previous
  * node and avl_update_gt() checks only the next node. Use avl_update_lt() and
@@ -257,20 +270,26 @@ API_EXPORT extern void avl_remove(avl_tree_t *tree, void *node);
  * node may change.
  */
 API_EXPORT extern bool_t avl_update(avl_tree_t *, void *);
+/**
+ * @see avl_update()
+ */
 API_EXPORT extern bool_t avl_update_lt(avl_tree_t *, void *);
+/**
+ * @see avl_update()
+ */
 API_EXPORT extern bool_t avl_update_gt(avl_tree_t *, void *);
 
-/*
- * Return the number of nodes in the tree
+/**
+ * @return the number of nodes in the tree
  */
 API_EXPORT extern unsigned long avl_numnodes(const avl_tree_t *tree);
 
-/*
- * Return B_TRUE if there are zero nodes in the tree, B_FALSE otherwise.
+/**
+ * @return B_TRUE if there are zero nodes in the tree, B_FALSE otherwise.
  */
 API_EXPORT extern bool_t avl_is_empty(avl_tree_t *tree);
 
-/*
+/**
  * Used to destroy any remaining nodes in a tree. The cookie argument should
  * be initialized to NULL before the first call. Returns a node that has been
  * removed from the tree and may be free()'d. Returns NULL when the tree is
@@ -279,9 +298,11 @@ API_EXPORT extern bool_t avl_is_empty(avl_tree_t *tree);
  * Once you call avl_destroy_nodes(), you can only continuing calling it and
  * finally avl_destroy(). No other AVL routines will be valid.
  *
- * cookie - a "void *" used to save state between calls to avl_destroy_nodes()
+ * @param cookie a "void *" used to save state between calls to
+ *	avl_destroy_nodes()
  *
- * EXAMPLE:
+ * Example:
+ *```
  *	avl_tree_t *tree;
  *	struct my_data *node;
  *	void *cookie;
@@ -290,14 +311,15 @@ API_EXPORT extern bool_t avl_is_empty(avl_tree_t *tree);
  *	while ((node = avl_destroy_nodes(tree, &cookie)) != NULL)
  *		free(node);
  *	avl_destroy(tree);
+ *```
  */
 API_EXPORT extern void *avl_destroy_nodes(avl_tree_t *tree, void **cookie);
 
 
-/*
- * Final destroy of an AVL tree. Arguments are:
+/**
+ * Final destroy of an AVL tree.
  *
- * tree   - the empty tree to destroy
+ * @param tree the empty tree to destroy
  */
 API_EXPORT extern void avl_destroy(avl_tree_t *tree);
 

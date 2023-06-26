@@ -31,6 +31,10 @@ extern "C" {
 #define	POW3(x)	((x) * (x) * (x))
 #define	POW2(x)	((x) * (x))
 #define	ROUND_ERROR	1e-10
+#ifndef	ABS
+/** @return The absolute value of `x`. */
+#define	ABS(x)	((x) > 0 ? (x) : -(x))
+#endif
 
 struct vect2_s;
 
@@ -121,6 +125,7 @@ typedef struct {
  * @param points Input points that the interpolator needs to pass through.
  * @param npts Number points in `points'. This must be GREATER than 0.
  */
+#define	pn_interp_init	ACFSYM(pn_interp_init)
 API_EXPORT void pn_interp_init(pn_interp_t *interp, const vect2_t *points,
     unsigned npts);
 

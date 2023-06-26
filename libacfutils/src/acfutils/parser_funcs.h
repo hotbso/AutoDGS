@@ -20,8 +20,9 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2021 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
+/** \file */
 
 #ifndef	_ACF_UTILS_PARSER_FUNCS_H_
 #define	_ACF_UTILS_PARSER_FUNCS_H_
@@ -40,8 +41,9 @@
 extern "C" {
 #endif
 
-/*
+/**
  * Removes all leading & trailing whitespace from a line.
+ * The string is modified in-place.
  */
 UNUSED_ATTR static void
 strip_space(char *line)
@@ -62,6 +64,10 @@ strip_space(char *line)
 	p[1] = 0;
 }
 
+/**
+ * Implementation function for parser_get_next_line(). Don't call this
+ * directly. Use parser_get_next_line() instead.
+ */
 #if	defined(ACFUTILS_BUILD) || defined(ACFUTILS_GZIP_PARSER)
 UNUSED_ATTR static ssize_t
 parser_get_next_line_impl(void *fp, char **linep, size_t *linecap,
@@ -101,6 +107,38 @@ parser_get_next_line_impl(void *fp, char **linep, size_t *linecap,
 	}
 }
 
+/**
+ * Reads the next input word in a file stream. An input word is considered
+ * any sequence of characters not interrupted by whitespace. This function
+ * supports reading words which contain whitespace, if they are surrounded
+ * by quotes, such as this: `"Hello World!"` - will return the whole
+ * string, instead of separately `&quot;Hello` and then `World!&quot;`.
+ *
+ * The function also supports escape sequences within quoted-string input.
+ * Escape sequences always start with a backslash `\` character and are
+ * followed by either a single letter, or 1-3 octal digits to express the
+ * exact ASCII code number of the character being escaped.
+ *
+ * Supported escape sequences are:
+ * - `\"` - literal quote character
+ * - `\n` - line feed character
+ * - `\r` - carriage return character
+ * - `\t` - tab character
+ * - A `\` character followed immediately by a newline (using either
+ *	LF (Unix), CR (Mac) or CR-LF (DOS) newline encoding). This causes
+ *	the newline to be removed from the output, so as to allow
+ *	splitting input across multiple lines in the input file, without
+ *	inadvertently encoding newlines in the string.
+ * - `\xxx` where `xxx` is an octal number containing, encoding the ASCII
+ *	code of the character to be inserted into the output string.
+ *
+ * @return A newly allocated string (using the caller's heap allocator)
+ *	containing the parsed string. You should free this string using
+ *	your normal free() function, NOT using lacf_free(). If the stream
+ *	has reached end-of-file and there are no more strings to be
+ *	parsed, this function returns an empty string (""). You must free
+ *	this string using free() as normal, before stopping parsing.
+ */
 UNUSED_ATTR static char *
 parser_get_next_quoted_str2(FILE *fp, int *linep)
 {
@@ -125,7 +163,9 @@ parser_get_next_quoted_str2(FILE *fp, int *linep)
 				break;
 			if (c == '\\') {
 				c = fgetc(fp);
-				if (c == 'n') {
+				if (c == '"') {
+					c = '"';
+				} else if (c == 'n') {
 					c = '\n';
 				} else if (c == 'r') {
 					c = '\r';

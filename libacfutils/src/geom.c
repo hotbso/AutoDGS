@@ -13,7 +13,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2020 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
  */
 
 #include <math.h>
@@ -21,15 +21,17 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <acfutils/assert.h>
-#include <acfutils/math.h>
-#include <acfutils/helpers.h>
-#include <acfutils/geom.h>
-#include <acfutils/perf.h>
-#include <acfutils/safe_alloc.h>
+#include "acfutils/assert.h"
+#include "acfutils/math.h"
+#include "acfutils/helpers.h"
+#include "acfutils/geom.h"
+#include "acfutils/perf.h"
+#include "acfutils/safe_alloc.h"
 
-/*
- * The WGS84 ellipsoid parameters.
+/**
+ * The WGS-84 ellipsoid parameters. For most functions where you can
+ * pass a \ref ellip_t, you will want to pass a pointer to this structure
+ * to use the WGS-84 ellipsoid.
  */
 const ellip_t wgs84 = {
 	.a = 6378137.0,
@@ -74,7 +76,7 @@ matrix_mul(const double *x, const double *y, double *z,
 	}
 }
 
-/*
+/**
  * Determines whether an angle is part of an arc.
  *
  * @param angle_x Angle who's membership of the arc to examine (in degrees).
@@ -83,7 +85,7 @@ matrix_mul(const double *x, const double *y, double *z,
  * @param cw Flag indicating whether the arc progresses clockwise or
  *	counter clockwise from angle1 to angle2.
  *
- * @return B_TRUE if angle_x is on the arc, B_FALSE if it is not.
+ * @return `B_TRUE` if angle_x is on the arc, `B_FALSE` if it is not.
  */
 bool_t
 is_on_arc(double angle_x, double angle1, double angle2, bool_t cw)
@@ -101,9 +103,11 @@ is_on_arc(double angle_x, double angle1, double angle2, bool_t cw)
 	}
 }
 
-/*
+/**
  * Returns the absolute value (length) of a 3-space vector:
+ *```
  * r = |a|
+ *```
  */
 double
 vect3_abs(vect3_t a)
@@ -111,8 +115,8 @@ vect3_abs(vect3_t a)
 	return (sqrt(POW2(a.x) + POW2(a.y) + POW2(a.z)));
 }
 
-/*
- * Same as vect3_abs, but for long-double vectors.
+/**
+ * Same as vect3_abs(), but for long-double vectors.
  */
 long double
 vect3l_abs(vect3l_t a)
@@ -120,8 +124,8 @@ vect3l_abs(vect3l_t a)
 	return (sqrtl(POW2(a.x) + POW2(a.y) + POW2(a.z)));
 }
 
-/*
- * Returns the distance between two points defined by vectors `a' and `b'.
+/**
+ * @return The distance between two points defined by vectors `a` and `b`.
  */
 double
 vect3_dist(vect3_t a, vect3_t b)
@@ -129,8 +133,8 @@ vect3_dist(vect3_t a, vect3_t b)
 	return (vect3_abs(vect3_sub(a, b)));
 }
 
-/*
- * Same as vect3_dist, but for long-double vectors.
+/**
+ * Same as vect3_dist(), but for long-double vectors.
  */
 long double
 vect3l_dist(vect3l_t a, vect3l_t b)
@@ -138,8 +142,8 @@ vect3l_dist(vect3l_t a, vect3l_t b)
 	return (vect3l_abs(vect3l_sub(a, b)));
 }
 
-/*
- * Same as vect3_abs, but for 2-space vectors.
+/**
+ * Same as vect3_abs(), but for 2-space vectors.
  */
 double
 vect2_abs(vect2_t a)
@@ -147,14 +151,20 @@ vect2_abs(vect2_t a)
 	return (sqrt(POW2(a.x) + POW2(a.y)));
 }
 
+/**
+ * Performs a simple per-component multiplication of two vectors.
+ *```
+ * x = VECT3(a.x * b.x, a.y * b.y, a.z * b.z);
+ *```
+ */
 vect3_t
 vect3_mul(vect3_t a, vect3_t b)
 {
 	return (VECT3(a.x * b.x, a.y * b.y, a.z * b.z));
 }
 
-/*
- * Same as vect3_mul, but for long-double vectors.
+/**
+ * Same as vect3_mul(), but for long-double vectors.
  */
 vect3l_t
 vect3l_mul(vect3l_t a, vect3l_t b)
@@ -162,14 +172,17 @@ vect3l_mul(vect3l_t a, vect3l_t b)
 	return (VECT3L(a.x * b.x, a.y * b.y, a.z * b.z));
 }
 
+/**
+ * Same as vect3_mul(), but for 2-space vectors.
+ */
 vect2_t
 vect2_mul(vect2_t a, vect2_t b)
 {
 	return (VECT2(a.x * b.x, a.y * b.y));
 }
 
-/*
- * Same as vect3_dist, but for 2-space vectors.
+/**
+ * Same as vect3_dist(), but for 2-space vectors.
  */
 double
 vect2_dist(vect2_t a, vect2_t b)
@@ -177,9 +190,10 @@ vect2_dist(vect2_t a, vect2_t b)
 	return (vect2_abs(vect2_sub(a, b)));
 }
 
-/*
+/**
  * Sets the absolute value (length) of a vector without changing
- * its orientation.
+ * its orientation. If the input vector has zero length, this
+ * returns `ZERO_VECT3`.
  */
 vect3_t
 vect3_set_abs(vect3_t a, double abs)
@@ -191,8 +205,8 @@ vect3_set_abs(vect3_t a, double abs)
 		return (ZERO_VECT3);
 }
 
-/*
- * Same as vect3_set_abs, but for long-double vectors.
+/**
+ * Same as vect3_set_abs(), but for long-double vectors.
  */
 vect3l_t
 vect3l_set_abs(vect3l_t a, long double abs)
@@ -204,8 +218,8 @@ vect3l_set_abs(vect3l_t a, long double abs)
 		return (ZERO_VECT3L);
 }
 
-/*
- * Same as vect3_set_abs, but for 2-space vectors.
+/**
+ * Same as vect3_set_abs(), but for 2-space vectors.
  */
 vect2_t
 vect2_set_abs(vect2_t a, double abs)
@@ -217,9 +231,10 @@ vect2_set_abs(vect2_t a, double abs)
 		return (ZERO_VECT2);
 }
 
-/*
- * Returns a unit vector (vector with identical orientation but a length of 1)
- * for a given input vector. The length of the input vector is stored in `l'.
+/**
+ * @return A unit vector (vector with identical orientation but a length
+ * of 1) for a given input vector. If the optional argument `l` is not
+ * `NULL`, the length of the input vector is stored in it.
  */
 vect3_t
 vect3_unit(vect3_t a, double *l)
@@ -233,8 +248,8 @@ vect3_unit(vect3_t a, double *l)
 	return (VECT3(a.x / len, a.y / len, a.z / len));
 }
 
-/*
- * Sames as vect3_unit, but for long-double vectors.
+/**
+ * Sames as vect3_unit(), but for long-double vectors.
  */
 vect3l_t
 vect3l_unit(vect3l_t a, long double *l)
@@ -248,8 +263,8 @@ vect3l_unit(vect3l_t a, long double *l)
 	return (VECT3L(a.x / len, a.y / len, a.z / len));
 }
 
-/*
- * Same as vect3_unit, but for 2-space vectors.
+/**
+ * Same as vect3_unit(), but for 2-space vectors.
  */
 vect2_t
 vect2_unit(vect2_t a, double *l)
@@ -264,10 +279,12 @@ vect2_unit(vect2_t a, double *l)
 	return (VECT2(a.x / len, a.y / len));
 }
 
-/*
- * Adds 3-space vectors `a' and `b' and returns the result:
+/**
+ * Adds 3-space vectors `a` and `b` and returns the result:
+ *```
  * _   _   _
  * r = a + b
+ *```
  */
 vect3_t
 vect3_add(vect3_t a, vect3_t b)
@@ -275,8 +292,8 @@ vect3_add(vect3_t a, vect3_t b)
 	return (VECT3(a.x + b.x, a.y + b.y, a.z + b.z));
 }
 
-/*
- * Same as vect3_add, but for long-double vectors.
+/**
+ * Same as vect3_add(), but for long-double vectors.
  */
 vect3l_t
 vect3l_add(vect3l_t a, vect3l_t b)
@@ -284,8 +301,8 @@ vect3l_add(vect3l_t a, vect3l_t b)
 	return (VECT3L(a.x + b.x, a.y + b.y, a.z + b.z));
 }
 
-/*
- * Same as vect3_add, but for 2-space vectors.
+/**
+ * Same as vect3_add(), but for 2-space vectors.
  */
 vect2_t
 vect2_add(vect2_t a, vect2_t b)
@@ -293,10 +310,12 @@ vect2_add(vect2_t a, vect2_t b)
 	return (VECT2(a.x + b.x, a.y + b.y));
 }
 
-/*
- * Subtracts 3-space vector `b' from vector `a' and returns the result:
+/**
+ * Subtracts 3-space vector `b` from vector `a` and returns the result:
+ *```
  * _   _   _
  * r = a - b
+ *```
  */
 vect3_t
 vect3_sub(vect3_t a, vect3_t b)
@@ -304,8 +323,8 @@ vect3_sub(vect3_t a, vect3_t b)
 	return (VECT3(a.x - b.x, a.y - b.y, a.z - b.z));
 }
 
-/*
- * Same as vect3_sub, but for long-double vectors.
+/**
+ * Same as vect3_sub(), but for long-double vectors.
  */
 vect3l_t
 vect3l_sub(vect3l_t a, vect3l_t b)
@@ -313,8 +332,8 @@ vect3l_sub(vect3l_t a, vect3l_t b)
 	return (VECT3L(a.x - b.x, a.y - b.y, a.z - b.z));
 }
 
-/*
- * Same as vect3_sub, but for 2-space vectors.
+/**
+ * Same as vect3_sub(), but for 2-space vectors.
  */
 vect2_t
 vect2_sub(vect2_t a, vect2_t b)
@@ -322,11 +341,13 @@ vect2_sub(vect2_t a, vect2_t b)
 	return (VECT2(a.x - b.x, a.y - b.y));
 }
 
-/*
- * Performs a scalar multiply of 3-space vector `a' and scalar value `b' and
- * returns the result:
+/**
+ * Performs a scalar multiply of 3-space vector `a` and scalar value `b`
+ * and returns the result:
+ *```
  * _   _
  * r = ab
+ *```
  */
 vect3_t
 vect3_scmul(vect3_t a, double b)
@@ -334,8 +355,8 @@ vect3_scmul(vect3_t a, double b)
 	return (VECT3(a.x * b, a.y * b, a.z * b));
 }
 
-/*
- * Same as vect3_scmul, but for long-double vectors.
+/**
+ * Same as vect3_scmul(), but for long-double vectors.
  */
 vect3l_t
 vect3l_scmul(vect3l_t a, long double b)
@@ -343,8 +364,8 @@ vect3l_scmul(vect3l_t a, long double b)
 	return (VECT3L(a.x * b, a.y * b, a.z * b));
 }
 
-/*
- * Same as vect3_scmul, but for 2-space vectors.
+/**
+ * Same as vect3_scmul(), but for 2-space vectors.
  */
 vect2_t
 vect2_scmul(vect2_t a, double b)
@@ -352,10 +373,12 @@ vect2_scmul(vect2_t a, double b)
 	return (VECT2(a.x * b, a.y * b));
 }
 
-/*
- * Returns the dot product of 3-space vectors `a' and `b':
+/**
+ * Returns the dot product of 3-space vectors `a` and `b`:
+ *```
  *     _   _
  * r = a . b
+ *```
  */
 double
 vect3_dotprod(vect3_t a, vect3_t b)
@@ -363,8 +386,8 @@ vect3_dotprod(vect3_t a, vect3_t b)
 	return (a.x * b.x + a.y * b.y + a.z * b.z);
 }
 
-/*
- * Same as vect3_dotprod, but for long-double vectors.
+/**
+ * Same as vect3_dotprod(), but for long-double vectors.
  */
 long double
 vect3l_dotprod(vect3l_t a, vect3l_t b)
@@ -372,8 +395,8 @@ vect3l_dotprod(vect3l_t a, vect3l_t b)
 	return (a.x * b.x + a.y * b.y + a.z * b.z);
 }
 
-/*
- * Same as vect3_dotprod, but for 2-space vectors.
+/**
+ * Same as vect3_dotprod(), but for 2-space vectors.
  */
 double
 vect2_dotprod(vect2_t a, vect2_t b)
@@ -381,10 +404,12 @@ vect2_dotprod(vect2_t a, vect2_t b)
 	return (a.x * b.x + a.y * b.y);
 }
 
-/*
- * Returns the cross product of 3-space vectors `a' and `b':
+/**
+ * Returns the cross product of 3-space vectors `a` and `b`:
+ *```
  * _   _   _
  * r = a x b
+ *```
  */
 vect3_t
 vect3_xprod(vect3_t a, vect3_t b)
@@ -393,8 +418,8 @@ vect3_xprod(vect3_t a, vect3_t b)
 	    a.x * b.y - a.y * b.x));
 }
 
-/*
- * Same as vect3_xprod, but for long-double vectors.
+/**
+ * Same as vect3_xprod(), but for long-double vectors.
  */
 vect3l_t
 vect3l_xprod(vect3l_t a, vect3l_t b)
@@ -403,18 +428,19 @@ vect3l_xprod(vect3l_t a, vect3l_t b)
 	    a.x * b.y - a.y * b.x));
 }
 
-/*
- * Returns the mean vector of 3-space vectors `a' and `b'. That is, the
- * resulting vector will point exactly in between `a' and `b':
- *
+/**
+ * Returns the mean vector of 3-space vectors `a` and `b`. That is, the
+ * resulting vector will point exactly in between `a` and `b`:
+ *```
  *   ^.
  *   |  .
  *   |    .
- *   |     x.
- * a |   / c  .
+ * a |     x.
+ *   |   / c  .
  *   | /        .
  *   +----------->
- *     b
+ *         b
+ *```
  */
 vect3_t
 vect3_mean(vect3_t a, vect3_t b)
@@ -422,8 +448,8 @@ vect3_mean(vect3_t a, vect3_t b)
 	return (VECT3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2));
 }
 
-/*
- * Same as vect3_mean, but for long-double vectors.
+/**
+ * Same as vect3_mean(), but for long-double vectors.
  */
 vect3l_t
 vect3l_mean(vect3l_t a, vect3l_t b)
@@ -431,8 +457,8 @@ vect3l_mean(vect3l_t a, vect3l_t b)
 	return (VECT3L((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2));
 }
 
-/*
- * Same as vect3_mean but for 2-space vectors.
+/**
+ * Same as vect3_mean() but for 2-space vectors.
  */
 vect2_t
 vect2_mean(vect2_t a, vect2_t b)
@@ -440,12 +466,12 @@ vect2_mean(vect2_t a, vect2_t b)
 	return (VECT2((a.x + b.x) / 2, (a.y + b.y) / 2));
 }
 
-/*
- * Rotates vector `v' by `a' degrees around a given axis. The `axis' argument
+/**
+ * Rotates vector `v`by `a` degrees around a given axis. The `axis` argument
  * selects which axis to rotate around (clockwise):
- * axis = 0: rotate around the x axis.
- * axis = 1: rotate around the y axis.
- * axis = 2: rotate around the z axis.
+ * - axis = 0: rotate around the x axis.
+ * - axis = 1: rotate around the y axis.
+ * - axis = 2: rotate around the z axis.
  */
 vect3_t
 vect3_rot(vect3_t v, double a, unsigned axis)
@@ -462,16 +488,18 @@ vect3_rot(vect3_t v, double a, unsigned axis)
 		return (VECT3(v.x * cos_a - v.z * sin_a, v.y,
 		    v.x * sin_a + v.z * cos_a));
 	}
-	default: {
+	case 2: {
 		double sin_a = sin(DEG2RAD(-a)), cos_a = cos(DEG2RAD(-a));
 		return (VECT3(v.x * cos_a - v.y * sin_a,
 		    v.x * sin_a + v.y * cos_a, v.z));
 	}
+	default:
+		VERIFY_MSG(0, "Invalid axis value (%d) passed", axis);
 	}
 }
 
-/*
- * Same as vect3_rot, but for long-double vectors.
+/**
+ * Same as vect3_rot(), but for long-double vectors.
  */
 vect3l_t
 vect3l_rot(vect3l_t v, long double a, unsigned axis)
@@ -488,17 +516,19 @@ vect3l_rot(vect3l_t v, long double a, unsigned axis)
 		return (VECT3L(v.x * cos_a - v.z * sin_a, v.y,
 		    v.x * sin_a + v.z * cos_a));
 	}
-	default: {
+	case 2: {
 		double sin_a = sinl(DEG2RAD(-a)), cos_a = cosl(DEG2RAD(-a));
 		return (VECT3L(v.x * cos_a - v.y * sin_a,
 		    v.x * sin_a + v.y * cos_a, v.z));
 	}
+	default:
+		VERIFY_MSG(0, "Invalid axis value (%d) passed", axis);
 	}
 }
 
-/*
- * Rotates vector `v' by 90 degrees either to the right or left. This is
- * faster than doing full trigonometric calculations in vect2_rot.
+/**
+ * Rotates vector `v` by 90 degrees either to the right or left. This is
+ * faster than doing full trigonometric calculations in vect2_rot().
  */
 vect2_t
 vect2_norm(vect2_t v, bool_t right)
@@ -509,8 +539,8 @@ vect2_norm(vect2_t v, bool_t right)
 		return (VECT2(-v.y, v.x));
 }
 
-/*
- * Rotates vector `v' by `a' degrees to the right.
+/**
+ * Rotates vector `v` by `a` degrees to the right.
  */
 vect2_t
 vect2_rot(vect2_t v, double a)
@@ -519,9 +549,9 @@ vect2_rot(vect2_t v, double a)
 	return (VECT2(v.x * cos_a - v.y * sin_a, v.x * sin_a + v.y * cos_a));
 }
 
-/*
- * Same as vect2_rot, but assumes an inverted Y coordinate. This is used in
- * X-Plane OpenGL coordinates, where the Y coordinate points south not north.
+/**
+ * Same as vect2_rot(), but assumes an inverted Y coordinate. This is used in
+ * X-Plane OpenGL coordinates, where the Y coordinate points south, not north.
  */
 vect2_t
 vect2_rot_inv_y(vect2_t v, double a)
@@ -530,8 +560,8 @@ vect2_rot_inv_y(vect2_t v, double a)
 	return (VECT2(v.x * cos_a + v.y * sin_a, v.y * cos_a - v.x * sin_a));
 }
 
-/*
- * Negates vector `v' to point in the opposite direction.
+/**
+ * @return The negation of vector `v`, so it point in the opposite direction.
  */
 vect3_t
 vect3_neg(vect3_t v)
@@ -539,8 +569,8 @@ vect3_neg(vect3_t v)
 	return (VECT3(-v.x, -v.y, -v.z));
 }
 
-/*
- * Same as vect3_neg, but for long-double vectors.
+/**
+ * Same as vect3_neg(), but for long-double vectors.
  */
 vect3l_t
 vect3l_neg(vect3l_t v)
@@ -548,8 +578,8 @@ vect3l_neg(vect3l_t v)
 	return (VECT3L(-v.x, -v.y, -v.z));
 }
 
-/*
- * Same as vect3_neg but for 2-space vectors.
+/**
+ * Same as vect3_neg() but for 2-space vectors.
  */
 vect2_t
 vect2_neg(vect2_t v)
@@ -557,7 +587,7 @@ vect2_neg(vect2_t v)
 	return (VECT2(-v.x, -v.y));
 }
 
-/*
+/**
  * Converts a vector from X-Plane local OpenGL coordinates to aircraft
  * coordinates, given aircraft local roll, pitch and heading. This can
  * also be used to convert from aircraft coordinates to the true
@@ -571,8 +601,8 @@ vect3_local2acf(vect3_t v, double roll, double pitch, double hdgt)
 	    -roll, 2));
 }
 
-/*
- * The inverse of vect3_local2acf.
+/**
+ * The inverse of vect3_local2acf().
  */
 vect3_t
 vect3_acf2local(vect3_t v, double roll, double pitch, double hdgt)
@@ -581,6 +611,12 @@ vect3_acf2local(vect3_t v, double roll, double pitch, double hdgt)
 	    hdgt, 1));
 }
 
+/**
+ * Expresses the relative angle needed to turn from `a1` to `a2`, both
+ * specified in degrees and result is returned in degrees as well. This
+ * function handles angle wrapping and will always return a value in
+ * the range <-180,+180>.
+ */
 double
 rel_angle(double a1, double a2)
 {
@@ -605,11 +641,11 @@ rel_angle(double a1, double a2)
 	}
 }
 
-/*
- * Converts surface coordinates on an Earth-sized spheroid into 3-space
+/**
+ * Converts surface coordinates on an Earth-sized sphere into 3-space
  * coordinate vector in ECEF space. Please note that this considers the
  * Earth to be a perfect sphere and hence cannot be used for very precise
- * calculations. For more accurate conversions, use geo2ecef.
+ * calculations. For more accurate conversions, use geo2ecef_mtr().
  *
  * @param pos The input position to convert.
  *
@@ -618,6 +654,8 @@ rel_angle(double a1, double a2)
  * - x: positive & passing through lat=0, lon=0
  * - y: positive & passing through lat=0, lon=+90
  * - z: positive & passing through lat=90
+ *
+ * @see geo2ecef_mtr()
  */
 vect3_t
 sph2ecef(geo_pos3_t pos)
@@ -643,7 +681,7 @@ sph2ecef(geo_pos3_t pos)
 	return (result);
 }
 
-/*
+/**
  * Converts geographic coordinates into ECmI coordinates.
  * @param pos Input geographic coordinates.
  * @param delta_t Delta-time (in seconds) from the ECmI reference time.
@@ -660,7 +698,7 @@ geo2ecmi(geo_pos3_t pos, double delta_t, const ellip_t *ellip)
 	return (ecef2ecmi(geo2ecef_mtr(pos, ellip), delta_t));
 }
 
-/*
+/**
  * Converts ECmI coordinates into geographic coordinates.
  * @param pos Input ECmI coordinates.
  * @param delta_t Delta-time (in seconds) from the ECmI reference time.
@@ -677,6 +715,10 @@ ecmi2geo(vect3_t pos, double delta_t, const ellip_t *ellip)
 	return (ecef2geo(ecmi2ecef(pos, delta_t), ellip));
 }
 
+/**
+ * Similar to geo2ecmi(), but instead of using a WGS-84 ellipsoid,
+ * assumes that the Earth is perfectly spherical.
+ */
 vect3_t
 sph2ecmi(geo_pos3_t pos, double delta_t)
 {
@@ -685,6 +727,10 @@ sph2ecmi(geo_pos3_t pos, double delta_t)
 	return (ecef2ecmi(sph2ecef(pos), delta_t));
 }
 
+/**
+ * Similar to ecmi2geo(), but instead of using a WGS-84 ellipsoid,
+ * assumes that the Earth is perfectly spherical.
+ */
 geo_pos3_t
 ecmi2sph(vect3_t pos, double delta_t)
 {
@@ -693,6 +739,10 @@ ecmi2sph(vect3_t pos, double delta_t)
 	return (ecef2sph(ecmi2ecef(pos, delta_t)));
 }
 
+/**
+ * Converts a series of Euclidian ECEF coordinates into ECmI coordinates
+ * at specified delta-time `delta_t`.
+ */
 vect3_t
 ecef2ecmi(vect3_t pos, double delta_t)
 {
@@ -701,6 +751,10 @@ ecef2ecmi(vect3_t pos, double delta_t)
 	return (vect3_rot(pos, -delta_t * EARTH_ROT_RATE, 2));
 }
 
+/**
+ * Converts a series of Euclidian ECmI coordinates into ECEF coordinates
+ * at specified delta-time `delta_t`.
+ */
 vect3_t
 ecmi2ecef(vect3_t pos, double delta_t)
 {
@@ -709,30 +763,48 @@ ecmi2ecef(vect3_t pos, double delta_t)
 	return (vect3_rot(pos, delta_t * EARTH_ROT_RATE, 2));
 }
 
+/**
+ * Converts ECEF coordinates into OpenGL (right-handed) coordinates.
+ */
 vect3_t
 ecef2gl(vect3_t ecef)
 {
 	return (VECT3(ecef.y, ecef.z, ecef.x));
 }
 
+/**
+ * Converts OpenGL (right-handed) coordinates into ECEF coordinates.
+ */
 vect3_t
 gl2ecef(vect3_t opengl)
 {
 	return (VECT3(opengl.z, opengl.x, opengl.y));
 }
 
+/**
+ * Same as ecef2gl(), but utilizing extended preicision coordinates.
+ */
 vect3l_t
 ecef2gl_l(vect3l_t ecef)
 {
 	return (VECT3L(ecef.y, ecef.z, ecef.x));
 }
 
+/**
+ * Same as gl2ecef(), but utilizing extended preicision coordinates.
+ */
 vect3l_t
 gl2ecef_l(vect3l_t opengl)
 {
 	return (VECT3L(opengl.z, opengl.x, opengl.y));
 }
 
+/**
+ * Initializes a new ellipsoid for use with functions which take a
+ * \ref ellip_t argument. For the vast majority of use cases, you will
+ * NOT want to call this and instead use the pre-existing \ref wgs84
+ * ellipsoid.
+ */
 ellip_t
 ellip_init(double semi_major, double semi_minor, double flattening)
 {
@@ -745,6 +817,14 @@ ellip_init(double semi_major, double semi_minor, double flattening)
 	return (ellip);
 }
 
+/**
+ * Converts between geographic coordinates on an ellipsoid into equivalent
+ * geographic coordinates on a perfect sphere.
+ * @param pos Geographic coordinates on the ellipsoid described in `ellip`.
+ * @param ellip Definition of the ellipsoid on which `pos` exists.
+ * @return Coordinates `pos` expressed on a perfect sphere, as-if it was
+ *	co-located with the ellipsoid.
+ */
 geo_pos3_t
 geo2sph(geo_pos3_t pos, const ellip_t *ellip)
 {
@@ -765,6 +845,16 @@ geo2sph(geo_pos3_t pos, const ellip_t *ellip)
 	return (res);
 }
 
+/**
+ * Converts a series of geographic coordinates on an ellipsoid into
+ * Euclidian coordinates in the ECEF coordinate system.
+ * @param pos Geographic coordinates on the ellipsoid described in `ellip`.
+ *	The elevation component of the coordinates is assumed to be in meters.
+ * @param ellip Definition of the ellipsoid on which `pos` exists.
+ * @return A 3-space vector, corresponding to the position of `pos` in
+ *	the ECEF coordinate system.
+ * @see https://en.wikipedia.org/wiki/Earth-centered,_Earth-fixed_coordinate_system
+ */
 vect3_t
 geo2ecef_mtr(geo_pos3_t pos, const ellip_t *ellip)
 {
@@ -784,6 +874,10 @@ geo2ecef_mtr(geo_pos3_t pos, const ellip_t *ellip)
 	return (res);
 }
 
+/**
+ * Same as geo2ecef_mtr(), but the elevation component of `pos` is
+ * assumed to be in feet.
+ */
 vect3_t
 geo2ecef_ft(geo_pos3_t pos, const ellip_t *ellip)
 {
@@ -791,6 +885,15 @@ geo2ecef_ft(geo_pos3_t pos, const ellip_t *ellip)
 	    ellip));
 }
 
+/**
+ * Does the reverse transform of geo2ecef_mtr(), by translating ECEF
+ * coordinates into geographic coordinates on an ellipsoid.
+ * @param pos Input ECEF coordinates to be translated.
+ * @param ellip Definition of the ellipsoid to which `pos` is to be translated.
+ * @return Geographic coordinates on ellipsoid `ellip` matching the
+ *	position of ECEF coordinates `pos`. Elevation is encoded as meters.
+ * @see https://en.wikipedia.org/wiki/Earth-centered,_Earth-fixed_coordinate_system
+ */
 geo_pos3_t
 ecef2geo(vect3_t pos, const ellip_t *ellip)
 {
@@ -872,9 +975,11 @@ ecef2geo(vect3_t pos, const ellip_t *ellip)
 	return (res);
 }
 
-/*
+/**
  * Converts a 3-space coordinate vector from ECEF coordinate space into
- * geocentric coordinates on an EARTH_MSL-radius spheroid.
+ * geocentric coordinates on an EARTH_MSL-radius sphere. This basically
+ * the same as ecef2geo(), but rather than using an ellipsoid, assumes
+ * the coordinates were specified on a perfect sphere.
  */
 geo_pos3_t
 ecef2sph(vect3_t v)
@@ -903,7 +1008,7 @@ ecef2sph(vect3_t v)
 	return (pos);
 }
 
-/*
+/**
  * Determines whether and where a vector intersects the surface of a sphere.
  * Returns the number of intersection points (zero, one or two).
  *
@@ -1015,10 +1120,10 @@ vect2sph_isect(vect3_t v, vect3_t o, vect3_t c, double r, bool_t confined,
 	}
 }
 
-/*
+/**
  * Determines whether and where a 2D vector intersects a 2D circle. The
  * meanings of the arguments and return value are exactly the same as in
- * vect2sph_isect.
+ * vect2sph_isect().
  */
 unsigned
 vect2circ_isect(vect2_t v, vect2_t o, vect2_t c, double r, bool_t confined,
@@ -1045,8 +1150,8 @@ vect2circ_isect(vect2_t v, vect2_t o, vect2_t c, double r, bool_t confined,
 	return (n);
 }
 
-/*
- * Calculates a 2D vector/vector intersection point and returns it.
+/**
+ * Calculates a 2D vector-to-vector intersection point and returns it.
  *
  * @param a First vector.
  * @param oa Vector to origin of first vector from the coordinate origin.
@@ -1097,17 +1202,17 @@ vect2vect_isect(vect2_t a, vect2_t oa, vect2_t b, vect2_t ob, bool_t confined)
 	return (r);
 }
 
-/*
+/**
  * Computes the intersection of two circles. The circles are centered at
  * `ca' and `cb' and have radii `ra' and `rb' respectively.
  * The `i' argument must point to an array capable of holding at least two
  * points, which will be filled with the intersection points.
  * The function returns the number of intersections (and appropriate slots
  * filled in `i'). Possible values are:
- *	0: the circles do not intersect.
- *	1: the circles touch in one point.
- *	2: the circles intersection at two points.
- *	UINT_MAX: the circles are identical (`i' is NOT populated).
+ * - 0: the circles do not intersect.
+ * - 1: the circles touch in one point.
+ * - 2: the circles intersection at two points.
+ * - UINT_MAX: the circles are identical (`i' is NOT populated).
  */
 unsigned
 circ2circ_isect(vect2_t ca, double ra, vect2_t cb, double rb, vect2_t i[2])
@@ -1145,8 +1250,7 @@ circ2circ_isect(vect2_t ca, double ra, vect2_t cb, double rb, vect2_t i[2])
 	}
 }
 
-static bool_t is_valid_poly(const vect2_t *poly) UNUSED_ATTR;
-static bool_t
+UNUSED_ATTR static bool_t
 is_valid_poly(const vect2_t *poly)
 {
 	/* A polygon must contain at least 3 points */
@@ -1163,25 +1267,23 @@ get_poly_num_pts(const vect2_t *poly)
 	}
 }
 
-
-/*
+/**
  * Checks if a vector and a polygon intersect.
- *	`a' Direction & magnitude of first vector.
- *	`oa' Vector pointing to the origin of the first vector.
- *	`poly' An array of 2-space vectors specifying the points of the
- *		polygon. Must contain at least 3 points and must be
- *		terminated by a final NULL_VECT2 point.
- *	`isects` An array that will be populated with the intersection
- *		points. At most `cap' elements will be written to the
- *		array. The return value is the total number of intersections.
- *		Can be NULL if you do not wish to receive the intersections.
- *	`cap' Number of elements in `isects' that can be populated with
- *		intersections. No more than `cap' elements will be written
- *		to `isects'.
- * Returns the number of the polygon's sides that the vector intersects.
- * Please note that this only checks intersection with the sides, not if
- * the vector is contained completely inside the polygon. Use vect2_in_poly
- * with the vector's to test for that scenario.
+ * @param a Direction & magnitude of first vector.
+ * @param oa Vector pointing to the origin of the first vector.
+ * @param poly An array of 2-space vectors specifying the points of the
+ *	polygon. Must contain at least 3 points and must be terminated by
+ *	a final `NULL_VECT2` point.
+ * @param isects An optional return array that will be populated with the
+ *	intersection points. At most `cap' elements will be written to the
+ *	array. The return value is the total number of intersections. Can
+ *	be `NULL` if you do not wish to receive the intersections.
+ * @param cap Number of elements in `isects' that can be populated with
+ *	intersections. No more than `cap' elements will be written to `isects`.
+ * @return The number of the polygon's sides that the vector intersects.
+ *	Please note that this only checks intersection with the sides, not if
+ *	the vector is contained completely inside the polygon. Use
+ *	point_in_poly() with the vector's origin to test for that scenario.
  */
 unsigned
 vect2poly_isect_get(vect2_t a, vect2_t oa, const vect2_t *poly,
@@ -1212,10 +1314,11 @@ vect2poly_isect_get(vect2_t a, vect2_t oa, const vect2_t *poly,
 	return (n_isects);
 }
 
-/*
- * Same as vect2poly_isect_get, but only returns the number of intersections.
+/**
+ * Same as vect2poly_isect_get(), but only returns the number of intersections.
  * This function is primarily for legacy code that might depend on it. Use
- * vect2poly_isect_get for new code, as it provides more flexibility.
+ * vect2poly_isect_get() for new code, as it provides more flexibility.
+ * @see vect2poly_isect_get()
  */
 unsigned
 vect2poly_isect(vect2_t a, vect2_t oa, const vect2_t *poly)
@@ -1223,12 +1326,13 @@ vect2poly_isect(vect2_t a, vect2_t oa, const vect2_t *poly)
 	return (vect2poly_isect_get(a, oa, poly, NULL, 0));
 }
 
-/*
+/**
  * Checks if a point lies inside of a polygon.
- *	`pt' A vector pointing to the position of the point to examine.
- *	`poly' An array of 2-space vectors specifying the points of the
- *		polygon. Must contain at least 3 points and must be
- *		terminated by a final NULL_VECT2 point.
+ * @param pt A vector pointing to the position of the point to examine.
+ * @param poly An array of 2-space vectors specifying the points of the
+ *	polygon. Must contain at least 3 points and must be terminated
+ *	by a final `NULL_VECT2` point.
+ * @return `B_TRUE` if the point lies inside of `poly`, `B_FALSE` otherwise.
  */
 bool_t
 point_in_poly(vect2_t pt, const vect2_t *poly)
@@ -1245,7 +1349,7 @@ point_in_poly(vect2_t pt, const vect2_t *poly)
 	return ((isects & 1) != 0);
 }
 
-/*
+/**
  * Given a true heading in degrees, constructs a unit vector pointing in that
  * direction. 0 degress is parallel with y axis and hdg increases clockwise.
  */
@@ -1256,9 +1360,10 @@ hdg2dir(double truehdg)
 	return (VECT2(sin(truehdg), cos(truehdg)));
 }
 
-/*
- * Given a direction vector, returns the true heading that the vector
- * is pointing. See hdg2dir for a description of the returned heading value.
+/**
+ * Given a direction vector, returns the true heading that the vector is
+ * pointing. See hdg2dir() for a description of the returned heading value.
+ * This function is the inverse of hdg2dir().
  */
 double
 dir2hdg(vect2_t dir)
@@ -1281,12 +1386,31 @@ dir2hdg(vect2_t dir)
 	return (normalize_hdg(res));
 }
 
+/**
+ * Given a starting coordinate and displacement direction + distance,
+ * displaces the starting coordinates in the desired direction and
+ * distance along a great circle.
+ * @param ellip An optional ellipsoid pointer, describing the Earth
+ *	ellipsoid to use. If `NULL`, then the projection uses a
+ *	spherical Earth model.
+ * @param pos The starting position of the displacement.
+ * @param truehdg The direction of the displacement in degrees from true north.
+ * @param dist The distance of the displacement in meters.
+ * @return The displaced coordinates along a great circle, in the direction
+ *	of `truehdg` and for `dist` meters.
+ */
 geo_pos2_t
 geo_displace(const ellip_t *ellip, geo_pos2_t pos, double truehdg, double dist)
 {
 	return (geo_displace_dir(ellip, pos, hdg2dir(truehdg), dist));
 }
 
+/**
+ * Same as geo_displace(), but uses a unit direction vector instead of a
+ * heading in degrees. This is equivalent to just converting the heading
+ * into a direction vector first, using hdg2dir().
+ * @see geo_displace()
+ */
 geo_pos2_t
 geo_displace_dir(const ellip_t *ellip, geo_pos2_t pos, vect2_t dir, double dist)
 {
@@ -1301,32 +1425,17 @@ geo_displace_dir(const ellip_t *ellip, geo_pos2_t pos, vect2_t dir, double dist)
 	return (fpp2geo(dir, &fpp));
 }
 
-/*
- * Computes the number of latitudinal subdivisions used for tiling a spherical
- * surface. See world.c for a description of this tiling.
+/**
+ * Parses a series of strings for latitude and longitude and uses them
+ * to construct a \ref geo_pos2_t, with checking for correctness.
+ * @param lat The latitude in fractional degrees (positive north).
+ * @param lon The longitude in fractional degrees (positive east).
+ * @param pos A mandatory return argument that will be filled the
+ *	resulting geographic coordinates.
+ * @return `B_TRUE` if the input coordinates were a valid latitude & longitude.
+ *	If the input contained invalid data, returns `B_FALSE` instead and
+ *	you shouldn't use the returned `pos`.
  */
-unsigned
-sphere_lat_subdiv(double radius, double partition_sz)
-{
-	ASSERT3F(radius, >=, partition_sz);
-	return (ceil((radius * M_PI) / partition_sz) + 1);
-}
-
-/*
- * Computes the number of longitudinal subdivisions for a given latitude (given
- * in degrees, with 0 being the equator) used for tiling a spherical
- * surface. See world.c for a description of this tiling.
- */
-unsigned
-sphere_lon_subdiv(double radius, double lat, double partition_sz)
-{
-	ASSERT3F(lat, >=, -90.0);
-	ASSERT3F(lat, <=, 90.0);
-	ASSERT3F(radius, >=, partition_sz);
-	double r = cos(DEG2RAD(lat)) * radius;
-	return (ceil((2 * M_PI * r) / partition_sz));
-}
-
 bool_t
 geo_pos2_from_str(const char *lat, const char *lon, geo_pos2_t *pos)
 {
@@ -1335,6 +1444,10 @@ geo_pos2_from_str(const char *lat, const char *lon, geo_pos2_t *pos)
 	return (is_valid_lat(pos->lat) && is_valid_lon(pos->lon));
 }
 
+/**
+ * Same as geo_pos2_from_str(), but includes an elevation argument and
+ * returns a \ref geo_pos3_t.
+ */
 bool_t
 geo_pos3_from_str(const char *lat, const char *lon, const char *elev,
     geo_pos3_t *pos)
@@ -1360,7 +1473,7 @@ sec(double x)
 	return (1.0 / cos(x));
 }
 
-/*
+/**
  * Prepares a set of geographical coordinate translation parameters.
  *
  * @param displac The relative latitude & longitude (in degrees)
@@ -1441,8 +1554,10 @@ sph_xlate_init(geo_pos2_t displac, double rot, bool_t inv)
 	return (xlate);
 }
 
-/*
- * Translates a point at `pos' using the translation specified by `xlate'.
+/**
+ * Translates a point at ECEF coordinates `pos` using the spherical
+ * translation specified by `xlate`. Note that is assumes the planet
+ * to be a perfect sphere, rather than an ellipsoid.
  */
 vect3_t
 sph_xlate_vect(vect3_t p, const sph_xlate_t *xlate)
@@ -1476,8 +1591,10 @@ sph_xlate_vect(vect3_t p, const sph_xlate_t *xlate)
 	return (q);
 }
 
-/*
- * Translates a point at `pos' using the geo translation specified by `xlate'.
+/**
+ * Translates a point at `pos` using the geo translation specified by `xlate`.
+ * Note that is assumes the planet to be a perfect sphere, rather than an
+ * ellipsoid.
  */
 geo_pos2_t
 sph_xlate(geo_pos2_t pos, const sph_xlate_t *xlate)
@@ -1488,9 +1605,9 @@ sph_xlate(geo_pos2_t pos, const sph_xlate_t *xlate)
 	return (GEO_POS2(res.lat, res.lon));
 }
 
-/*
- * Returns the great circle distance between two geodesic coordinates on the
- * Earth in meters.
+/**
+ * @return the great circle distance between two geodesic coordinates on the
+ * Earth in meters. This is using the WGS-84 ellipsoid.
  */
 double
 gc_distance(geo_pos2_t start, geo_pos2_t end)
@@ -1507,6 +1624,13 @@ gc_distance(geo_pos2_t start, geo_pos2_t end)
 	return	(2 * alpha * EARTH_MSL);
 }
 
+/**
+ * Computes the great-circle point heading from `start` to `end`. The
+ * heading is calculated at the position of the first argument. In
+ * essence, it asks the question "what heading to I need to be facing
+ * at `start` to move towards `end` along a great circle path." The
+ * underlying projection assumes a WGS-84 ellipsoid.
+ */
 double
 gc_point_hdg(geo_pos2_t start, geo_pos2_t end)
 {
@@ -1514,7 +1638,7 @@ gc_point_hdg(geo_pos2_t start, geo_pos2_t end)
 	return (dir2hdg(geo2fpp(end, &fpp)));
 }
 
-/*
+/**
  * Prepares a set of projection parameters for projections from a fixed
  * origin along the projection axis onto a flat projection plane. The
  * plane is centered at `center' and is rotated `rot' degrees relative to
@@ -1525,7 +1649,7 @@ gc_point_hdg(geo_pos2_t start, geo_pos2_t end)
  * center. The distance of this point along the projection axis from the
  * projection plane is `dist' with positive offsets increasing away from
  * the sphere's center.
- *
+ *```
  *   projection.
  *       center \ | <- projection axis (positive offsets)
  *               v|
@@ -1542,7 +1666,7 @@ gc_point_hdg(geo_pos2_t start, geo_pos2_t end)
  *           '----|----'
  *                |
  *                | <- projection axis (negative offsets)
- *
+ *```
  * You can pass INFINITY for `dist', in which case the projection origin
  * will be centered at +INFINITY, constructing an orthographic projection.
  * N.B. ATM there is no way to position the projection point at -INFINITY.
@@ -1576,9 +1700,10 @@ fpp_init(geo_pos2_t center, double rot, double dist, const ellip_t *ellip,
 	return (fpp);
 }
 
-/*
+/**
  * Constructs an orthographic projection. This is a flat plane projection with
- * the projection origin at +INFINITY. See `fpp_init' for more information.
+ * the projection origin at +INFINITY.
+ * @see fpp_init()
  */
 fpp_t
 ortho_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
@@ -1587,9 +1712,10 @@ ortho_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
 	return (fpp_init(center, rot, INFINITY, ellip, allow_inv));
 }
 
-/*
+/**
  * Constructs a gnomonic projection. This is a flat plane projection with
- * the origin at the Earth's center. See `fpp_init' for more information.
+ * the origin at the Earth's center.
+ * @see fpp_init()
  */
 fpp_t
 gnomo_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
@@ -1598,11 +1724,11 @@ gnomo_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
 	return (fpp_init(center, rot, -EARTH_MSL, ellip, allow_inv));
 }
 
-/*
+/**
  * Constructs a stereographic projection. This is a projection with
  * the origin at the intersection of the projection axis and the surface
  * of the Earth opposite the projection plane's center point.
- * See `fpp_init' for more information.
+ * @see fpp_init()
  */
 fpp_t
 stereo_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
@@ -1611,7 +1737,7 @@ stereo_fpp_init(geo_pos2_t center, double rot, const ellip_t *ellip,
 	return (fpp_init(center, rot, -2 * EARTH_MSL, ellip, allow_inv));
 }
 
-/*
+/**
  * Projects a point at `pos' according to the projection `proj' and returns
  * a 2D vector to the projected point's location on the projection plane.
  * If the specified point cannot be projected (because its projection falls
@@ -1642,12 +1768,14 @@ geo2fpp(geo_pos2_t pos, const fpp_t *fpp)
 	return (VECT2(res_v.x * fpp->scale.x, res_v.y * fpp->scale.y));
 }
 
-/*
+/**
  * Back-projects a point from a projection surface into spherical coordinate
  * space. N.B. since projection loses some information about the original
  * input point, back-projection is incomplete for projections where either:
- *	a) the projection origin was non-negative, or
- *	b) the projection origin was less than -EARTH_MSL
+ *
+ * - the projection origin was non-negative, or
+ * - the projection origin was less than -EARTH_MSL
+ *
  * This means back-projection is only uniquely possible possible for
  * gnomonic, stereographic and other projections where the projection origin
  * lies "inside" the projected sphere. In case back-projection is not unique,
@@ -1706,6 +1834,16 @@ fpp2geo(vect2_t pos, const fpp_t *fpp)
 		return (GEO3_TO_GEO2(ecef2sph(r)));
 }
 
+/**
+ * Sets a final output scaling vector for a flat plane projection previously
+ * created using one of the `*fpp_init` functions. This scaling vector is
+ * used to simply multiply the X and Y coordinates of the project's output.
+ * In essence, it is no different than doing:
+ *```
+ * vect2_mul(geo2fpp(pos, fpp), scale);
+ *```
+ * @see fpp_init()
+ */
 void
 fpp_set_scale(fpp_t *fpp, vect2_t scale)
 {
@@ -1715,6 +1853,10 @@ fpp_set_scale(fpp_t *fpp, vect2_t scale)
 	fpp->scale = scale;
 }
 
+/**
+ * @return The scaling previously set using fpp_set_scale(). If no scaling
+ *	is set, the default is `VECT2(1, 1)`.
+ */
 vect2_t
 fpp_get_scale(const fpp_t *fpp)
 {
@@ -1722,7 +1864,7 @@ fpp_get_scale(const fpp_t *fpp)
 	return (fpp->scale);
 }
 
-/*
+/**
  * Prepares a set of Lambert conformal conic projection parameters.
  *
  * @param reflat Reference latitude in degrees.
@@ -1755,7 +1897,7 @@ lcc_init(double reflat, double reflon, double stdpar1, double stdpar2)
 	return (lcc);
 }
 
-/*
+/**
  * Projects a point at `pos' using the projection `lcc'.
  */
 vect2_t
@@ -1773,8 +1915,11 @@ geo2lcc(geo_pos2_t pos, const lcc_t *lcc)
 	return (result);
 }
 
-/*
+/**
  * Allocates a new generic Bezier curve structure with n_pts points.
+ * The resulting object must be freed using bezier_free().
+ * @see quad_bezier_func()
+ * @see quad_bezier_func_inv()
  */
 bezier_t *
 bezier_alloc(size_t n_pts)
@@ -1787,8 +1932,8 @@ bezier_alloc(size_t n_pts)
 	return (curve);
 }
 
-/*
- * Frees a generic Bezier curve previous allocated with bezier_alloc.
+/**
+ * Frees a generic Bezier curve previous allocated with bezier_alloc().
  */
 void
 bezier_free(bezier_t *curve)
@@ -1797,19 +1942,19 @@ bezier_free(bezier_t *curve)
 	free(curve);
 }
 
-/*
+/**
  * Calculates the value of a function defined by a set of quadratic bezier
  * curve segments.
  *
  * @param x Function input value.
  * @param func The set of quadratic bezier curves defining the function.
  *	Please note that since this is a function, curve segments may
- *	not overlap. This is to guarantee that at any point 'x' the
+ *	not overlap. This is to guarantee that at any point `x` the
  *	function resolves to one value.
  *
- * @return The function value at point 'x'. If the point is beyond the
+ * @return The function value at point `x`. If the point is beyond the
  *	edges of the bezier curve segments describing the function, the
- *	'y' value of the first or last curve point is returned, i.e.
+ *	`y` value of the first or last curve point is returned, i.e.
  *	beyond the curve boundaries, the function is assumed to be flat.
  */
 double
@@ -1898,20 +2043,23 @@ quad_bezier_func(double x, const bezier_t *func)
 	VERIFY(0);
 }
 
-/*
+/**
  * Calculates the value of a function `g' defined as the inverse of a function
  * `f' which is defined by a set of quadratic bezier curve segments:
+ *```
  * g(f(x)) = x
- * IOW, this function is the inverse of quad_bezier_func, i.e. it looks for
- * an unknown `x' input to quad_bezier_func that produces a known `y' output.
+ *```
+ * IOW, this function is the inverse of quad_bezier_func(), i.e. it looks for
+ * an unknown `x' input to quad_bezier_func() that produces a known `y' output.
  * Please note that the `func' argument of quad_bezier_func need not be a
- * bijective function definition, so quad_bezier_func_inv can return multiple
+ * bijective function definition, so quad_bezier_func_inv() can return multiple
  * `x' values that all map to the given `y' value. As a special case, if the
  * `func' definition includes a constant portion (i.e. a potentially infinite
  * number of `x' values corresponds to a given `y' value),
- * quad_bezier_func_inv returns NULL and sets n_xs to SIZE_MAX;
+ * quad_bezier_func_inv() returns NULL and sets `n_xs` to SIZE_MAX. You should
+ * treat this case as "infinite solutions."
  *
- * @param y Output value of the function `func' for which to look for a
+ * @param y Output value of the function `func` for which to look for a
  *	suitable `x' input value.
  * @param func The set of quadratic bezier curve defining the function with
  *	the same constraints as in quad_bezier_func.
@@ -1920,7 +2068,7 @@ quad_bezier_func(double x, const bezier_t *func)
  *
  * @return An array of `x' values corresponding to the `y' argument. The
  *	number of elements in this array is filled in `n_xs'. Caller is
- *	responsible for freeing this array.
+ *	responsible for freeing this array using lacf_free().
  */
 double *
 quad_bezier_func_inv(double y, const bezier_t *func, size_t *n_xs)
@@ -1963,6 +2111,9 @@ quad_bezier_func_inv(double y, const bezier_t *func, size_t *n_xs)
 	return (xs);
 }
 
+/**
+ * Constructs a 4x4 identity matrix in `mat`.
+ */
 API_EXPORT void
 mat4_ident(mat4_t *mat)
 {
@@ -1973,6 +2124,9 @@ mat4_ident(mat4_t *mat)
 	MAT4(mat, 3, 3) = 1;
 }
 
+/**
+ * Constructs a 3x3 identity matrix in `mat`.
+ */
 API_EXPORT void
 mat3_ident(mat3_t *mat)
 {

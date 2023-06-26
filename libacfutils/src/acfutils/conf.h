@@ -20,7 +20,23 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2020 Saso Kiselkov. All rights reserved.
+ * Copyright 2023 Saso Kiselkov. All rights reserved.
+ */
+/**
+ * \file
+ * This is a general-purpose configuration store. It's really just a
+ * key-value pair dictionary that can be read from and written to a file.
+ *
+ * The file format is very simple, consisting of a simple sequence of
+ * lines like the following:
+ *
+ * key = value
+ *
+ * In addition to being able to return the full-text values of keys, this
+ * set functions also allows you to easily parse the data in a variety of
+ * formats (integers, floats, booleans, etc.). The file format also allows
+ * for comments, so it is usable as a user-written configuration parser.
+ * Lines beginning with "#" or "--" are automatically skipped.
  */
 
 #ifndef	_ACFUTILS_CONF_H_
@@ -105,29 +121,29 @@ API_EXPORT size_t conf_get_data_v(const conf_t *conf,
     PRINTF_FORMAT(const char *fmt), void *buf, size_t cap, ...)
     PRINTF_ATTR2(2, 5);
 
-API_EXPORT void conf_set_str_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    const char *value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_i_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    int value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_lli_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    long long value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_f_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    double value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_d_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    double value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_da_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    double value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_b_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    bool_t value, ...) PRINTF_ATTR2(2, 4);
-API_EXPORT void conf_set_data_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
-    const void *buf, size_t sz, ...) PRINTF_ATTR2(2, 5);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_str_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    const char *value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_i_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    int value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_lli_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    long long value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_f_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    double value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_d_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    double value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_da_v(conf_t *conf, PRINTF_FORMAT(const char *fmt),
+    double value, ...);
+API_EXPORT PRINTF_ATTR2(2, 4) void conf_set_b_v(conf_t *conf,
+    PRINTF_FORMAT(const char *fmt), bool_t value, ...);
+API_EXPORT PRINTF_ATTR2(2, 5) void conf_set_data_v(conf_t *conf,
+    PRINTF_FORMAT(const char *fmt), const void *buf, size_t sz, ...);
 
 #if	__STDC_VERSION__ >= 199901L || defined(__cplusplus)
 API_EXPORT bool conf_get_b2(const conf_t *conf, const char *key,
     bool *value);
 API_EXPORT void conf_set_b2(conf_t *conf, const char *key, bool value);
-API_EXPORT bool conf_get_b2_v(const conf_t *conf,
-    PRINTF_FORMAT(const char *fmt), bool *value, ...) PRINTF_ATTR2(2, 4);
+API_EXPORT PRINTF_ATTR2(2, 4) bool conf_get_b2_v(const conf_t *conf,
+    PRINTF_FORMAT(const char *fmt), bool *value, ...);
 /*
  * We can't declare a native bool-type conf_set_b2_v here, because bool
  * isn't a formally declared type. This results in default argument

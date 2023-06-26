@@ -212,16 +212,22 @@ typedef enum {
 API_EXPORT void lacf_set_perf_step_debug(bool_t flag);
 API_EXPORT bool_t lacf_get_perf_step_debug(void);
 
+#define	acft_perf_parse		ACFSYM(acft_perf_parse)
 API_EXPORT acft_perf_t *acft_perf_parse(const char *filename);
+#define	acft_perf_destroy	ACFSYM(acft_perf_destroy)
 API_EXPORT void acft_perf_destroy(acft_perf_t *perf);
 
+#define	flt_perf_new		ACFSYM(flt_perf_new)
 API_EXPORT flt_perf_t *flt_perf_new(const acft_perf_t *acft);
+#define	flt_perf_destroy	ACFSYM(flt_perf_destroy)
 API_EXPORT void flt_perf_destroy(flt_perf_t *flt);
 
+#define	eng_max_thr_avg	ACFSYM(eng_max_thr_avg)
 API_EXPORT double eng_max_thr_avg(const flt_perf_t *flt,
     const acft_perf_t *acft, double alt1, double alt2, double ktas,
     double qnh, double isadev, double tp_alt);
 
+#define	accelclb2dist	ACFSYM(accelclb2dist)
 API_EXPORT double accelclb2dist(const flt_perf_t *flt, const acft_perf_t *acft,
     double isadev, double qnh, double tp_alt, double accel_alt,
     double fuel, vect2_t dir,
@@ -229,20 +235,24 @@ API_EXPORT double accelclb2dist(const flt_perf_t *flt, const acft_perf_t *acft,
     double alt2, double kcas2, vect2_t wind2,
     double flap_ratio, double mach_lim, accelclb_t type, double *burnp,
     double *kcas_out);
+#define	dist2accelclb	ACFSYM(dist2accelclb)
 API_EXPORT double dist2accelclb(const flt_perf_t *flt, const acft_perf_t *acft,
     double isadev, double qnh, double tp_alt, double accel_alt,
     double fuel, vect2_t dir,
     double flap_ratio, double *alt, double *kcas, vect2_t wind,
     double alt_tgt, double kcas_tgt, double mach_lim, double dist_tgt,
     accelclb_t type, double *burnp, double *ttg_out);
+#define	decel2dist	ACFSYM(decel2dist)
 API_EXPORT double decel2dist(const flt_perf_t *flt, const acft_perf_t *acft,
     double isadev, double qnh, double tp_alt, double fuel,
     double alt, double kcas1, double kcas2, double dist_tgt,
     double *kcas_out, double *burn_out);
+#define	perf_crz2burn	ACFSYM(perf_crz2burn)
 API_EXPORT double perf_crz2burn(double isadev, double tp_alt, double qnh,
     double alt_ft, double spd, bool_t is_mach, double hdg, vect2_t wind1,
     vect2_t wind2, double fuel, double dist_nm, const acft_perf_t *acft,
     const flt_perf_t *flt, double *ttg_out);
+#define	perf_des2burn	ACFSYM(perf_des2burn)
 API_EXPORT double perf_des2burn(const flt_perf_t *flt, const acft_perf_t *acft,
     double isadev, double qnh, double fuel, double hdgt, double dist_nm,
     double mach_lim,
@@ -250,12 +260,15 @@ API_EXPORT double perf_des2burn(const flt_perf_t *flt, const acft_perf_t *acft,
     double alt2_ft, double kcas2, vect2_t wind2,
     double *ttg_out);
 
+#define	perf_TO_spd	ACFSYM(perf_TO_spd)
 API_EXPORT double perf_TO_spd(const flt_perf_t *flt, const acft_perf_t *acft);
 
+#define	acft_get_sfc	ACFSYM(acft_get_sfc)
 API_EXPORT double acft_get_sfc(const flt_perf_t *flt, const acft_perf_t *acft,
     double thr, double alt, double ktas, double qnh, double isadev,
     double tp_alt);
 
+#define	perf_get_turn_rate	ACFSYM(perf_get_turn_rate)
 API_EXPORT double perf_get_turn_rate(double bank_ratio, double gs_kts,
     const flt_perf_t *flt, const acft_perf_t *acft);
 /*
@@ -394,6 +407,7 @@ API_EXPORT double lacf_therm_cond_glass(double T);
  * @param alt Altitude in meters.
  * @return Gravitational acceleration at the chosen point, in m/s^2.
  */
+#define	earth_gravity_accurate	ACFSYM(earth_gravity_accurate)
 API_EXPORT double earth_gravity_accurate(double lat, double alt);
 
 #ifdef	__cplusplus
