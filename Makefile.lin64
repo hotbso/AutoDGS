@@ -1,4 +1,4 @@
-PLUGINS=../../X-Plane-12/Resources/plugins/AutoDGS
+PLUGINS=../../../X-Plane-12/Resources/plugins/AutoDGS
 
 include version.mak
 
