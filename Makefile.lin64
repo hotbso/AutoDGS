@@ -3,7 +3,7 @@ PLUGINS=../../../X-Plane-12/Resources/plugins/AutoDGS
 include version.mak
 
 SDK=../SDK
-OBJDIR=./OBJ
+OBJDIR=./OBJ_LX
 
 LIBACFUTILS_VERSION="hotbso subset"
 TARGET=lin.xpl
