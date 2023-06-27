@@ -1539,6 +1539,27 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 		return;
 	}
 
+    /* look for the "use_autodgs" marker file besides apt.dat */
+    int apt_has_marker = 0;
+
+    int len = strlen(apt_dat_fname) + 100;
+    char *marker_name = safe_malloc(len);
+    lacf_strlcpy(marker_name, apt_dat_fname, len);
+    char *cptr = strrchr(marker_name, '\\');
+    if (cptr == NULL)
+        cptr = strrchr(marker_name, '/');
+    if (cptr) {
+        lacf_strlcpy(cptr + 1, "use_autodgs", 100);
+        //logMsg("marker: %s", marker_name);
+        FILE *f;
+        if ((f = fopen(marker_name, "r")) != NULL) {
+            fclose(f);
+            apt_has_marker = 1;
+        }
+    }
+
+    free(marker_name);
+
 	while (!feof(apt_dat_f)) {
 		int row_code;
 
@@ -1570,27 +1591,8 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 			    fill_in_dups ? &dup_arpt : NULL);
 
             if (arpt != NULL) {
-                if (fill_in_dups) {
+                if (fill_in_dups || apt_has_marker)
                     arpt->is_global_arpt = 1;    /* fill_in_dups means we are reading the global apt.dat */
-                } else {
-                    int len = strlen(apt_dat_fname) + 100;
-                    char *marker_name = safe_malloc(len);
-                    lacf_strlcpy(marker_name, apt_dat_fname, len);
-                    char *cptr = strrchr(marker_name, '\\');
-                    if (cptr == NULL)
-                        cptr = strrchr(marker_name, '/');
-                    if (cptr) {
-                        lacf_strlcpy(cptr + 1, "use_autodgs", 100);
-                        //logMsg("marker: %s", marker_name);
-                        FILE *f;
-                        if ((f = fopen(marker_name, "r")) != NULL) {
-                            fclose(f);
-                            arpt->is_global_arpt = 1;
-                        }
-                    }
-
-                    free(marker_name);
-                }
 
                 logMsg("ident: %s, %p, is_global_arpt: %d, %s", arpt->ident, arpt, arpt->is_global_arpt, apt_dat_fname);
             }
