@@ -1,5 +1,5 @@
 /*
- * AutoVDGS
+ * AutoDGS
  *
  * (c) Jonathan Harris 2006-2013
  * (c) Holger Teutsch 2023
@@ -193,8 +193,10 @@ static float getdgsfloat(XPLMDataRef inRefcon)
 
 static void find_nearest_ramp()
 {
-    if (arpt == NULL)
+    if (arpt == NULL) {
+        nearest_ramp = NULL;
         return;
+    }
 
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
@@ -487,18 +489,24 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
             float lon = XPLMGetDataf(ref_plane_lon);
             char airport_id[50];
 
+            /* can be a teleportation so play it safe */
+            arpt = NULL;
+            nearest_ramp = NULL;
+            resetidle();
+            unload_distant_airport_tiles(&airportdb, GEO_POS2(lat, lon));
+
+            /* find and load airport I'm on now */
             XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
             if (XPLM_NAV_NOT_FOUND != ref) {
                 XPLMGetNavAidInfo(ref, NULL, &lat, &lon, NULL, NULL, NULL, airport_id,
                         NULL, NULL);
+                logMsg("now on airport: %s", airport_id);
+
                 arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
-                if (arpt) {
-                    logMsg("now on airport: %s", arpt->icao);
-                }
-            } else {
-                arpt = NULL;
-                nearest_ramp = NULL;
-                state = IDLE;
+                if (arpt)
+                    logMsg("found in DGS cache: %s", arpt->icao);
+                else
+                    logMsg("not a global + IFR airport, sorry no DGS");
             }
 
         } else {
@@ -511,7 +519,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
         }
     }
 
-    if (on_ground && arriving) {
+    if (arpt != NULL && on_ground && arriving) {
         find_nearest_ramp();
         loop_delay = update_dgs();
     }
