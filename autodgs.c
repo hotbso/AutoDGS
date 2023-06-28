@@ -57,7 +57,7 @@ static const float AZI_X = 5;	/* Azimuth guidance */
 static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
-static const float DGS_RAMP_DIST = 25.0;
+static const float DGS_RAMP_DIST = 25.0; /* place DGS at this dist from stop position */
 
 /* types */
 typedef enum
@@ -100,9 +100,10 @@ static float azimuth, distance, distance2;
 
 /* Internal state */
 static float now;           /* current timestamp */
-static float beacon_state, beacon_last_pos, beacon_off_ts, beacon_on_ts;  /* beacon state, last switch_pos, ts of last switch action */
+static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch action */
+static float beacon_off_ts, beacon_on_ts;
 static airportdb_t airportdb;
-static airport_t *arpt;
+static const airport_t *arpt;
 static int on_ground = 1;
 static float on_ground_ts;
 static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
@@ -164,9 +165,12 @@ static void resetidle(void)
 
 static int check_beacon()
 {
-    /* when checking the beacon guard against power transition when switching
-       to the APU generator (e.g. for the ToLiss fleet.
+    /* when checking the beacon guard against power transitions when switching
+       to the APU generator (e.g. for the ToLiss fleet).
        Report only state transitions when the new state persisted for 3 seconds */
+
+    int beacon_state_prev = beacon_state;
+
     int beacon = XPLMGetDatai(ref_beacon);
     if (beacon) {
         if (! beacon_last_pos) {
@@ -181,6 +185,9 @@ static int check_beacon()
         } else if (now > beacon_off_ts + 3.0)
             beacon_state = 0;
    }
+
+    if (beacon_state != beacon_state_prev)
+        logMsg("beacon transition to: %d", beacon_state);
 
    return beacon_state;
 }
@@ -225,6 +232,7 @@ static void find_nearest_ramp()
         if (d > 170.0) // fast exit
             continue;
 
+        /* transform into gate local coordinate system */
         float s_dir_x =  sinf(D2R * ramp->hdgt);
         float s_dir_z = -cosf(D2R * ramp->hdgt);
         float local_z = dx * s_dir_x + dz * s_dir_z - plane_ref_z;
@@ -421,7 +429,7 @@ static float update_dgs()
     if (old_state != state) {
         logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
                nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
-        logMsg("local z, x %f, %f", local_z, local_x);
+        logMsg("acf position local z, x: %f, %f", local_z, local_x);
     }
 
     if (state > IDLE) {
