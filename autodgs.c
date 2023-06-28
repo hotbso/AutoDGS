@@ -110,7 +110,7 @@ static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
 static const ramp_start_t *nearest_ramp;
-
+static int update_dgs_log_ts;   // throttling of logging
 static int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
 
@@ -147,9 +147,11 @@ static const char *dgs_dref_list[] = {
 
 static XPLMInstanceRef dgs_inst_ref;
 
-
 static void resetidle(void)
 {
+    if (state != IDLE)
+        logMsg("setting to IDLE");
+
     state = IDLE;
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
@@ -426,13 +428,15 @@ static float update_dgs()
             break;
     }
 
-    if (old_state != state) {
-        logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
-               nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
-        logMsg("acf position local z, x: %f, %f", local_z, local_x);
-    }
-
     if (state > IDLE) {
+        // don't flood the log
+        if (state != old_state || now > update_dgs_log_ts + 3.0) {
+            update_dgs_log_ts = now;
+            logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
+                   nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
+            logMsg("acf position local z, x: %f, %f", local_z, local_x);
+        }
+
         XPLMDrawInfo_t drawinfo;
         float drefs[DGS_DR_NUM];
         memset(drefs, 0, sizeof(drefs));
