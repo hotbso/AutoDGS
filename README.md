@@ -1,6 +1,5 @@
 # AutoDGS
 Automatically provide DGS service (Marshaller or VDGS) for X Plane's Global Scenery airports.\
-Currently for Windows only.
 
 ## Installation
 Just unpack the zip in the plugins folder.
