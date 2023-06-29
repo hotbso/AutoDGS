@@ -49,7 +49,7 @@ static const float F2M=0.3048;	/* 1 ft [m] */
 
 /* Capture distances [m] (to stand) */
 static const float CAP_X = 10;
-static const float CAP_Z = 70;	/* (50-80 in Safedock2 flier) */
+static const float CAP_Z = 80;	/* (50-80 in Safedock2 flier) */
 static const float GOOD_Z= 0.5;
 
 /* DGS distances [m]     (to stand) */
@@ -57,7 +57,9 @@ static const float AZI_X = 5;	/* Azimuth guidance */
 static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
-static const float DGS_RAMP_DIST = 25.0; /* place DGS at this dist from stop position */
+/* place DGS at this dist from stop position */
+static const float DGS_RAMP_DIST_DEFAULT = 25.0;
+static float dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
 
 /* types */
 typedef enum
@@ -66,12 +68,6 @@ typedef enum
 } state_t;
 
 const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good", "Bad", "Parked" };
-
-typedef struct {
-    const char *key;
-    const int type;
-} icao_t;
-
 
 /* Globals */
 static const char pluginName[]="AutoDGS";
@@ -84,7 +80,7 @@ static float timestamp;
 static char xpdir[512];
 static const char *psep;
 
-static XPLMCommandRef cycle_dgs_cmdr, toggle_jetway_cmdr;
+static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
@@ -106,7 +102,7 @@ static airportdb_t airportdb;
 static const airport_t *arpt;
 static int on_ground = 1;
 static float on_ground_ts;
-static float stand_x, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
+static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
 static const ramp_start_t *nearest_ramp;
@@ -159,6 +155,9 @@ static void resetidle(void)
     beacon_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
     beacon_on_ts = beacon_off_ts = -10.0;
 
+    nearest_ramp = NULL;
+    dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
+
     if (dgs_inst_ref) {
         XPLMDestroyInstance(dgs_inst_ref);
         dgs_inst_ref = NULL;
@@ -200,6 +199,23 @@ static float getdgsfloat(XPLMDataRef inRefcon)
     return -1.0;
 }
 
+// move dgs some distance away
+static void set_dgs_pos(void)
+{
+    XPLMProbeInfo_t probeinfo;
+    probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+
+    dgs_pos_x = stand_x + dgs_ramp_dist * stand_dir_x;
+    dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
+
+    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
+        logMsg("probe failed");
+        return;
+    }
+
+    dgs_pos_y = probeinfo.locationY;
+}
+
 static void find_nearest_ramp()
 {
     if (arpt == NULL) {
@@ -214,7 +230,6 @@ static void find_nearest_ramp()
     float plane_z = XPLMGetDataf(ref_plane_z);
 
     float plane_elevation = XPLMGetDataf(ref_plane_elevation);
-    float stand_y = 0.0;    // to avoid compiler warning
 
     XPLMProbeInfo_t probeinfo;
     probeinfo.structSize = sizeof(XPLMProbeInfo_t);
@@ -277,6 +292,7 @@ static void find_nearest_ramp()
     if (min_ramp == NULL) {
         nearest_ramp = NULL;
         resetidle();
+        return;
     }
 
     if (min_ramp != nearest_ramp) {
@@ -284,17 +300,7 @@ static void find_nearest_ramp()
                min_ramp->hdgt, dist);
 
         stand_hdg = min_ramp->hdgt;
-
-        // move dgs some distance away
-        dgs_pos_x = stand_x + DGS_RAMP_DIST * stand_dir_x;
-        dgs_pos_z = stand_z + DGS_RAMP_DIST * stand_dir_z;
-
-        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
-            logMsg("probe failed");
-            return;
-        }
-
-        dgs_pos_y = probeinfo.locationY;
+        set_dgs_pos();
         nearest_ramp = min_ramp;
         state = WAITING;
     }
@@ -539,7 +545,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     return loop_delay;
 }
 
-/* call back for cycle cmd */
+/* call backs for commands */
 static int
 cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 {
@@ -569,12 +575,31 @@ cmd_set_arriving_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+static int
+cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase || NULL == nearest_ramp)
+        return 0;
+
+    if (dgs_ramp_dist > 12.0) {
+        dgs_ramp_dist -= 2.0;
+        logMsg("dgs_ramp_dist reduced to %0.1f", dgs_ramp_dist);
+        set_dgs_pos();
+    }
+
+    return 0;
+}
+
 /* call back for menu */
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
     if (item_ref == &cycle_dgs_cmdr)
         XPLMCommandOnce(cycle_dgs_cmdr);
+
+    if (item_ref == &move_dgs_closer_cmdr)
+        XPLMCommandOnce(move_dgs_closer_cmdr);
 }
 
 /* Convert path to posix style in-place */
@@ -647,17 +672,25 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
         return 0;
     }
 
-    XPLMMenuID menu = XPLMFindPluginsMenu();
-    int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
-    XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
-    XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
-
+    /* own commands */
     cycle_dgs_cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
     XPLMRegisterCommandHandler(cycle_dgs_cmdr, cmd_cycle_dgs_cb, 0, NULL);
 
-    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/set_arriving", "For development only");
+    move_dgs_closer_cmdr = XPLMCreateCommand("AutoDGS/move_dgs_closer", "Move DGS closer by 2m");
+    XPLMRegisterCommandHandler(move_dgs_closer_cmdr, cmd_move_dgs_closer, 0, NULL);
+
+    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/set_arriving", "Fake arrival at airport");
     XPLMRegisterCommandHandler(cmdr, cmd_set_arriving_cb, 0, NULL);
 
+    /* menu */
+    XPLMMenuID menu = XPLMFindPluginsMenu();
+    int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
+    XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
+
+    XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
+    XPLMAppendMenuItem(adgs_menu, "Move DGS closer by 2m", &move_dgs_closer_cmdr, 0);
+
+    /* foreign commands */
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
