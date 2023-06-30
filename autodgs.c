@@ -194,13 +194,15 @@ static int check_beacon()
 }
 
 // dummy accessor routines
-static float getdgsfloat(XPLMDataRef inRefcon)
+static float
+getdgsfloat(XPLMDataRef inRefcon)
 {
     return -1.0;
 }
 
 // move dgs some distance away
-static void set_dgs_pos(void)
+static void
+set_dgs_pos(void)
 {
     XPLMProbeInfo_t probeinfo;
     probeinfo.structSize = sizeof(XPLMProbeInfo_t);
@@ -209,14 +211,16 @@ static void set_dgs_pos(void)
     dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
 
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
-        logMsg("probe failed");
+        logMsg("XPLMProbeTerrainXYZ failed");
+        resetidle();
         return;
     }
 
     dgs_pos_y = probeinfo.locationY;
 }
 
-static void find_nearest_ramp()
+static void
+find_nearest_ramp()
 {
     if (arpt == NULL) {
         nearest_ramp = NULL;
@@ -273,16 +277,11 @@ static void find_nearest_ramp()
         }
 
         if (d < dist) {
+            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
             dist = d;
             min_ramp = ramp;
-            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
-            if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, s_x, s_y, s_z, &probeinfo)) {
-                logMsg("probe failed");
-                return;
-            }
-
             stand_x = s_x;
-            stand_y = probeinfo.locationY;
+            stand_y = s_y;
             stand_z = s_z;
             stand_dir_x = s_dir_x;
             stand_dir_z = s_dir_z;
@@ -290,7 +289,6 @@ static void find_nearest_ramp()
     }
 
     if (min_ramp == NULL) {
-        nearest_ramp = NULL;
         resetidle();
         return;
     }
@@ -299,6 +297,13 @@ static void find_nearest_ramp()
         logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
                min_ramp->hdgt, dist);
 
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, stand_x, stand_y, stand_z, &probeinfo)) {
+            logMsg("XPLMProbeTerrainXYZ failed");
+            resetidle();
+            return;
+        }
+
+        stand_y = probeinfo.locationY;
         stand_hdg = min_ramp->hdgt;
         set_dgs_pos();
         nearest_ramp = min_ramp;
@@ -306,7 +311,8 @@ static void find_nearest_ramp()
     }
 }
 
-static float update_dgs()
+static float
+update_dgs()
 {
     float loop_delay = 2.0;
 
@@ -509,7 +515,6 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 
             /* can be a teleportation so play it safe */
             arpt = NULL;
-            nearest_ramp = NULL;
             resetidle();
             unload_distant_airport_tiles(&airportdb, GEO_POS2(lat, lon));
 
@@ -710,6 +715,7 @@ PLUGIN_API void XPluginStop(void)
 
 PLUGIN_API int XPluginEnable(void)
 {
+    state = IDLE;
     return 1;
 }
 
