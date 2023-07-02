@@ -116,8 +116,8 @@ static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts
 static float beacon_off_ts, beacon_on_ts;
 static airportdb_t airportdb;
 static const airport_t *arpt;
-static int on_ground;
-static float in_air_ts;
+static int on_ground = 1;
+static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
@@ -594,16 +594,9 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
     now = XPLMGetDataf(ref_total_running_time_sec);
     int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
 
-    // must be on ground for min 10 secs
-    if (og) {
-        if (now < in_air_ts + 10.0)
-            og = 0;
-    } else
-        in_air_ts = now;
-
-    // state change ?
-    if (og != on_ground) {
+    if (og != on_ground && now > on_ground_ts + 10.0) {
         on_ground = og;
+        on_ground_ts = now;
         logMsg("transition to on_ground: %d", on_ground);
 
         if (on_ground) {
