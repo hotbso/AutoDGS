@@ -64,16 +64,15 @@ static float dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
 /* types */
 typedef enum
 {
-    DISABLED=0, IDLE, WAITING, TRACK, GOOD, BAD, PARKED
+    DISABLED=0, INACTIVE, ACTIVE, WAITING, TRACK, GOOD, BAD, PARKED
 } state_t;
 
-const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good", "Bad", "Parked" };
+const char * const state_str[] = { "Disabled", "Inactive", "Active", "Waiting", "Track", "Good", "Bad", "Parked" };
 
 enum {
     API_OPERATION_MODE,
     API_ACTIVATE,
-    API_STATE,
-    API_ACTIVE_FLAG
+    API_STATE
 };
 
 typedef enum
@@ -127,8 +126,6 @@ static int update_dgs_log_ts;   // throttling of logging
 static int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
 
-static int active = 0;
-
 enum _DGS_DREF {
     DGS_DR_STATUS,
     DGS_DR_LR,
@@ -160,12 +157,14 @@ static const char *dgs_dref_list[] = {
 
 static XPLMInstanceRef dgs_inst_ref;
 
-static void resetidle(void)
+/* new_state <= INACTIVE */
+static void
+reset_state(state_t new_state)
 {
-    if (state != IDLE)
-        logMsg("setting to IDLE");
+    if (state != new_state)
+        logMsg("setting state to %s", state_str[new_state]);
 
-    state = IDLE;
+    state = new_state;
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
 
@@ -190,17 +189,16 @@ set_active()
         return;
     }
 
-    if (active)
+    if (state > INACTIVE)
         return;
 
-    active = 1;
     float lat = XPLMGetDataf(ref_plane_lat);
     float lon = XPLMGetDataf(ref_plane_lon);
     char airport_id[50];
 
     /* can be a teleportation so play it safe */
     arpt = NULL;
-    resetidle();
+    reset_state(INACTIVE);
     unload_distant_airport_tiles(&airportdb, GEO_POS2(lat, lon));
 
     /* find and load airport I'm on now */
@@ -211,9 +209,10 @@ set_active()
         logMsg("now on airport: %s", airport_id);
 
         arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
-        if (arpt)
-            logMsg("found in DGS cache: %s", arpt->icao);
-        else
+        if (arpt) {
+            logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
+            state = ACTIVE;
+        } else
             logMsg("not a global + IFR airport, sorry no DGS");
     }
 }
@@ -264,8 +263,6 @@ api_getint(XPLMDataRef ref)
             return 0;
         case API_OPERATION_MODE:
             return operation_mode;
-        case API_ACTIVE_FLAG:
-            return active;
     }
 
     return 0;
@@ -310,7 +307,7 @@ set_dgs_pos(void)
 
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
         logMsg("XPLMProbeTerrainXYZ failed");
-        resetidle();
+        reset_state(ACTIVE);
         return;
     }
 
@@ -320,10 +317,7 @@ set_dgs_pos(void)
 static void
 find_nearest_ramp()
 {
-    if (arpt == NULL) {
-        nearest_ramp = NULL;
-        return;
-    }
+    assert(arpt != NULL);
 
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
@@ -386,36 +380,36 @@ find_nearest_ramp()
         }
     }
 
-    if (min_ramp == NULL) {
-        resetidle();
-        return;
-    }
-
-    if (min_ramp != nearest_ramp) {
+    if (min_ramp != NULL && min_ramp != nearest_ramp) {
         logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
                min_ramp->hdgt, dist);
 
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, stand_x, stand_y, stand_z, &probeinfo)) {
             logMsg("XPLMProbeTerrainXYZ failed");
-            resetidle();
+            reset_state(ACTIVE);
             return;
         }
 
         stand_y = probeinfo.locationY;
         stand_hdg = min_ramp->hdgt;
-        set_dgs_pos();
         nearest_ramp = min_ramp;
+        set_dgs_pos();
         state = WAITING;
     }
 }
 
 static float
-update_dgs()
+run_state_machine()
 {
     float loop_delay = 2.0;
 
+    if (state <= INACTIVE)
+        return loop_delay;
+
+    find_nearest_ramp();
+
     if (nearest_ramp == NULL) {
-        state = IDLE;
+        state = ACTIVE;
         return loop_delay;
     }
 
@@ -434,7 +428,7 @@ update_dgs()
     azimuth = distance = distance2 = 0;
 
     switch (state) {
-        case IDLE:
+        case ACTIVE:
             break;
 
         case WAITING:
@@ -513,8 +507,7 @@ update_dgs()
         case BAD:
             if (!beacon
                 && (now > timestamp + 5.0)) {
-                active = 0;
-                resetidle();
+                reset_state(INACTIVE);
                 break;
             }
 
@@ -529,8 +522,7 @@ update_dgs()
 
         case PARKED:
             if (now > timestamp + 5.0) {
-                active = 0;
-                resetidle();
+                reset_state(INACTIVE);
             }
             break;
 
@@ -538,13 +530,12 @@ update_dgs()
             break;
     }
 
-    if (state > IDLE) {
+    if (state > ACTIVE) {
         // don't flood the log
         if (state != old_state || now > update_dgs_log_ts + 3.0) {
             update_dgs_log_ts = now;
-            logMsg("active flag: %d", active);
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
-                   nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
+                   nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
             logMsg("acf position local z, x: %f, %f", local_z, local_x);
         }
 
@@ -589,9 +580,10 @@ update_dgs()
     return loop_delay;
 }
 
-static float flight_loop_cb(float inElapsedSinceLastCall,
-                float inElapsedTimeSinceLastFlightLoop, int inCounter,
-                void *inRefcon)
+static float
+flight_loop_cb(float inElapsedSinceLastCall,
+               float inElapsedTimeSinceLastFlightLoop, int inCounter,
+               void *inRefcon)
 {
     float loop_delay = 2.0;
 
@@ -608,7 +600,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 set_active();
         } else {
             // transition to airborne
-            active = 0;
+            reset_state(INACTIVE);
             if (ref_probe) {
                 XPLMDestroyProbe(ref_probe);
                 ref_probe = NULL;
@@ -616,10 +608,8 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
         }
     }
 
-    if (arpt != NULL && on_ground && active) {
-        find_nearest_ramp();
-        loop_delay = update_dgs();
-    }
+    if (state >= ACTIVE)
+        loop_delay = run_state_machine();
 
     return loop_delay;
 }
@@ -657,7 +647,7 @@ static int
 cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 {
     UNUSED(ref);
-    if (xplm_CommandBegin != phase || NULL == nearest_ramp)
+    if (xplm_CommandBegin != phase || state < WAITING)
         return 0;
 
     if (dgs_ramp_dist > 12.0) {
@@ -747,11 +737,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_STATE, NULL);
 
-    XPLMRegisterDataAccessor("AutoDGS/active_flag", xplmType_Int, 0, api_getint, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_ACTIVE_FLAG, NULL);
-
-
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {
         logMsg("error loading Marshaller");
@@ -803,14 +788,13 @@ PLUGIN_API void XPluginStop(void)
 
 PLUGIN_API int XPluginEnable(void)
 {
-    state = IDLE;
+    state = INACTIVE;
     return 1;
 }
 
 PLUGIN_API void XPluginDisable(void)
 {
-    resetidle();
-    state=DISABLED;
+    reset_state(DISABLED);
 }
 
 PLUGIN_API void
@@ -822,7 +806,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         char acf_icao[41];
 
-        resetidle();
+        reset_state(INACTIVE);
         memset(acf_icao, 0, sizeof(acf_icao));
         if (ref_acf_icao)
             XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
