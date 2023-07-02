@@ -72,7 +72,8 @@ const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good"
 enum {
     API_OPERATION_MODE,
     API_ACTIVATE,
-    API_STATE
+    API_STATE,
+    API_ACTIVE_FLAG
 };
 
 typedef enum
@@ -126,7 +127,7 @@ static int update_dgs_log_ts;   // throttling of logging
 static int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
 
-static int arriving = 0;
+static int active = 0;
 
 enum _DGS_DREF {
     DGS_DR_STATUS,
@@ -182,17 +183,17 @@ static void resetidle(void)
 
 /* set mode to arrival */
 static void
-set_arriving()
+set_active()
 {
     if (! on_ground) {
-        logMsg("can't set arriving when not on ground");
+        logMsg("can't set active when not on ground");
         return;
     }
 
-    if (arriving)
+    if (active)
         return;
 
-    arriving = 1;
+    active = 1;
     float lat = XPLMGetDataf(ref_plane_lat);
     float lon = XPLMGetDataf(ref_plane_lon);
     char airport_id[50];
@@ -263,6 +264,8 @@ api_getint(XPLMDataRef ref)
             return 0;
         case API_OPERATION_MODE:
             return operation_mode;
+        case API_ACTIVE_FLAG:
+            return active;
     }
 
     return 0;
@@ -279,7 +282,7 @@ api_setint(XPLMDataRef ref, int val)
             }
 
             logMsg("API: set activate");
-            set_arriving();
+            set_active();
             break;
 
         case API_OPERATION_MODE:
@@ -510,7 +513,7 @@ update_dgs()
         case BAD:
             if (!beacon
                 && (now > timestamp + 5.0)) {
-                arriving = 0;
+                active = 0;
                 resetidle();
                 break;
             }
@@ -526,7 +529,7 @@ update_dgs()
 
         case PARKED:
             if (now > timestamp + 5.0) {
-                arriving = 0;
+                active = 0;
                 resetidle();
             }
             break;
@@ -539,6 +542,7 @@ update_dgs()
         // don't flood the log
         if (state != old_state || now > update_dgs_log_ts + 3.0) {
             update_dgs_log_ts = now;
+            logMsg("active flag: %d", active);
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
                    nearest_ramp->name, statestr[state], status, track, lr, distance, distance2, azimuth);
             logMsg("acf position local z, x: %f, %f", local_z, local_x);
@@ -601,10 +605,10 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
 
         if (on_ground) {
             if (operation_mode == MODE_AUTO)
-                set_arriving();
+                set_active();
         } else {
             // transition to airborne
-            arriving = 0;
+            active = 0;
             if (ref_probe) {
                 XPLMDestroyProbe(ref_probe);
                 ref_probe = NULL;
@@ -612,7 +616,7 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
         }
     }
 
-    if (arpt != NULL && on_ground && arriving) {
+    if (arpt != NULL && on_ground && active) {
         find_nearest_ramp();
         loop_delay = update_dgs();
     }
@@ -645,7 +649,7 @@ cmd_activate_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
         return 0;
 
     logMsg("cmd manually_activate");
-    set_arriving();
+    set_active();
     return 0;
 }
 
@@ -742,6 +746,11 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_STATE, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/active_flag", xplmType_Int, 0, api_getint, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_ACTIVE_FLAG, NULL);
+
 
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {
