@@ -69,10 +69,26 @@ typedef enum
 
 const char * const statestr[] = { "Disabled", "Idle", "Waiting", "Track", "Good", "Bad", "Parked" };
 
+enum {
+    API_OPERATION_MODE,
+    API_ACTIVATE,
+    API_STATE
+};
+
+typedef enum
+{
+    MODE_AUTO,
+    MODE_MANUAL
+} opmode_t;
+
+const char * const opmode_str[] = { "Automatic", "Manual" };
+
 /* Globals */
 static const char pluginName[]="AutoDGS";
 static const char pluginSig[] ="hotbso.AutoDGS";
 static const char pluginDesc[]="Automatically provides DGS for gateway airports";
+
+static opmode_t operation_mode = MODE_AUTO;
 
 static state_t state = DISABLED;
 static float timestamp;
@@ -80,7 +96,7 @@ static float timestamp;
 static char xpdir[512];
 static const char *psep;
 
-static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, toggle_jetway_cmdr;
+static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
@@ -100,8 +116,8 @@ static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts
 static float beacon_off_ts, beacon_on_ts;
 static airportdb_t airportdb;
 static const airport_t *arpt;
-static int on_ground = 1;
-static float on_ground_ts;
+static int on_ground;
+static float in_air_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
@@ -164,6 +180,43 @@ static void resetidle(void)
     }
 }
 
+/* set mode to arrival */
+static void
+set_arriving()
+{
+    if (! on_ground) {
+        logMsg("can't set arriving when not on ground");
+        return;
+    }
+
+    if (arriving)
+        return;
+
+    arriving = 1;
+    float lat = XPLMGetDataf(ref_plane_lat);
+    float lon = XPLMGetDataf(ref_plane_lon);
+    char airport_id[50];
+
+    /* can be a teleportation so play it safe */
+    arpt = NULL;
+    resetidle();
+    unload_distant_airport_tiles(&airportdb, GEO_POS2(lat, lon));
+
+    /* find and load airport I'm on now */
+    XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
+    if (XPLM_NAV_NOT_FOUND != ref) {
+        XPLMGetNavAidInfo(ref, NULL, &lat, &lon, NULL, NULL, NULL, airport_id,
+                NULL, NULL);
+        logMsg("now on airport: %s", airport_id);
+
+        arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
+        if (arpt)
+            logMsg("found in DGS cache: %s", arpt->icao);
+        else
+            logMsg("not a global + IFR airport, sorry no DGS");
+    }
+}
+
 static int check_beacon()
 {
     /* when checking the beacon guard against power transitions when switching
@@ -193,11 +246,53 @@ static int check_beacon()
    return beacon_state;
 }
 
-// dummy accessor routines
+// dummy accessor routine
 static float
 getdgsfloat(XPLMDataRef inRefcon)
 {
     return -1.0;
+}
+
+static int
+api_getint(XPLMDataRef ref)
+{
+    switch ((long long)ref) {
+        case API_STATE:
+            return state;
+        case API_ACTIVATE:
+            return 0;
+        case API_OPERATION_MODE:
+            return operation_mode;
+    }
+
+    return 0;
+}
+
+static void
+api_setint(XPLMDataRef ref, int val)
+{
+    switch ((long long)ref) {
+        case API_ACTIVATE:
+            if (val != 1) {
+                logMsg("API: trying to set invalid value to activate %d, ignored", val);
+                return;
+            }
+
+            logMsg("API: set activate");
+            set_arriving();
+            break;
+
+        case API_OPERATION_MODE:
+            opmode_t mode = (mode_t)val;
+            if (mode != MODE_AUTO && mode != MODE_MANUAL) {
+                logMsg("API: trying to set invalid operation_mode %d, ignored", val);
+                return;
+            }
+
+            logMsg("API: operation_mode set to %s", opmode_str[mode]);
+            operation_mode = mode;
+            break;
+    }
 }
 
 // move dgs some distance away
@@ -494,44 +589,26 @@ static float flight_loop_cb(float inElapsedSinceLastCall,
                 float inElapsedTimeSinceLastFlightLoop, int inCounter,
                 void *inRefcon)
 {
-    if (state == DISABLED)
-        return 0.0;
-
     float loop_delay = 2.0;
 
     now = XPLMGetDataf(ref_total_running_time_sec);
     int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
 
-    if (og != on_ground && now > on_ground_ts + 10.0) {
+    // must be on ground for min 10 secs
+    if (og) {
+        if (now < in_air_ts + 10.0)
+            og = 0;
+    } else
+        in_air_ts = now;
+
+    // state change ?
+    if (og != on_ground) {
         on_ground = og;
-        on_ground_ts = now;
         logMsg("transition to on_ground: %d", on_ground);
 
         if (on_ground) {
-            arriving = 1;
-            float lat = XPLMGetDataf(ref_plane_lat);
-            float lon = XPLMGetDataf(ref_plane_lon);
-            char airport_id[50];
-
-            /* can be a teleportation so play it safe */
-            arpt = NULL;
-            resetidle();
-            unload_distant_airport_tiles(&airportdb, GEO_POS2(lat, lon));
-
-            /* find and load airport I'm on now */
-            XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
-            if (XPLM_NAV_NOT_FOUND != ref) {
-                XPLMGetNavAidInfo(ref, NULL, &lat, &lon, NULL, NULL, NULL, airport_id,
-                        NULL, NULL);
-                logMsg("now on airport: %s", airport_id);
-
-                arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
-                if (arpt)
-                    logMsg("found in DGS cache: %s", arpt->icao);
-                else
-                    logMsg("not a global + IFR airport, sorry no DGS");
-            }
-
+            if (operation_mode == MODE_AUTO)
+                set_arriving();
         } else {
             // transition to airborne
             arriving = 0;
@@ -568,15 +645,14 @@ cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 }
 
 static int
-cmd_set_arriving_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+cmd_activate_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 {
     UNUSED(ref);
     if (xplm_CommandBegin != phase)
         return 0;
 
-    logMsg("set arriving");
-    on_ground = 0;
-    on_ground_ts = -1.0;
+    logMsg("cmd manually_activate");
+    set_arriving();
     return 0;
 }
 
@@ -600,11 +676,7 @@ cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
-    if (item_ref == &cycle_dgs_cmdr)
-        XPLMCommandOnce(cycle_dgs_cmdr);
-
-    if (item_ref == &move_dgs_closer_cmdr)
-        XPLMCommandOnce(move_dgs_closer_cmdr);
+    XPLMCommandOnce((XPLMCommandRef)item_ref);
 }
 
 /* Convert path to posix style in-place */
@@ -665,6 +737,19 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
         XPLMRegisterDataAccessor(dgs_dref_list[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
+    /* API datarefs */
+    XPLMRegisterDataAccessor("AutoDGS/operation_mode", xplmType_Int, 1, api_getint, api_setint, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
+
+    XPLMRegisterDataAccessor("AutoDGS/activate", xplmType_Int, 1, api_getint, api_setint, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_ACTIVATE, (void *)API_ACTIVATE);
+
+    XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_STATE, NULL);
+
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {
         logMsg("error loading Marshaller");
@@ -684,14 +769,15 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     move_dgs_closer_cmdr = XPLMCreateCommand("AutoDGS/move_dgs_closer", "Move DGS closer by 2m");
     XPLMRegisterCommandHandler(move_dgs_closer_cmdr, cmd_move_dgs_closer, 0, NULL);
 
-    XPLMCommandRef cmdr = XPLMCreateCommand("AutoDGS/set_arriving", "Fake arrival at airport");
-    XPLMRegisterCommandHandler(cmdr, cmd_set_arriving_cb, 0, NULL);
+    activate_cmdr = XPLMCreateCommand("AutoDGS/manually_activate", "Manually activate searching for stands");
+    XPLMRegisterCommandHandler(activate_cmdr, cmd_activate_cb, 0, NULL);
 
     /* menu */
     XPLMMenuID menu = XPLMFindPluginsMenu();
     int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
     XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
 
+    XPLMAppendMenuItem(adgs_menu, "Manually activate", &activate_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Move DGS closer by 2m", &move_dgs_closer_cmdr, 0);
 
