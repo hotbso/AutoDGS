@@ -104,8 +104,8 @@ static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggl
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
-static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_gear_fnrml;
-static XPLMDataRef ref_acf_cg_z, ref_gear_z;
+static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
+static XPLMDataRef ref_gear_fnrml, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_acf_icao, ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
@@ -360,6 +360,7 @@ find_nearest_ramp()
     float plane_z = XPLMGetDataf(ref_plane_z);
 
     float plane_elevation = XPLMGetDataf(ref_plane_elevation);
+    float plane_hdgt = XPLMGetDataf(ref_plane_true_psi);
 
     XPLMProbeInfo_t probeinfo;
     probeinfo.structSize = sizeof(XPLMProbeInfo_t);
@@ -369,6 +370,9 @@ find_nearest_ramp()
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
+
+        if (fabs(rel_angle(plane_hdgt, ramp->hdgt)) > 90.0)
+            continue;   // not looking to ramp
 
         double s_x, s_y, s_z;
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
@@ -747,6 +751,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_lat      = XPLMFindDataRef("sim/flightmodel/position/latitude");
     ref_plane_lon      = XPLMFindDataRef("sim/flightmodel/position/longitude");
     ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
+    ref_plane_true_psi = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
     ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
