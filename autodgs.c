@@ -72,8 +72,10 @@ const char * const state_str[] = { "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED", 
 enum {
     API_OPERATION_MODE,
     API_STATE,
+    API_ON_GROUND,
 
     API_STATE_STR,  // convenience drefs
+    API_OPERATION_MODE_STR,
     API_RAMP
 };
 
@@ -264,6 +266,8 @@ api_getint(XPLMDataRef ref)
             return state;
         case API_OPERATION_MODE:
             return operation_mode;
+        case API_ON_GROUND:
+            return on_ground;
     }
 
     return 0;
@@ -309,6 +313,10 @@ api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
     switch ((long long)ref) {
         case API_STATE_STR:
             strncpy(buf, state_str[state], buflen - 1);
+            break;
+
+        case API_OPERATION_MODE_STR:
+            strncpy(buf, opmode_str[operation_mode], buflen - 1);
             break;
 
         case API_RAMP:
@@ -755,9 +763,17 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
 
+    XPLMRegisterDataAccessor("AutoDGS/operation_mode_str", xplmType_Data, 0, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
+                             (void *)API_OPERATION_MODE_STR, NULL);
+
     XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_STATE, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/on_ground", xplmType_Int, 0, api_getint, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_ON_GROUND, NULL);
 
     XPLMRegisterDataAccessor("AutoDGS/state_str", xplmType_Data, 0, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
