@@ -280,6 +280,9 @@ api_setint(XPLMDataRef ref, int val)
                 return;
             }
 
+            if (mode == operation_mode) // Lua hammers writeable drefs in a frame loop
+                return;
+
             logMsg("API: operation_mode set to %s", opmode_str[mode]);
             operation_mode = mode;
             break;
@@ -783,7 +786,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     move_dgs_closer_cmdr = XPLMCreateCommand("AutoDGS/move_dgs_closer", "Move DGS closer by 2m");
     XPLMRegisterCommandHandler(move_dgs_closer_cmdr, cmd_move_dgs_closer, 0, NULL);
 
-    activate_cmdr = XPLMCreateCommand("AutoDGS/manually_activate", "Manually activate searching for stands");
+    activate_cmdr = XPLMCreateCommand("AutoDGS/activate", "Manually activate searching for stands");
     XPLMRegisterCommandHandler(activate_cmdr, cmd_activate_cb, 0, NULL);
 
     /* menu */

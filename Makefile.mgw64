@@ -57,5 +57,7 @@ install: $(TARGET)
 plugin: $(TARGET)
 	mkdir -p "$(PLUGDIR)/64"
 	mkdir -p "$(PLUGDIR)/resources"
+	mkdir -p "$(PLUGDIR)/lua_sample"
 	cp -p $(TARGET) "$(PLUGDIR)/64/."
 	cp -p DGSs-*/* "$(PLUGDIR)/resources/."
+	cp -p *.lua "$(PLUGDIR)/lua_sample/."
