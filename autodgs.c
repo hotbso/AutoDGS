@@ -64,15 +64,17 @@ static float dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
 /* types */
 typedef enum
 {
-    DISABLED=0, INACTIVE, ACTIVE, WAITING, TRACK, GOOD, BAD, PARKED
+    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED
 } state_t;
 
-const char * const state_str[] = { "Disabled", "Inactive", "Active", "Waiting", "Track", "Good", "Bad", "Parked" };
+const char * const state_str[] = { "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED", "TRACK", "GOOD", "BAD", "PARKED" };
 
 enum {
     API_OPERATION_MODE,
-    API_ACTIVATE,
-    API_STATE
+    API_STATE,
+
+    API_STATE_STR,  // convenience drefs
+    API_RAMP
 };
 
 typedef enum
@@ -253,14 +255,13 @@ getdgsfloat(XPLMDataRef inRefcon)
     return -1.0;
 }
 
+// API accessor routines
 static int
 api_getint(XPLMDataRef ref)
 {
     switch ((long long)ref) {
         case API_STATE:
             return state;
-        case API_ACTIVATE:
-            return 0;
         case API_OPERATION_MODE:
             return operation_mode;
     }
@@ -272,16 +273,6 @@ static void
 api_setint(XPLMDataRef ref, int val)
 {
     switch ((long long)ref) {
-        case API_ACTIVATE:
-            if (val != 1) {
-                logMsg("API: trying to set invalid value to activate %d, ignored", val);
-                return;
-            }
-
-            logMsg("API: set activate");
-            set_active();
-            break;
-
         case API_OPERATION_MODE:
             opmode_t mode = (mode_t)val;
             if (mode != MODE_AUTO && mode != MODE_MANUAL) {
@@ -293,6 +284,38 @@ api_setint(XPLMDataRef ref, int val)
             operation_mode = mode;
             break;
     }
+}
+
+static int
+api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
+{
+    static const int buflen = 34;
+    char buf[buflen];
+
+    if (out == NULL)
+        return buflen;
+
+    if (n <= 0 || ofs < 0 || ofs >= buflen)
+        return 0;
+
+    if (n + ofs > buflen)
+        n = buflen - ofs;
+
+    memset(buf, 0, buflen);
+
+    switch ((long long)ref) {
+        case API_STATE_STR:
+            strncpy(buf, state_str[state], buflen - 1);
+            break;
+
+        case API_RAMP:
+            if (state >= ENGAGED)
+                strncpy(buf, nearest_ramp->name, buflen - 1);
+            break;
+    }
+
+    memcpy(out, buf, n);
+    return n;
 }
 
 // move dgs some distance away
@@ -394,7 +417,7 @@ find_nearest_ramp()
         stand_hdg = min_ramp->hdgt;
         nearest_ramp = min_ramp;
         set_dgs_pos();
-        state = WAITING;
+        state = ENGAGED;
     }
 }
 
@@ -431,7 +454,7 @@ run_state_machine()
         case ACTIVE:
             break;
 
-        case WAITING:
+        case ENGAGED:
             if (beacon) {
                 if ((local_z-GOOD_Z <= CAP_Z)
                     && (fabsf(local_x) <= CAP_X)) {
@@ -647,7 +670,7 @@ static int
 cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 {
     UNUSED(ref);
-    if (xplm_CommandBegin != phase || state < WAITING)
+    if (xplm_CommandBegin != phase || state < ENGAGED)
         return 0;
 
     if (dgs_ramp_dist > 12.0) {
@@ -729,13 +752,17 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
 
-    XPLMRegisterDataAccessor("AutoDGS/activate", xplmType_Int, 1, api_getint, api_setint, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_ACTIVATE, (void *)API_ACTIVATE);
-
     XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_STATE, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/state_str", xplmType_Data, 0, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
+                             (void *)API_STATE_STR, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/ramp", xplmType_Data, 0, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
+                             (void *)API_RAMP, NULL);
 
     dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
     if (dgs_obj[0] == NULL) {
