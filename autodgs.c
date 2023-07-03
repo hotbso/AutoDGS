@@ -470,6 +470,7 @@ run_state_machine()
             break;
 
         case ENGAGED:
+            loop_delay = 1.0;
             if (beacon) {
                 if ((local_z-GOOD_Z <= CAP_Z)
                     && (fabsf(local_x) <= CAP_X)) {
@@ -483,7 +484,7 @@ run_state_machine()
             }
 
         case TRACK:
-            loop_delay = 0.5;
+            loop_delay = 0.2;
             if (locgood) {
                 state=GOOD;
                 timestamp=now;
@@ -513,7 +514,7 @@ run_state_machine()
                     if (local_z-GOOD_Z <= REM_Z/2) {
                         track=3;
                         distance2=distance;
-                        loop_delay = 0.25;
+                        loop_delay = 0.1;
                     } else {
                         if (local_z-GOOD_Z > REM_Z)
                             /* azimuth only */
@@ -526,7 +527,7 @@ run_state_machine()
             break;
 
         case GOOD:
-            loop_delay = 0.5;
+            loop_delay = 0.2;
             if (!locgood)
                 state = TRACK;
             else if (beacon) {
