@@ -538,7 +538,8 @@ run_state_machine()
                 timestamp = now;
                 status = 3;
                 lr = track = 0;
-                XPLMCommandOnce(toggle_jetway_cmdr);
+                if (operation_mode == MODE_AUTO)
+                    XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
 
