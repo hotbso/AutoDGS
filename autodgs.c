@@ -489,8 +489,9 @@ run_state_machine()
         case TRACK:
             loop_delay = 0.2;
             if (locgood) {
+                /* @stop position*/
                 state=GOOD;
-                timestamp=now;
+                status = 2; lr = 3;
             } else if (local_z<-GOOD_Z) {
                 timestamp = now;
                 state=BAD;
@@ -531,19 +532,20 @@ run_state_machine()
 
         case GOOD:
             loop_delay = 0.2;
+
+            /* @stop position*/
+            status = 2; lr = 3;
+
             int parkbrake_set = (XPLMGetDataf(ref_parkbrake) > 0.5);
             if (!locgood)
                 state = TRACK;
-            else if (! parkbrake_set) {
-                /* Stop */
-                status = 2;
-                lr = 3;
-            } else {
+            else if (parkbrake_set) {
                 /* brake set */
                 state = PARKED;
                 status = 3;
-                lr = track = 0;
+                lr = 0;
             }
+
             break;
 
         case BAD:
@@ -578,6 +580,7 @@ run_state_machine()
             break;
 
         default:
+            logMsg("oops, state %d", state);
             break;
     }
 
