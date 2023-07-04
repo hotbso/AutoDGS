@@ -64,10 +64,12 @@ static float dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
 /* types */
 typedef enum
 {
-    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED
+    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
 } state_t;
 
-const char * const state_str[] = { "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED", "TRACK", "GOOD", "BAD", "PARKED" };
+const char * const state_str[] = {
+    "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED",
+    "TRACK", "GOOD", "BAD", "PARKED", "DONE" };
 
 enum {
     API_OPERATION_MODE,
@@ -106,7 +108,7 @@ static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggl
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_z, ref_gear_z;
-static XPLMDataRef ref_beacon, ref_acf_icao, ref_total_running_time_sec;
+static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -278,7 +280,8 @@ api_setint(XPLMDataRef ref, int val)
 {
     switch ((long long)ref) {
         case API_OPERATION_MODE:
-            opmode_t mode = (mode_t)val;
+            ; // required by some gcc versions
+            opmode_t mode = (opmode_t)val;
             if (mode != MODE_AUTO && mode != MODE_MANUAL) {
                 logMsg("API: trying to set invalid operation_mode %d, ignored", val);
                 return;
@@ -528,19 +531,18 @@ run_state_machine()
 
         case GOOD:
             loop_delay = 0.2;
+            int parkbrake_set = (XPLMGetDataf(ref_parkbrake) > 0.5);
             if (!locgood)
                 state = TRACK;
-            else if (beacon) {
+            else if (! parkbrake_set) {
                 /* Stop */
-                lr=3;
-                status=2;
+                status = 2;
+                lr = 3;
             } else {
+                /* brake set */
                 state = PARKED;
-                timestamp = now;
                 status = 3;
                 lr = track = 0;
-                if (operation_mode == MODE_AUTO)
-                    XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
 
@@ -551,7 +553,7 @@ run_state_machine()
                 break;
             }
 
-            if (local_z>=-GOOD_Z)
+            if (local_z >= -GOOD_Z)
                 state=TRACK;
             else {
                 /* Too far */
@@ -561,9 +563,18 @@ run_state_machine()
             break;
 
         case PARKED:
-            if (now > timestamp + 5.0) {
-                reset_state(INACTIVE);
+            /* wait for beacon off */
+            if (! beacon) {
+                timestamp = now;
+                state = DONE;
+                if (operation_mode == MODE_AUTO)
+                    XPLMCommandOnce(toggle_jetway_cmdr);
             }
+            break;
+
+        case DONE:
+            if (now > timestamp + 5.0)
+                reset_state(INACTIVE);
             break;
 
         default:
@@ -754,6 +765,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_lon      = XPLMFindDataRef("sim/flightmodel/position/longitude");
     ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_plane_true_psi = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
+    ref_parkbrake      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
     ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
