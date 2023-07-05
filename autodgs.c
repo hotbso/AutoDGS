@@ -127,7 +127,10 @@ static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
+
 static const ramp_start_t *nearest_ramp;
+float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
+
 static int update_dgs_log_ts;   // throttling of logging
 static int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
@@ -442,19 +445,23 @@ find_nearest_ramp()
 static float
 run_state_machine()
 {
-    float loop_delay = 2.0;
+    float loop_delay = 0.2;
 
     if (state <= INACTIVE)
         return loop_delay;
 
-    find_nearest_ramp();
+    // throttle costly search
+    if (now > nearest_ramp_ts + 2.0) {
+        find_nearest_ramp();
+        nearest_ramp_ts = now;
+    }
 
     if (nearest_ramp == NULL) {
         state = ACTIVE;
         return loop_delay;
     }
 
-    state_t old_state = state;
+    state_t new_state = state;
 
     // xform plane pos into stand local coordinate system
     float dx = stand_x - XPLMGetDataf(ref_plane_x);
@@ -468,35 +475,28 @@ run_state_machine()
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
 
+    /* set drefs according to *current* state */
     switch (state) {
         case ACTIVE:
+            loop_delay = 2.0;
             break;
 
         case ENGAGED:
-            loop_delay = 1.0;
             if (beacon) {
-                if ((local_z-GOOD_Z <= CAP_Z)
-                    && (fabsf(local_x) <= CAP_X)) {
-                    state = TRACK;
-                    /* FALLTHROUGH */
-                } else
-                   break;
+                if ((local_z-GOOD_Z <= CAP_Z) && (fabsf(local_x) <= CAP_X))
+                    new_state = TRACK;
             } else { // not beacon
-                state = PARKED;
-                break;
+                new_state = DONE;
             }
+            break;
 
         case TRACK:
-            loop_delay = 0.2;
             if (locgood) {
-                /* @stop position*/
-                state=GOOD;
-                status = 2; lr = 3;
-            } else if (local_z<-GOOD_Z) {
-                timestamp = now;
-                state=BAD;
+                new_state = GOOD;
+            } else if (local_z < -GOOD_Z) {
+                new_state = BAD;
             } else {
-                status=1;	/* plane id */
+                status = 1;	/* plane id */
 
                 if (local_z-GOOD_Z > AZI_Z ||
                     fabsf(local_x) > AZI_X)
@@ -531,52 +531,48 @@ run_state_machine()
             break;
 
         case GOOD:
-            loop_delay = 0.2;
-
             /* @stop position*/
             status = 2; lr = 3;
 
             int parkbrake_set = (XPLMGetDataf(ref_parkbrake) > 0.5);
             if (!locgood)
-                state = TRACK;
-            else if (parkbrake_set) {
-                /* brake set */
-                state = PARKED;
-                status = 3;
-                lr = 0;
-            }
-
+                new_state = TRACK;
+            else if (parkbrake_set || !beacon)
+                new_state = PARKED;
             break;
 
         case BAD:
             if (!beacon
                 && (now > timestamp + 5.0)) {
                 reset_state(INACTIVE);
-                break;
+                return loop_delay;
             }
 
             if (local_z >= -GOOD_Z)
-                state=TRACK;
+                new_state = TRACK;
             else {
                 /* Too far */
-                lr=3;
-                status=4;
+                status = 4;
+                lr = 3;
             }
             break;
 
         case PARKED:
+            status = 3;
+            lr = 0;
             /* wait for beacon off */
             if (! beacon) {
-                timestamp = now;
-                state = DONE;
+                new_state = DONE;
                 if (operation_mode == MODE_AUTO)
                     XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
 
         case DONE:
-            if (now > timestamp + 5.0)
+            if (now > timestamp + 5.0) {
                 reset_state(INACTIVE);
+                return loop_delay;
+            }
             break;
 
         default:
@@ -584,9 +580,16 @@ run_state_machine()
             break;
     }
 
+    if (new_state != state) {
+        logMsg("state transition %s -> %s", state_str[state], state_str[new_state]);
+        state = new_state;
+        timestamp = now;
+        return -1;  // see you on next frame
+    }
+
     if (state > ACTIVE) {
         // don't flood the log
-        if (state != old_state || now > update_dgs_log_ts + 3.0) {
+        if (now > update_dgs_log_ts + 3.0) {
             update_dgs_log_ts = now;
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
                    nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
