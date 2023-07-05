@@ -174,12 +174,6 @@ reset_state(state_t new_state)
         logMsg("setting state to %s", state_str[new_state]);
 
     state = new_state;
-    status = lr = track = 0;
-    azimuth = distance = distance2 = 0;
-
-    beacon_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
-    beacon_on_ts = beacon_off_ts = -10.0;
-
     nearest_ramp = NULL;
     dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
 
@@ -200,6 +194,9 @@ set_active()
 
     if (state > INACTIVE)
         return;
+
+    beacon_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
+    beacon_on_ts = beacon_off_ts = -10.0;
 
     float lat = XPLMGetDataf(ref_plane_lat);
     float lon = XPLMGetDataf(ref_plane_lon);
@@ -445,10 +442,8 @@ find_nearest_ramp()
 static float
 run_state_machine()
 {
-    float loop_delay = 0.2;
-
     if (state <= INACTIVE)
-        return loop_delay;
+        return 2.0;
 
     // throttle costly search
     if (now > nearest_ramp_ts + 2.0) {
@@ -458,9 +453,10 @@ run_state_machine()
 
     if (nearest_ramp == NULL) {
         state = ACTIVE;
-        return loop_delay;
+        return 2.0;
     }
 
+    float loop_delay = 0.2;
     state_t new_state = state;
 
     // xform plane pos into stand local coordinate system
@@ -477,10 +473,6 @@ run_state_machine()
 
     /* set drefs according to *current* state */
     switch (state) {
-        case ACTIVE:
-            loop_delay = 2.0;
-            break;
-
         case ENGAGED:
             if (beacon) {
                 if ((local_z-GOOD_Z <= CAP_Z) && (fabsf(local_x) <= CAP_X))
@@ -491,11 +483,13 @@ run_state_machine()
             break;
 
         case TRACK:
-            if (locgood) {
+            if (locgood)
                 new_state = GOOD;
-            } else if (local_z < -GOOD_Z) {
+            else if (local_z < -GOOD_Z)
                 new_state = BAD;
-            } else {
+            else if ((local_z-GOOD_Z > CAP_Z) || (fabsf(local_x) > CAP_X))
+                new_state = ENGAGED;    // moving away from current gate
+            else {
                 status = 1;	/* plane id */
 
                 if (local_z-GOOD_Z > AZI_Z ||
@@ -576,7 +570,6 @@ run_state_machine()
             break;
 
         default:
-            logMsg("oops, state %d", state);
             break;
     }
 
