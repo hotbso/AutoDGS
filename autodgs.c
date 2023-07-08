@@ -713,7 +713,7 @@ cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
-    XPLMCommandOnce((XPLMCommandRef)item_ref);
+    XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
 }
 
 /* Convert path to posix style in-place */
