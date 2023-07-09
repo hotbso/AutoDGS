@@ -57,9 +57,9 @@ static const float AZI_X = 5;	/* Azimuth guidance */
 static const float AZI_Z = 50;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
-/* place DGS at this dist from stop position */
-static const float DGS_RAMP_DIST_DEFAULT = 25.0;
-static float dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
+/* place DGS at this dist from stop position, exported as dataref */
+static float dgs_ramp_dist_default = 25.0;
+static float dgs_ramp_dist;
 
 /* types */
 typedef enum
@@ -75,6 +75,7 @@ enum {
     API_OPERATION_MODE,
     API_STATE,
     API_ON_GROUND,
+    API_DGS_RAMP_DIST_DEFAULT,
 
     API_STATE_STR,  // convenience drefs
     API_OPERATION_MODE_STR,
@@ -175,7 +176,7 @@ reset_state(state_t new_state)
 
     state = new_state;
     nearest_ramp = NULL;
-    dgs_ramp_dist = DGS_RAMP_DIST_DEFAULT;
+    dgs_ramp_dist = dgs_ramp_dist_default;
 
     if (dgs_inst_ref) {
         XPLMDestroyInstance(dgs_inst_ref);
@@ -275,6 +276,17 @@ api_getint(XPLMDataRef ref)
     return 0;
 }
 
+static float
+api_getfloat(XPLMDataRef ref)
+{
+    switch ((long long)ref) {
+        case API_DGS_RAMP_DIST_DEFAULT:
+            return dgs_ramp_dist_default;
+    }
+
+    return 0;
+}
+
 static void
 api_setint(XPLMDataRef ref, int val)
 {
@@ -292,6 +304,20 @@ api_setint(XPLMDataRef ref, int val)
 
             logMsg("API: operation_mode set to %s", opmode_str[mode]);
             operation_mode = mode;
+            break;
+    }
+}
+
+static void
+api_setfloat(XPLMDataRef ref, float val)
+{
+    switch ((long long)ref) {
+        case API_DGS_RAMP_DIST_DEFAULT:
+            if (val == dgs_ramp_dist_default) // Lua hammers writeable drefs in a frame loop
+                return;
+
+            dgs_ramp_dist_default = val;
+            logMsg("API: dgs_ramp_dist_default set to %0.1f", dgs_ramp_dist_default);
             break;
     }
 }
@@ -791,6 +817,11 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMRegisterDataAccessor("AutoDGS/on_ground", xplmType_Int, 0, api_getint, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_ON_GROUND, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/dgs_ramp_dist_default", xplmType_Float, 1, NULL, NULL,
+                             api_getfloat, api_setfloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                             (void *)API_DGS_RAMP_DIST_DEFAULT, (void *)API_DGS_RAMP_DIST_DEFAULT);
 
     XPLMRegisterDataAccessor("AutoDGS/state_str", xplmType_Data, 0, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
