@@ -231,7 +231,7 @@ set_active()
     logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
     state = ACTIVE;
 
-    /* determine dgs_ramp_dist_default depending on pitot eye elevation */
+    /* determine dgs_ramp_dist_default depending on pilot eye height agl */
     if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
         float plane_x = XPLMGetDataf(ref_plane_x);
         float plane_y = XPLMGetDataf(ref_plane_y);
