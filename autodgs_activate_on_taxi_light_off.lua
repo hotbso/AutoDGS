@@ -9,7 +9,6 @@
 -- is a different story.
 --
 
-dataref("adgs_operation_mode_dr", "AutoDGS/operation_mode", "writeable")
 dataref("taxi_light_on_dr", "sim/cockpit/electrical/taxi_light_on")
 
 local taxi_light    -- current state
@@ -28,7 +27,10 @@ end
 
 -- set AutoDGS plugin to manual mode
 logMsg("set AutoDGS mode to manual")
-adgs_operation_mode_dr = 1
+set("AutoDGS/operation_mode", 1)
+
+-- set AutoDGS/dgs_ramp_dist_default to your liking
+-- set("AutoDGS/dgs_ramp_dist_default", 21.0)
 
 -- init state
 taxi_light = taxi_light_on_dr
