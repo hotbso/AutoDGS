@@ -1,0 +1,68 @@
+include version.mak
+
+PLUGDIR=../../../X-Plane-12/Resources/plugins/AutoDGS
+
+SDK=../SDK
+OBJDIR=./OBJ_osx
+
+LIBACFUTILS_VERSION="hotbso subset"
+TARGET=mac.xpl
+HEADERS=$(wildcard *.h)
+SOURCES=$(wildcard *.c)
+OBJECTS_arm=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o_arm))
+OBJECTS_x86=$(OBJECTS_arm:.o_arm=.o_x86)
+
+LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
+LACFU_OBJECTS_arm=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o_arm)))
+LACFU_OBJECTS_x86=$(LACFU_OBJECTS_arm:.o_arm=.o_x86)
+
+CCx=o64-clang -mmacosx-version-min=10.10
+CCa=oa64-clang -mmacosx-version-min=10.10
+
+DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden -ffast-math -DNDEBUG
+
+CFLAGS+=-O2 -Wall -I$(SDK)/CHeaders/XPLM -Ilibacfutils/src -DVERSION=\"$(VERSION)\" $(DEFS)
+LACFU_CFLAGS=-DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(CFLAGS)
+
+LNFLAGS+=-dynamiclib -shared -rdynamic -fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
+
+# https://pewpewthespells.com/blog/static_and_dynamic_libraries.html
+LIBS+= -F $(SDK)/Libraries/Mac -framework XPLM
+
+# ships with macOS
+LIBS+=-liconv
+
+#test:
+#    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
+
+all: $(TARGET)
+    $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
+
+$(OBJDIR)/%.o_arm: %.c
+	$(CCa) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_x86: %.c
+	$(CCx) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_arm: libacfutils/src/%.c
+	$(CCa) $(LACFU_CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_x86: libacfutils/src/%.c
+	$(CCx) $(LACFU_CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/$(TARGET)_arm: $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
+	$(CCa) -o $@ $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
+
+$(OBJDIR)/$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
+	$(CCx) -o $@ $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
+
+$(TARGET): $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
+	lipo -create -output $@ $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
+
+# install the just compiled target
+install: $(TARGET)
+	mkdir -p "$(PLUGDIR)/64"
+	cp -p $(TARGET) "$(PLUGDIR)/64/."
+
+clean:
+	rm -f $(TARGET) $(OBJDIR)/*.o_* $(OBJDIR)/mac.xpl_*
