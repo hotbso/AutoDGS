@@ -38,6 +38,7 @@
 #include "XPLMInstance.h"
 #include "XPLMNavigation.h"
 #include "XPLMUtilities.h"
+#include "XPLMPlanes.h"
 
 #include <acfutils/assert.h>
 #include <acfutils/airportdb.h>
@@ -60,6 +61,7 @@ static const float REM_Z = 12;	/* Distance remaining */
 /* place DGS at this dist from stop position, exported as dataref */
 static float dgs_ramp_dist_default = 25.0;
 static float dgs_ramp_dist;
+static int dgs_ramp_dist_override;  // through API
 
 /* types */
 typedef enum
@@ -108,7 +110,7 @@ static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggl
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
-static XPLMDataRef ref_gear_fnrml, ref_acf_cg_z, ref_gear_z;
+static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
 static XPLMProbeRef ref_probe;
 
@@ -128,6 +130,9 @@ static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_ref_z;   // z value of plane's reference point
+
+static float pe_y_plane_0;        // pilot eye y to plane 0
+static int pe_y_plane_0_valid;
 
 static const ramp_start_t *nearest_ramp;
 float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
@@ -216,11 +221,36 @@ set_active()
         logMsg("now on airport: %s", airport_id);
 
         arpt = adb_airport_lookup_by_ident(&airportdb, airport_id);
-        if (arpt) {
-            logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
-            state = ACTIVE;
-        } else
-            logMsg("not a global + IFR airport, sorry no DGS");
+    }
+
+    if (NULL == arpt) {
+        logMsg("not a global + IFR airport, sorry no DGS");
+        return;
+    }
+
+    logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
+    state = ACTIVE;
+
+    if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
+        float plane_x = XPLMGetDataf(ref_plane_x);
+        float plane_y = XPLMGetDataf(ref_plane_y);
+        float plane_z = XPLMGetDataf(ref_plane_z);
+
+        if (ref_probe == NULL)
+            ref_probe = XPLMCreateProbe(xplm_ProbeY);
+
+        XPLMProbeInfo_t probeinfo;
+        probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, plane_x, plane_y, plane_z, &probeinfo)) {
+            logMsg("XPLMProbeTerrainXYZ failed");
+            reset_state(INACTIVE);
+            return;
+        }
+
+        float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
+        dgs_ramp_dist_default = MAX(10.0, MIN(4.85 * pe_agl, 30.0));
+        logMsg("seting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, dgs_ramp_dist_default);
     }
 }
 
@@ -317,6 +347,7 @@ api_setfloat(XPLMDataRef ref, float val)
                 return;
 
             dgs_ramp_dist_default = val;
+            dgs_ramp_dist_override = 1;
             logMsg("API: dgs_ramp_dist_default set to %0.1f", dgs_ramp_dist_default);
             break;
     }
@@ -792,6 +823,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_parkbrake      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
     ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
     ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    ref_acf_cg_y       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
     ref_gear_z         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
     ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
@@ -913,6 +945,36 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         else
             plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);         // fall back to CG
 
-        logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f", icao[0], icao[1], icao[2], icao[3], plane_ref_z);
+        /* unfortunately the *default* pilot eye y coordinate is not published in
+           a dataref, only the dynamiv values.
+           Therefore we pull it from the acf file. */
+
+        char acf_path[512];
+        char acf_file[256];
+
+        XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
+        logMsg(acf_path);
+
+        pe_y_plane_0_valid = 0;
+
+        FILE *acf = fopen(acf_path, "r");
+        if (acf) {
+            char line[200];
+            while (fgets(line, sizeof(line), acf)) {
+                if (line == strstr(line, "P acf/_pe_xyz/1 ")) {
+                    if (1 == sscanf(line + 16, "%f", &pe_y_plane_0)) {
+                        pe_y_plane_0 -= XPLMGetDataf(ref_acf_cg_y);
+                        pe_y_plane_0 *= F2M;
+                        pe_y_plane_0_valid = 1;
+                    }
+                    break;
+                }
+            }
+
+            fclose(acf);
+        }
+
+        logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
+               icao[0], icao[1], icao[2], icao[3], plane_ref_z, pe_y_plane_0_valid, pe_y_plane_0);
     }
 }
