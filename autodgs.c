@@ -129,9 +129,9 @@ static int on_ground = 1;
 static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
-static float plane_ref_z;   // z value of plane's reference point
 
-static float pe_y_plane_0;        // pilot eye y to plane 0
+static float plane_ref_z;   // z value of plane's reference point
+static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
 
 static const ramp_start_t *nearest_ramp;
@@ -231,16 +231,17 @@ set_active()
     logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
     state = ACTIVE;
 
+    /* determine dgs_ramp_dist_default depending on pitot eye elevation */
     if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
         float plane_x = XPLMGetDataf(ref_plane_x);
         float plane_y = XPLMGetDataf(ref_plane_y);
         float plane_z = XPLMGetDataf(ref_plane_z);
 
+        /* first get terrain y below plane y */
         if (ref_probe == NULL)
             ref_probe = XPLMCreateProbe(xplm_ProbeY);
 
-        XPLMProbeInfo_t probeinfo;
-        probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+        XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, plane_x, plane_y, plane_z, &probeinfo)) {
             logMsg("XPLMProbeTerrainXYZ failed");
@@ -249,9 +250,13 @@ set_active()
         }
 
         float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
-        dgs_ramp_dist_default = MAX(10.0, MIN(4.85 * pe_agl, 30.0));
+
+        // 4.3 ~ 1 / tan(13°) -> 13° down look
+        dgs_ramp_dist_default = MAX(8.0, MIN(4.3 * pe_agl, 30.0));
         logMsg("seting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, dgs_ramp_dist_default);
     }
+
+    dgs_ramp_dist = dgs_ramp_dist_default;
 }
 
 static int check_beacon()
@@ -393,8 +398,7 @@ api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
 static void
 set_dgs_pos(void)
 {
-    XPLMProbeInfo_t probeinfo;
-    probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     dgs_pos_x = stand_x + dgs_ramp_dist * stand_dir_x;
     dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
@@ -422,8 +426,7 @@ find_nearest_ramp()
     float plane_elevation = XPLMGetDataf(ref_plane_elevation);
     float plane_hdgt = XPLMGetDataf(ref_plane_true_psi);
 
-    XPLMProbeInfo_t probeinfo;
-    probeinfo.structSize = sizeof(XPLMProbeInfo_t);
+    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     if (ref_probe == NULL)
         ref_probe = XPLMCreateProbe(xplm_ProbeY);
