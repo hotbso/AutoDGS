@@ -1,5 +1,5 @@
 include version.mak
-
+OSXCROSS=/osxcross/target/bin
 PLUGDIR=../../../X-Plane-12/Resources/plugins/AutoDGS
 
 SDK=../SDK
@@ -16,8 +16,8 @@ LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
 LACFU_OBJECTS_arm=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o_arm)))
 LACFU_OBJECTS_x86=$(LACFU_OBJECTS_arm:.o_arm=.o_x86)
 
-CCx=o64-clang -mmacosx-version-min=10.10
-CCa=oa64-clang -mmacosx-version-min=10.10
+CCx=$(OSXCROSS)/o64-clang -mmacosx-version-min=10.10
+CCa=$(OSXCROSS)/oa64-clang -mmacosx-version-min=10.10
 
 DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden -ffast-math -DNDEBUG
 
@@ -57,7 +57,7 @@ $(OBJDIR)/$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
 	$(CCx) -o $@ $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
 
 $(TARGET): $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
-	lipo -create -output $@ $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
+	$(OSXCROSS)/lipo -create -output $@ $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
 
 # install the just compiled target
 install: $(TARGET)
