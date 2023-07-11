@@ -62,6 +62,7 @@ static const float REM_Z = 12;	/* Distance remaining */
 static float dgs_ramp_dist_default = 25.0;
 static float dgs_ramp_dist;
 static int dgs_ramp_dist_override;  // through API
+static int dgs_ramp_dist_set;
 
 /* types */
 typedef enum
@@ -230,33 +231,7 @@ set_active()
 
     logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
     state = ACTIVE;
-
-    /* determine dgs_ramp_dist_default depending on pilot eye height agl */
-    if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
-        float plane_x = XPLMGetDataf(ref_plane_x);
-        float plane_y = XPLMGetDataf(ref_plane_y);
-        float plane_z = XPLMGetDataf(ref_plane_z);
-
-        /* first get terrain y below plane y */
-        if (ref_probe == NULL)
-            ref_probe = XPLMCreateProbe(xplm_ProbeY);
-
-        XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
-
-        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, plane_x, plane_y, plane_z, &probeinfo)) {
-            logMsg("XPLMProbeTerrainXYZ failed");
-            reset_state(INACTIVE);
-            return;
-        }
-
-        float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
-
-        // 4.3 ~ 1 / tan(13°) -> 13° down look
-        dgs_ramp_dist_default = MAX(8.0, MIN(4.3 * pe_agl, 30.0));
-        logMsg("seting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, dgs_ramp_dist_default);
-    }
-
-    dgs_ramp_dist = dgs_ramp_dist_default;
+    dgs_ramp_dist_set = 0;
 }
 
 static int check_beacon()
@@ -399,6 +374,33 @@ static void
 set_dgs_pos(void)
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
+
+    if (!dgs_ramp_dist_set) {
+        /* determine dgs_ramp_dist_default depending on pilot eye height agl */
+        if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
+            float plane_x = XPLMGetDataf(ref_plane_x);
+            float plane_y = XPLMGetDataf(ref_plane_y);
+            float plane_z = XPLMGetDataf(ref_plane_z);
+
+            /* get terrain y below plane y */
+
+            if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, plane_x, plane_y, plane_z, &probeinfo)) {
+                logMsg("XPLMProbeTerrainXYZ failed");
+                reset_state(INACTIVE);
+                return;
+            }
+
+            /* pilot eye above agl */
+            float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
+
+            // 4.3 ~ 1 / tan(13°) -> 13° down look
+            dgs_ramp_dist_default = MAX(8.0, MIN(4.3 * pe_agl, 30.0));
+            logMsg("setting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, dgs_ramp_dist_default);
+        }
+
+        dgs_ramp_dist = dgs_ramp_dist_default;
+        dgs_ramp_dist_set = 1;
+    }
 
     dgs_pos_x = stand_x + dgs_ramp_dist * stand_dir_x;
     dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
