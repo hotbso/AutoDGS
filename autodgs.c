@@ -779,17 +779,6 @@ menu_cb(void *menu_ref, void *item_ref)
     XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
 }
 
-/* Convert path to posix style in-place */
-void
-posixify(char *path)
-{
-#if IBM
-    char *c;
-    for (c=path; *c; c++) if (*c=='\\') *c='/';
-#endif
-}
-
-
 /* =========================== plugin entry points ===============================================*/
 PLUGIN_API int
 XPluginStart(char *outName, char *outSig, char *outDesc)
