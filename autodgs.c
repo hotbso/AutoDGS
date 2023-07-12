@@ -192,7 +192,7 @@ reset_state(state_t new_state)
 
 /* set mode to arrival */
 static void
-set_active()
+set_active(void)
 {
     if (! on_ground) {
         logMsg("can't set active when not on ground");
@@ -234,7 +234,8 @@ set_active()
     dgs_ramp_dist_set = 0;
 }
 
-static int check_beacon()
+static int
+check_beacon(void)
 {
     /* when checking the beacon guard against power transitions when switching
        to the APU generator (e.g. for the ToLiss fleet).
@@ -779,7 +780,8 @@ menu_cb(void *menu_ref, void *item_ref)
 }
 
 /* Convert path to posix style in-place */
-void posixify(char *path)
+void
+posixify(char *path)
 {
 #if IBM
     char *c;
@@ -789,7 +791,8 @@ void posixify(char *path)
 
 
 /* =========================== plugin entry points ===============================================*/
-PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
+PLUGIN_API int
+XPluginStart(char *outName, char *outSig, char *outDesc)
 {
     sprintf(outName, "%s v%s", pluginName, VERSION);
     strcpy(outSig,  pluginSig);
@@ -906,7 +909,8 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     return 1;
 }
 
-PLUGIN_API void XPluginStop(void)
+PLUGIN_API void
+XPluginStop(void)
 {
     XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
     if (ref_probe)
@@ -917,13 +921,15 @@ PLUGIN_API void XPluginStop(void)
             XPLMUnloadObject(dgs_obj[i]);
 }
 
-PLUGIN_API int XPluginEnable(void)
+PLUGIN_API int
+XPluginEnable(void)
 {
     state = INACTIVE;
     return 1;
 }
 
-PLUGIN_API void XPluginDisable(void)
+PLUGIN_API void
+XPluginDisable(void)
 {
     reset_state(DISABLED);
 }
