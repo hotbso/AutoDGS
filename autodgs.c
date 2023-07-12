@@ -683,7 +683,7 @@ run_state_machine()
                 drefs[DGS_DR_ICAO_0 + i] = icao[i];
 
             if (isalpha(icao[3]))
-                drefs[DGS_DR_ICAO_3] += 0.8;    // bug in VDGS
+                drefs[DGS_DR_ICAO_3] += 0.98;    // bug in VDGS
         }
 
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
