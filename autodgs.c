@@ -173,6 +173,8 @@ static const char *dgs_dref_list[] = {
 
 static XPLMInstanceRef dgs_inst_ref;
 
+#define SQR(x) ((x) * (x))
+
 /* new_state <= INACTIVE */
 static void
 reset_state(state_t new_state)
@@ -445,7 +447,7 @@ find_nearest_ramp()
 
         float dx = s_x - plane_x;
         float dz = s_z - plane_z;
-        float d = sqrt(dx * dx + dz * dz);
+        float d = sqrt(SQR(dx) + SQR(dz));
         if (d > 170.0) // fast exit
             continue;
 
@@ -471,6 +473,10 @@ find_nearest_ramp()
             if (fabsf(angle) > 50.0)
                 continue;
         }
+
+        // for the final comparison give azimuth a higher weight
+        static const float azi_weight = 3.0;
+        d = sqrt(SQR(azi_weight * local_x)+ SQR(local_z));
 
         if (d < dist) {
             //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
