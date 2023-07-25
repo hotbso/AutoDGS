@@ -475,7 +475,7 @@ find_nearest_ramp()
         }
 
         // for the final comparison give azimuth a higher weight
-        static const float azi_weight = 3.0;
+        static const float azi_weight = 4.0;
         d = sqrt(SQR(azi_weight * local_x)+ SQR(local_z));
 
         if (d < dist) {
