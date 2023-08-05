@@ -131,7 +131,7 @@ static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 
-static float plane_ref_z;   // z value of plane's reference point
+static float plane_fw_z, plane_cg_z;   // z value of plane's 0 to fw and cg
 static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
 
@@ -454,7 +454,7 @@ find_nearest_ramp()
         /* transform into gate local coordinate system */
         float s_dir_x =  sinf(D2R * ramp->hdgt);
         float s_dir_z = -cosf(D2R * ramp->hdgt);
-        float local_z = dx * s_dir_x + dz * s_dir_z - plane_ref_z;
+        float local_z = dx * s_dir_x + dz * s_dir_z - plane_fw_z;
         float local_x = dx * s_dir_z - dz * s_dir_x;
 
         //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
@@ -531,10 +531,13 @@ run_state_machine()
     // xform plane pos into stand local coordinate system
     float dx = stand_x - XPLMGetDataf(ref_plane_x);
     float dz = stand_z - XPLMGetDataf(ref_plane_z);
-    float local_z = dx * stand_dir_x + dz * stand_dir_z - plane_ref_z;
+    float local_z = dx * stand_dir_x + dz * stand_dir_z;
+    float local_z_fw = local_z - plane_fw_z;        // to front wheel
+    float local_z_cg = local_z - plane_cg_z;        // to cg
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
+    float local_hdg = XPLMGetDataf(ref_plane_true_psi) - stand_hdg; // acf hdg local
 
-    int locgood = (fabsf(local_x)<=AZI_X && fabsf(local_z)<=GOOD_Z);
+    int locgood = (fabsf(local_x)<=AZI_X && fabsf(local_z_fw)<=GOOD_Z);
     int beacon = check_beacon();
 
     status = lr = track = 0;
@@ -544,7 +547,7 @@ run_state_machine()
     switch (state) {
         case ENGAGED:
             if (beacon) {
-                if ((local_z-GOOD_Z <= CAP_Z) && (fabsf(local_x) <= CAP_X))
+                if ((local_z_fw-GOOD_Z <= CAP_Z) && (fabsf(local_x) <= CAP_X))
                     new_state = TRACK;
             } else { // not beacon
                 new_state = DONE;
@@ -554,36 +557,36 @@ run_state_machine()
         case TRACK:
             if (locgood)
                 new_state = GOOD;
-            else if (local_z < -GOOD_Z)
+            else if (local_z_fw < -GOOD_Z)
                 new_state = BAD;
-            else if ((local_z-GOOD_Z > CAP_Z) || (fabsf(local_x) > CAP_X))
+            else if ((local_z_fw-GOOD_Z > CAP_Z) || (fabsf(local_x) > CAP_X))
                 new_state = ENGAGED;    // moving away from current gate
             else {
                 status = 1;	/* plane id */
 
-                if (local_z-GOOD_Z > AZI_Z ||
+                if (local_z_fw-GOOD_Z > AZI_Z ||
                     fabsf(local_x) > AZI_X)
                     track=1;	/* lead-in only */
                 else {
                     // round to multiples of 0.5m
-                    distance=((float)((int)((local_z - GOOD_Z)*2))) / 2;
+                    distance=((float)((int)((local_z_fw - GOOD_Z)*2))) / 2;
                     azimuth=((float)((int)(local_x*2))) / 2;
                     if (azimuth>4)	azimuth=4;
                     if (azimuth<-4) azimuth=-4;
 
                     if (azimuth <= -0.5f)
-                        lr=1;
-                    else if (azimuth >= 0.5f)
                         lr=2;
+                    else if (azimuth >= 0.5f)
+                        lr=1;
                     else
                         lr=0;
 
-                    if (local_z-GOOD_Z <= REM_Z/2) {
+                    if (local_z_fw-GOOD_Z <= REM_Z/2) {
                         track=3;
                         distance2=distance;
                         loop_delay = 0.1;
                     } else {
-                        if (local_z-GOOD_Z > REM_Z)
+                        if (local_z_fw-GOOD_Z > REM_Z)
                             /* azimuth only */
                             distance=REM_Z;
                         track = 2;
@@ -611,7 +614,7 @@ run_state_machine()
                 return loop_delay;
             }
 
-            if (local_z >= -GOOD_Z)
+            if (local_z_fw >= -GOOD_Z)
                 new_state = TRACK;
             else {
                 /* Too far */
@@ -655,7 +658,8 @@ run_state_machine()
             update_dgs_log_ts = now;
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
                    nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
-            logMsg("acf position local z, x: %f, %f", local_z, local_x);
+            logMsg("acf position local z cg: %0.1f, z fw: %0.1f, x: %0.1f, hdgt: %0.0f",
+                   local_z_cg, local_z_fw, local_x, local_hdg);
         }
 
         XPLMDrawInfo_t drawinfo;
@@ -946,13 +950,15 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         for (int i=0; i<4; i++)
             icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
 
-        if (1 == XPLMGetDatavf(ref_gear_z, &plane_ref_z, 0, 1))      // nose wheel
-            plane_ref_z = - plane_ref_z;
+        plane_cg_z = F2M * XPLMGetDataf(ref_acf_cg_z);
+
+        if (1 == XPLMGetDatavf(ref_gear_z, &plane_fw_z, 0, 1))      // nose wheel
+            plane_fw_z = -plane_fw_z;
         else
-            plane_ref_z = F2M * XPLMGetDataf(ref_acf_cg_z);         // fall back to CG
+            plane_fw_z = plane_cg_z;         // fall back to CG
 
         /* unfortunately the *default* pilot eye y coordinate is not published in
-           a dataref, only the dynamiv values.
+           a dataref, only the dynamic values.
            Therefore we pull it from the acf file. */
 
         char acf_path[512];
@@ -980,7 +986,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             fclose(acf);
         }
 
-        logMsg("plane loaded: %c%c%c%c, plane_ref_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
-               icao[0], icao[1], icao[2], icao[3], plane_ref_z, pe_y_plane_0_valid, pe_y_plane_0);
+        logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_fw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
+               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_fw_z, pe_y_plane_0_valid, pe_y_plane_0);
     }
 }
