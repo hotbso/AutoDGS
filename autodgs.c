@@ -43,7 +43,6 @@
 #include <acfutils/assert.h>
 #include <acfutils/airportdb.h>
 
-
 /* Constants */
 static const float D2R=M_PI/180.0;
 static const float F2M=0.3048;	/* 1 ft [m] */
@@ -52,10 +51,11 @@ static const float F2M=0.3048;	/* 1 ft [m] */
 static const float CAP_X = 10;
 static const float CAP_Z = 80;	/* (50-80 in Safedock2 flier) */
 static const float GOOD_Z= 0.5;
+static const float GOOD_X= 5;
 
 /* DGS distances [m]     (to stand) */
-static const float AZI_X = 5;	/* Azimuth guidance */
-static const float AZI_Z = 50;	/* Azimuth guidance */
+static const float AZI_X = 8;	/* Azimuth guidance */
+static const float AZI_Z = 60;	/* Azimuth guidance */
 static const float REM_Z = 12;	/* Distance remaining */
 
 /* place DGS at this dist from stop position, exported as dataref */
@@ -131,7 +131,7 @@ static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 
-static float plane_fw_z, plane_cg_z;   // z value of plane's 0 to fw and cg
+static float plane_fw_z, plane_mw_z, plane_cg_z;   // z value of plane's 0 to fw, mw and cg
 static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
 
@@ -532,16 +532,25 @@ run_state_machine()
     float dx = stand_x - XPLMGetDataf(ref_plane_x);
     float dz = stand_z - XPLMGetDataf(ref_plane_z);
     float local_z = dx * stand_dir_x + dz * stand_dir_z;
-    float local_z_fw = local_z - plane_fw_z;        // to front wheel
-    float local_z_cg = local_z - plane_cg_z;        // to cg
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
-    float local_hdg = XPLMGetDataf(ref_plane_true_psi) - stand_hdg; // acf hdg local
 
-    int locgood = (fabsf(local_x)<=AZI_X && fabsf(local_z_fw)<=GOOD_Z);
+    float plane_ref_z = plane_mw_z;
+
+    // angle of plane's logitudinal axis to z axis in math orientation
+    float plane_alpha = stand_hdg - XPLMGetDataf(ref_plane_true_psi);
+    float local_z_fw = local_z - plane_fw_z;          // to front wheel
+    float local_x_fw = local_x - plane_fw_z * sin(D2R * plane_alpha);
+    float local_z_ref = local_z - plane_ref_z;        // to ref point
+    float local_x_ref = local_x - plane_ref_z * sin(D2R * plane_alpha);
+
+    int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_fw) <= GOOD_Z);
     int beacon = check_beacon();
 
     status = lr = track = 0;
     azimuth = distance = distance2 = 0;
+
+    float cross_z = 0.0;
+    float aim_z = 0.0;
 
     /* set drefs according to *current* state */
     switch (state) {
@@ -570,16 +579,56 @@ run_state_machine()
                 else {
                     // round to multiples of 0.5m
                     distance=((float)((int)((local_z_fw - GOOD_Z)*2))) / 2;
-                    azimuth=((float)((int)(local_x*2))) / 2;
-                    if (azimuth>4)	azimuth=4;
-                    if (azimuth<-4) azimuth=-4;
 
-                    if (azimuth <= -0.5f)
-                        lr=2;
-                    else if (azimuth >= 0.5f)
-                        lr=1;
-                    else
-                        lr=0;
+                    // guide acf's main wheel to 10m in front of mw's parking pos
+                    // so there is some room to straighten out
+                    aim_z = (plane_fw_z - plane_mw_z) + 10;
+
+                    lr = -1;
+                    if (local_z_ref > aim_z) {      // before aim point -> guide mw
+                        azimuth=((float)((int)(local_x_ref * 2))) / 2;
+                        if (azimuth > 4) azimuth = 4;
+                        if (azimuth < -4) azimuth = -4;
+
+                        if (1.5 < fabsf(plane_alpha) && fabsf(plane_alpha) < 60.0) {
+                            cross_z = local_z_ref - local_x_ref / tan(D2R * plane_alpha);
+
+                            if (azimuth <= -0.5f) {             // I'm left
+                                if (plane_alpha > 0.0)          // and pointing left
+                                    lr = 1;                     // -> guide right
+                                else if (cross_z > aim_z + 4.0) // pointing right but too much
+                                    lr = 2;                     // -> guide left
+                                else if (cross_z < aim_z - 4.0) // pointing right but not enough
+                                    lr = 1;                     // -> guide left
+                                else
+                                    lr = 0;                     // straight
+                            } else if (azimuth >= 0.5f) {
+                                if (plane_alpha < 0.0)
+                                    lr = 2;
+                                else if (cross_z > aim_z + 4.0)
+                                    lr = 1;
+                                else if (cross_z < aim_z - 4.0)
+                                    lr = 2;
+                                else
+                                    lr = 0;
+                            } else
+                                lr=0;
+                        }
+                    }
+
+                    // past aim point or nearly parallel -> guide fw
+                    if (lr == -1) {
+                        azimuth=((float)((int)(local_x_fw * 2))) / 2;
+                        if (azimuth > 4) azimuth = 4;
+                        if (azimuth < -4) azimuth = -4;
+
+                        if (azimuth <= -0.5f)
+                            lr=1;
+                        else if (azimuth >= 0.5f)
+                            lr=2;
+                        else
+                            lr=0;
+                    }
 
                     if (local_z_fw-GOOD_Z <= REM_Z/2) {
                         track=3;
@@ -658,8 +707,8 @@ run_state_machine()
             update_dgs_log_ts = now;
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
                    nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
-            logMsg("acf position local z cg: %0.1f, z fw: %0.1f, x: %0.1f, hdgt: %0.0f",
-                   local_z_cg, local_z_fw, local_x, local_hdg);
+            logMsg("acf z ref: %0.1f, z fw: %0.1f, x: %0.1f, x ref: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
+                   local_z_ref, local_z_fw, local_x, local_x_ref, plane_alpha, cross_z, aim_z);
         }
 
         XPLMDrawInfo_t drawinfo;
@@ -952,10 +1001,12 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
         plane_cg_z = F2M * XPLMGetDataf(ref_acf_cg_z);
 
-        if (1 == XPLMGetDatavf(ref_gear_z, &plane_fw_z, 0, 1))      // nose wheel
-            plane_fw_z = -plane_fw_z;
-        else
-            plane_fw_z = plane_cg_z;         // fall back to CG
+        float gear_z[2];
+        if (2 == XPLMGetDatavf(ref_gear_z, gear_z, 0, 2)) {      // nose + main wheel
+            plane_fw_z = -gear_z[0];
+            plane_mw_z = -gear_z[1];
+        } else
+            plane_fw_z = plane_mw_z = plane_cg_z;         // fall back to CG
 
         /* unfortunately the *default* pilot eye y coordinate is not published in
            a dataref, only the dynamic values.
@@ -986,7 +1037,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             fclose(acf);
         }
 
-        logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_fw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
-               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_fw_z, pe_y_plane_0_valid, pe_y_plane_0);
+        logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_fw_z: %1.2f, plane_mw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
+               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_fw_z, plane_mw_z, pe_y_plane_0_valid, pe_y_plane_0);
     }
 }
