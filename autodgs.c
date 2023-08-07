@@ -537,10 +537,21 @@ run_state_machine()
 
     // angle of plane's logitudinal axis to z axis in math orientation
     float plane_alpha = stand_hdg - XPLMGetDataf(ref_plane_true_psi);
-    float local_z_nw = local_z - plane_nw_z;          // to nose wheel
+
+    // some intermediate reference point between nw + mw
+    float plane_ref_z = 0.5 * plane_nw_z + 0.5 * plane_mw_z;
+
+    // nose wheel
+    float local_z_nw = local_z - plane_nw_z;
     float local_x_nw = local_x - plane_nw_z * sin(D2R * plane_alpha);
-    float local_z_ref = local_z - plane_mw_z;        // to ref point
-    float local_x_ref = local_x - plane_mw_z * sin(D2R * plane_alpha);
+
+    // main wheel pos on logitudinal axis
+    float local_z_mw = local_z - plane_mw_z;
+    float local_x_mw = local_x - plane_mw_z * sin(D2R * plane_alpha);
+
+    // ref pos on logitudinal axis
+    float local_z_ref = local_z - plane_ref_z;
+    float local_x_ref = local_x - plane_ref_z * sin(D2R * plane_alpha);
 
     int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_nw) <= GOOD_Z);
     int beacon = check_beacon();
@@ -581,18 +592,45 @@ run_state_machine()
                     // round to multiples of 0.5m
                     distance=((float)((int)((local_z_nw - GOOD_Z)*2))) / 2;
 
+                    if (now > update_dgs_log_ts + 3.0)
+                        logMsg("acf mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
+                               "x: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
+                               local_x_mw, local_z_mw, local_x_nw, local_z_nw,
+                               local_x_ref, local_z_ref,
+                               local_x,  plane_alpha, cross_z, aim_z);
+
                     // guide acf's main wheel to 8 m in front of mw's parking pos
                     // so there is some room to straighten out
                     aim_z = (plane_nw_z - plane_mw_z) + 8;
 
                     lr = -1;
-                    if (local_z_ref > aim_z) {      // before aim point -> guide mw
-                        azimuth=((float)((int)(local_x_ref * 2))) / 2;
-                        if (azimuth > 4) azimuth = 4;
-                        if (azimuth < -4) azimuth = -4;
+                    // if more than 10m to go and ref point + mw on different sides of centerline
+                    // guide ref point
+                    if ((local_z_nw > 10) &&
+                        ((local_x_ref < 0 && local_x_mw > 0)
+                         || (local_x_ref > 0 && local_x_mw < 0))) {
+
+                        if (now > update_dgs_log_ts + 3.0)
+                            logMsg("LOC: mw, FD: ref");
+
+                        azimuth=((float)((int)(local_x_mw * 2))) / 2;
+
+                        if (local_x_ref <= -0.5f)
+                            lr=1;
+                        else if (local_x_ref >= 0.5f)
+                            lr=2;
+                        else
+                            lr=0;
+                    }
+
+                    if ((lr == -1) && (local_z_mw > aim_z)) {      // before aim point -> guide mw
+                        if (now > update_dgs_log_ts + 3.0)
+                            logMsg("LOC: mw, FD: mw");
+
+                        azimuth=((float)((int)(local_x_mw * 2))) / 2;
 
                         if (1.5 < fabsf(plane_alpha) && fabsf(plane_alpha) < 60.0) {
-                            cross_z = local_z_ref - local_x_ref / tan(D2R * plane_alpha);
+                            cross_z = local_z_mw - local_x_mw / tan(D2R * plane_alpha);
 
                             if (azimuth <= -0.5f) {             // I'm left
                                 if (plane_alpha > 0.0)          // and pointing left
@@ -619,10 +657,10 @@ run_state_machine()
 
                     // past aim point or nearly parallel -> guide fw
                     if (lr == -1) {
-                        azimuth=((float)((int)(local_x_nw * 2))) / 2;
-                        if (azimuth > 4) azimuth = 4;
-                        if (azimuth < -4) azimuth = -4;
+                        if (now > update_dgs_log_ts + 3.0)
+                            logMsg("LOC: nw, FD: nw");
 
+                        azimuth=((float)((int)(local_x_nw * 2))) / 2;
                         if (azimuth <= -0.5f)
                             lr=1;
                         else if (azimuth >= 0.5f)
@@ -630,6 +668,9 @@ run_state_machine()
                         else
                             lr=0;
                     }
+
+                    if (azimuth > 4) azimuth = 4;
+                    if (azimuth < -4) azimuth = -4;
 
                     if (local_z_nw - GOOD_Z <= REM_Z/2) {
                         track=3;
@@ -714,10 +755,8 @@ run_state_machine()
         // don't flood the log
         if (now > update_dgs_log_ts + 3.0) {
             update_dgs_log_ts = now;
-            logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.2f",
+            logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.1f",
                    nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
-            logMsg("acf z ref: %0.1f, z fw: %0.1f, x: %0.1f, x ref: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
-                   local_z_ref, local_z_nw, local_x, local_x_ref, plane_alpha, cross_z, aim_z);
         }
 
         XPLMDrawInfo_t drawinfo;
