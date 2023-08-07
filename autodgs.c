@@ -440,7 +440,10 @@ find_nearest_ramp()
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
-        if (fabs(rel_angle(plane_hdgt, ramp->hdgt)) > 90.0)
+        // heading in local system
+        float local_hdgt = rel_angle(ramp->hdgt, plane_hdgt);
+
+        if (fabs(local_hdgt) > 90.0)
             continue;   // not looking to ramp
 
         double s_x, s_y, s_z;
@@ -466,13 +469,24 @@ find_nearest_ramp()
             continue;
         }
 
-        // check whether plane is in a +-50° sector relative to stand
         if (local_z > 10.0) {
             float angle = 0.0;
             angle = atan(local_x / local_z) / D2R;
-            //logMsg("angle: %s, %3.1f", ramp->name, angle);
-            if (fabsf(angle) > 50.0)
+            //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
+
+            // check whether plane is in a +-60° sector relative to stand
+            if (fabsf(angle) > 60.0)
                 continue;
+
+            // drive-by and beyond a +- 60° sector relative to plane's direction
+            float rel_to_stand = rel_angle(local_hdgt, -angle);
+            //logMsg("rel_to_stand: %s, local_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
+            //       ramp->name, local_x, local_hdgt, rel_to_stand);
+            if ((local_x > 10.0 && rel_to_stand < -60.0)
+                || (local_x < -10.0 && rel_to_stand > 60.0)) {
+                //logMsg("drive by %s", ramp->name);
+                continue;
+            }
         }
 
         // for the final comparison give azimuth a higher weight
@@ -536,22 +550,22 @@ run_state_machine()
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
     // angle of plane's logitudinal axis to z axis in math orientation
-    float plane_alpha = stand_hdg - XPLMGetDataf(ref_plane_true_psi);
+    float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(ref_plane_true_psi));
 
     // some intermediate reference point between nw + mw
     float plane_ref_z = 0.5 * plane_nw_z + 0.5 * plane_mw_z;
 
     // nose wheel
     float local_z_nw = local_z - plane_nw_z;
-    float local_x_nw = local_x - plane_nw_z * sin(D2R * plane_alpha);
+    float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
 
     // main wheel pos on logitudinal axis
     float local_z_mw = local_z - plane_mw_z;
-    float local_x_mw = local_x - plane_mw_z * sin(D2R * plane_alpha);
+    float local_x_mw = local_x + plane_mw_z * sin(D2R * local_hdgt);
 
     // ref pos on logitudinal axis
     float local_z_ref = local_z - plane_ref_z;
-    float local_x_ref = local_x - plane_ref_z * sin(D2R * plane_alpha);
+    float local_x_ref = local_x + plane_ref_z * sin(D2R * local_hdgt);
 
     int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_nw) <= GOOD_Z);
     int beacon = check_beacon();
@@ -597,7 +611,7 @@ run_state_machine()
                                "x: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
                                local_x_mw, local_z_mw, local_x_nw, local_z_nw,
                                local_x_ref, local_z_ref,
-                               local_x,  plane_alpha, cross_z, aim_z);
+                               local_x,  local_hdgt, cross_z, aim_z);
 
                     // guide acf's main wheel to 8 m in front of mw's parking pos
                     // so there is some room to straighten out
@@ -624,16 +638,16 @@ run_state_machine()
                     }
 
                     if ((lr == -1) && (local_z_mw > aim_z)) {      // before aim point -> guide mw
-                        if (now > update_dgs_log_ts + 3.0)
-                            logMsg("LOC: mw, FD: mw");
-
                         azimuth=((float)((int)(local_x_mw * 2))) / 2;
 
-                        if (1.5 < fabsf(plane_alpha) && fabsf(plane_alpha) < 60.0) {
-                            cross_z = local_z_mw - local_x_mw / tan(D2R * plane_alpha);
+                        if (1.5 < fabsf(local_hdgt) && fabsf(local_hdgt) < 60.0) {
+                            if (now > update_dgs_log_ts + 3.0)
+                                logMsg("LOC: mw, FD: mw");
+
+                            cross_z = local_z_mw + local_x_mw / tan(D2R * local_hdgt);
 
                             if (azimuth <= -0.5f) {             // I'm left
-                                if (plane_alpha > 0.0)          // and pointing left
+                                if (local_hdgt < 0.0)          // and pointing left
                                     lr = 1;                     // -> guide right
                                 else if (cross_z > aim_z + 4.0) // pointing right but too much
                                     lr = 2;                     // -> guide left
@@ -642,7 +656,7 @@ run_state_machine()
                                 else
                                     lr = 0;                     // straight
                             } else if (azimuth >= 0.5f) {
-                                if (plane_alpha < 0.0)
+                                if (local_hdgt > 0.0)
                                     lr = 2;
                                 else if (cross_z > aim_z + 4.0)
                                     lr = 1;
