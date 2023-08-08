@@ -459,27 +459,34 @@ find_nearest_ramp()
 
         float dx = s_x - plane_x;
         float dz = s_z - plane_z;
-        float d = sqrt(SQR(dx) + SQR(dz));
-        if (d > 170.0) // fast exit
-            continue;
 
         /* transform into gate local coordinate system */
         float s_dir_x =  sinf(D2R * ramp->hdgt);
         float s_dir_z = -cosf(D2R * ramp->hdgt);
-        float local_z = dx * s_dir_x + dz * s_dir_z - plane_nw_z;
+        float local_z = dx * s_dir_x + dz * s_dir_z;
         float local_x = dx * s_dir_z - dz * s_dir_x;
 
-        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
+        // relative reading to stand +/- 180
+        float local_hdgt = rel_angle(ramp->hdgt, XPLMGetDataf(ref_plane_true_psi));
+
+        // nose wheel
+        float local_z_nw = local_z - plane_nw_z;
+        float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
+
+        float d = sqrt(SQR(local_x_nw) + SQR(local_z_nw));
+        if (d > CAP_Z + 50) // fast exit
+            continue;
+
+        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, local_z_nw, local_x_nw);
 
         // behind
-        if (local_z < -4.0) {
+        if (local_z_nw < -4.0) {
             //logMsg("behind: %s", ramp->name);
             continue;
         }
 
-        if (local_z > 10.0) {
-            float angle = 0.0;
-            angle = atan(local_x / local_z) / D2R;
+        if (local_z_nw > 10.0) {
+            angle = atan(local_x_nw / local_z_nw) / D2R;
             //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
 
             // check whether plane is in a +-60° sector relative to stand
@@ -488,10 +495,10 @@ find_nearest_ramp()
 
             // drive-by and beyond a +- 60° sector relative to plane's direction
             float rel_to_stand = rel_angle(local_hdgt, -angle);
-            //logMsg("rel_to_stand: %s, local_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
-            //       ramp->name, local_x, local_hdgt, rel_to_stand);
-            if ((local_x > 10.0 && rel_to_stand < -60.0)
-                || (local_x < -10.0 && rel_to_stand > 60.0)) {
+            //logMsg("rel_to_stand: %s, local_x_nw: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
+            //       ramp->name, local_x_nw, local_hdgt, rel_to_stand);
+            if ((local_x_nw > 10.0 && rel_to_stand < -60.0)
+                || (local_x_nw < -10.0 && rel_to_stand > 60.0)) {
                 //logMsg("drive by %s", ramp->name);
                 continue;
             }
@@ -499,10 +506,10 @@ find_nearest_ramp()
 
         // for the final comparison give azimuth a higher weight
         static const float azi_weight = 4.0;
-        d = sqrt(SQR(azi_weight * local_x)+ SQR(local_z));
+        d = sqrt(SQR(azi_weight * local_x_nw)+ SQR(local_z_nw));
 
         if (d < dist) {
-            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z, local_x);
+            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z_nw, local_x_nw);
             dist = d;
             min_ramp = ramp;
             stand_x = s_x;
@@ -557,7 +564,7 @@ run_state_machine()
     float local_z = dx * stand_dir_x + dz * stand_dir_z;
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
-    // angle of plane's logitudinal axis to z axis in math orientation
+    // relative reading to stand +/- 180
     float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(ref_plane_true_psi));
 
     // nose wheel
