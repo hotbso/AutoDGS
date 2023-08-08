@@ -49,11 +49,11 @@ static const float F2M=0.3048;	/* 1 ft [m] */
 
 /* DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand) */
 static const float CAP_A = 15;  /* Capture */
-static const float CAP_Z = 90;	/* (50-80 in Safedock2 flier) */
+static const float CAP_Z = 100;	/* (50-80 in Safedock2 flier) */
 
 static const float AZI_A = 15;	    /* provide azimuth guidance */
 static const float AZI_DISP_A = 10; /* max value for display */
-static const float AZI_Z = 80;
+static const float AZI_Z = 90;
 
 static const float GOOD_Z= 0.5; /* stop position */
 static const float GOOD_X = 5;
@@ -570,7 +570,7 @@ run_state_machine()
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should nw if dist is below 6 m
-    float a = clampf((local_z_nw - 6.0) / 30.0, 0.0, 1.0);
+    float a = clampf((local_z_nw - 6.0) / 20.0, 0.0, 1.0);
     float plane_ref_z = (1.0 - a) * plane_nw_z + a * plane_mw_z;
     float local_z_ref = local_z - plane_ref_z;
     float local_x_ref = local_x + plane_ref_z * sin(D2R * local_hdgt);
@@ -579,6 +579,12 @@ run_state_machine()
         azimuth = atanf(local_x_ref / (local_z_ref + 0.5 * dgs_ramp_dist)) / D2R;
     else
         azimuth = 0.0;
+
+    float azimuth_nw;
+    if (local_z_nw > 0)
+        azimuth_nw = atanf(local_x_nw / (local_z_nw + 0.5 * dgs_ramp_dist)) / D2R;
+    else
+        azimuth_nw = 0.0;
 
     int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_nw) <= GOOD_Z);
     int beacon = check_beacon();
@@ -592,7 +598,7 @@ run_state_machine()
     switch (state) {
         case ENGAGED:
             if (beacon) {
-                if ((distance <= CAP_Z) && (fabsf(azimuth) <= CAP_A))
+                if ((distance <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
                     new_state = TRACK;
             } else { // not beacon
                 new_state = DONE;
@@ -609,21 +615,21 @@ run_state_machine()
                 new_state = BAD;
                 break;
             }
- 
-            if ((distance > CAP_Z) || (fabsf(azimuth) > CAP_A)) {
+
+            if ((distance > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
                 new_state = ENGAGED;    // moving away from current gate
                 break;
             }
 
             status = 1;	/* plane id */
-            if (distance > AZI_Z || fabsf(azimuth) > AZI_A) {
+            if (distance > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
                 track=1;	/* lead-in only */
                 break;
             }
 
             /* compute distance and guidance commands */
             azimuth = clampf(azimuth, -AZI_A, AZI_A);
-            float req_hdgt = -2.0 * azimuth;        // to track back to centerline
+            float req_hdgt = -4.0 * azimuth;        // to track back to centerline
             float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
 
             if (now > update_dgs_log_ts + 2.0)
