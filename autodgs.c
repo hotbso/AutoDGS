@@ -47,16 +47,18 @@
 static const float D2R=M_PI/180.0;
 static const float F2M=0.3048;	/* 1 ft [m] */
 
-/* Capture distances [m] (to stand) */
-static const float CAP_X = 10;
-static const float CAP_Z = 80;	/* (50-80 in Safedock2 flier) */
-static const float GOOD_Z= 0.5;
-static const float GOOD_X= 5;
+/* DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand) */
+static const float CAP_A = 15;  /* Capture */
+static const float CAP_Z = 90;	/* (50-80 in Safedock2 flier) */
 
-/* DGS distances [m]     (to stand) */
-static const float AZI_X = 10;	/* Azimuth guidance */
-static const float AZI_Z = 60;	/* Azimuth guidance */
-static const float REM_Z = 12;	/* Distance remaining */
+static const float AZI_A = 15;	    /* provide azimuth guidance */
+static const float AZI_DISP_A = 10; /* max value for display */
+static const float AZI_Z = 80;
+
+static const float GOOD_Z= 0.5; /* stop position */
+static const float GOOD_X = 5;
+
+static const float REM_Z = 12;	/* Distance remaining from here on*/
 
 /* place DGS at this dist from stop position, exported as dataref */
 static float dgs_ramp_dist_default = 25.0;
@@ -173,6 +175,14 @@ static const char *dgs_dref_list[] = {
 static XPLMInstanceRef dgs_inst_ref;
 
 #define SQR(x) ((x) * (x))
+
+static inline float
+clampf(float x, float min, float max)
+{
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+}
 
 /* new_state <= INACTIVE */
 static void
@@ -550,9 +560,6 @@ run_state_machine()
     // angle of plane's logitudinal axis to z axis in math orientation
     float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(ref_plane_true_psi));
 
-    // some intermediate reference point between nw + mw
-    float plane_ref_z = 0.5 * plane_nw_z + 0.5 * plane_mw_z;
-
     // nose wheel
     float local_z_nw = local_z - plane_nw_z;
     float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
@@ -561,9 +568,17 @@ run_state_machine()
     float local_z_mw = local_z - plane_mw_z;
     float local_x_mw = local_x + plane_mw_z * sin(D2R * local_hdgt);
 
-    // ref pos on logitudinal axis
+    // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
+    // should nw if dist is below 6 m
+    float a = clampf((local_z_nw - 6.0) / 30.0, 0.0, 1.0);
+    float plane_ref_z = (1.0 - a) * plane_nw_z + a * plane_mw_z;
     float local_z_ref = local_z - plane_ref_z;
     float local_x_ref = local_x + plane_ref_z * sin(D2R * local_hdgt);
+
+    if (fabs(local_x_ref) > 0.5 && local_z_ref > 0)
+        azimuth = atanf(local_x_ref / (local_z_ref + 0.5 * dgs_ramp_dist)) / D2R;
+    else
+        azimuth = 0.0;
 
     int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_nw) <= GOOD_Z);
     int beacon = check_beacon();
@@ -571,16 +586,13 @@ run_state_machine()
     int lr_prev = lr;
 
     status = lr = track = 0;
-    azimuth = distance = 0;
-
-    float cross_z = 0.0;
-    float aim_z = 0.0;
+    distance = local_z_nw - GOOD_Z;
 
     /* set drefs according to *current* state */
     switch (state) {
         case ENGAGED:
             if (beacon) {
-                if ((local_z_nw-GOOD_Z <= CAP_Z) && (fabsf(local_x) <= CAP_X))
+                if ((distance <= CAP_Z) && (fabsf(azimuth) <= CAP_A))
                     new_state = TRACK;
             } else { // not beacon
                 new_state = DONE;
@@ -588,113 +600,58 @@ run_state_machine()
             break;
 
         case TRACK:
-            distance = local_z_nw - GOOD_Z;
-
-            if (locgood)
+            if (locgood) {
                 new_state = GOOD;
-            else if (local_z_nw < -GOOD_Z)
-                new_state = BAD;
-            else if ((distance > CAP_Z) || (fabsf(local_x) > CAP_X))
-                new_state = ENGAGED;    // moving away from current gate
-            else {
-                status = 1;	/* plane id */
-
-                if (distance > AZI_Z || fabsf(local_x) > AZI_X) {
-                    track=1;	/* lead-in only */
-                    distance = 0.0;
-                } else {
-                    if (now > update_dgs_log_ts + 3.0)
-                        logMsg("acf mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                               "x: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
-                               local_x_mw, local_z_mw, local_x_nw, local_z_nw,
-                               local_x_ref, local_z_ref,
-                               local_x,  local_hdgt, cross_z, aim_z);
-
-                    // guide acf's main wheel to 8 m in front of mw's parking pos
-                    // so there is some room to straighten out
-                    aim_z = (plane_nw_z - plane_mw_z) + 8;
-
-                    lr = -1;
-                    // if more than 10m to go and ref point + mw on different sides of centerline
-                    // guide ref point
-                    if ((local_z_nw > 10) &&
-                        ((local_x_ref < 0 && local_x_mw > 0)
-                         || (local_x_ref > 0 && local_x_mw < 0))) {
-
-                        if (now > update_dgs_log_ts + 3.0)
-                            logMsg("LOC: mw, FD: ref");
-
-                        azimuth=((float)((int)(local_x_mw * 2))) / 2;
-
-                        if (local_x_ref <= -0.5f)
-                            lr=1;
-                        else if (local_x_ref >= 0.5f)
-                            lr=2;
-                        else
-                            lr=0;
-                    }
-
-                    if ((lr == -1) && (local_z_mw > aim_z)) {      // before aim point -> guide mw
-                        azimuth=((float)((int)(local_x_mw * 2))) / 2;
-
-                        if (1.5 < fabsf(local_hdgt) && fabsf(local_hdgt) < 60.0) {
-                            if (now > update_dgs_log_ts + 3.0)
-                                logMsg("LOC: mw, FD: mw");
-
-                            cross_z = local_z_mw + local_x_mw / tan(D2R * local_hdgt);
-
-                            if (azimuth <= -0.5f) {             // I'm left
-                                if (local_hdgt < 0.0)          // and pointing left
-                                    lr = 1;                     // -> guide right
-                                else if (cross_z > aim_z + 4.0) // pointing right but too much
-                                    lr = 2;                     // -> guide left
-                                else if (cross_z < aim_z - 4.0) // pointing right but not enough
-                                    lr = 1;                     // -> guide right
-                                else
-                                    lr = 0;                     // straight
-                            } else if (azimuth >= 0.5f) {
-                                if (local_hdgt > 0.0)
-                                    lr = 2;
-                                else if (cross_z > aim_z + 4.0)
-                                    lr = 1;
-                                else if (cross_z < aim_z - 4.0)
-                                    lr = 2;
-                                else
-                                    lr = 0;
-                            } else
-                                lr=0;
-                        }
-                    }
-
-                    // past aim point or nearly parallel -> guide fw
-                    if (lr == -1) {
-                        if (now > update_dgs_log_ts + 3.0)
-                            logMsg("LOC: nw, FD: nw");
-
-                        azimuth=((float)((int)(local_x_nw * 2))) / 2;
-                        if (azimuth <= -0.5f)
-                            lr=1;
-                        else if (azimuth >= 0.5f)
-                            lr=2;
-                        else
-                            lr=0;
-                    }
-
-                    if (azimuth > 4) azimuth = 4;
-                    if (azimuth < -4) azimuth = -4;
-
-                    /* the Marshaller OBJ has 12m hardwired in but we want azimuth guidance
-                     * until 6m */
-                    if (dgs_type == 0)
-                        distance *= 2;
-
-                    if (distance <= REM_Z/2) {
-                        track=3;
-                        loop_delay = 0.1;
-                    } else /* azimuth only */
-                        track = 2;
-                 }
+                break;
             }
+
+            if (local_z_nw < -GOOD_Z) {
+                new_state = BAD;
+                break;
+            }
+ 
+            if ((distance > CAP_Z) || (fabsf(azimuth) > CAP_A)) {
+                new_state = ENGAGED;    // moving away from current gate
+                break;
+            }
+
+            status = 1;	/* plane id */
+            if (distance > AZI_Z || fabsf(azimuth) > AZI_A) {
+                track=1;	/* lead-in only */
+                break;
+            }
+
+            /* compute distance and guidance commands */
+            azimuth = clampf(azimuth, -AZI_A, AZI_A);
+            float req_hdgt = -2.0 * azimuth;        // to track back to centerline
+            float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
+
+            if (now > update_dgs_log_ts + 2.0)
+                logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
+                       "x: %0.1f, local_hdgt: %0.0f, d_hdgt: %0.1f",
+                       azimuth, local_x_mw, local_z_mw, local_x_nw, local_z_nw,
+                       local_x_ref, local_z_ref,
+                       local_x, local_hdgt, d_hdgt);
+
+            if (d_hdgt < -1.0)
+                lr = 2;
+            else if (d_hdgt > 1.0)
+                lr = 1;
+
+            /* xform azimuth to values required ob OBJ */
+            azimuth = clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
+            azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
+
+            /* the Marshaller OBJ has 12m hardwired in but we want azimuth guidance
+             * until 6m */
+            if (dgs_type == 0)
+                distance *= 2;
+
+            if (distance <= REM_Z/2) {
+                track=3;
+                loop_delay = 0.1;
+            } else /* azimuth only */
+                track = 2;
 
             if (lr != lr_prev) {          // no wild oscillations
                 if (now > 1 + lr_change_time)
@@ -763,12 +720,15 @@ run_state_machine()
 
     if (state > ACTIVE) {
         /* xform drefs into required constraints for the OBJs */
-        if (distance > REM_Z)
+        if (track == 0 || track == 1) {
+            distance = 0;
+            azimuth = 0.0;
+        } else if (distance > REM_Z)
             distance = REM_Z;
         distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
 
         // don't flood the log
-        if (now > update_dgs_log_ts + 3.0) {
+        if (now > update_dgs_log_ts + 2.0) {
             update_dgs_log_ts = now;
             logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
                    nearest_ramp->name, state_str[state], status, track, lr, distance, azimuth);
