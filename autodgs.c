@@ -119,7 +119,7 @@ static XPLMProbeRef ref_probe;
 static int status, track, lr;
 static float lr_change_time;
 static int icao[4];
-static float azimuth, distance, distance2;
+static float azimuth, distance;
 
 /* Internal state */
 static float now;           /* current timestamp */
@@ -149,7 +149,6 @@ enum _DGS_DREF {
     DGS_DR_TRACK,
     DGS_DR_AZIMUTH,
     DGS_DR_DISTANCE,
-    DGS_DR_DISTANCE2,
     DGS_DR_ICAO_0,
     DGS_DR_ICAO_1,
     DGS_DR_ICAO_2,
@@ -164,7 +163,6 @@ static const char *dgs_dref_list[] = {
     "hotbso/dgs/track",
     "hotbso/dgs/azimuth",
     "hotbso/dgs/distance",
-    "hotbso/dgs/distance2",
     "hotbso/dgs/icao_0",
     "hotbso/dgs/icao_1",
     "hotbso/dgs/icao_2",
@@ -573,7 +571,7 @@ run_state_machine()
     int lr_prev = lr;
 
     status = lr = track = 0;
-    azimuth = distance = distance2 = 0;
+    azimuth = distance = 0;
 
     float cross_z = 0.0;
     float aim_z = 0.0;
@@ -590,22 +588,21 @@ run_state_machine()
             break;
 
         case TRACK:
+            distance = local_z_nw - GOOD_Z;
+
             if (locgood)
                 new_state = GOOD;
             else if (local_z_nw < -GOOD_Z)
                 new_state = BAD;
-            else if ((local_z_nw-GOOD_Z > CAP_Z) || (fabsf(local_x) > CAP_X))
+            else if ((distance > CAP_Z) || (fabsf(local_x) > CAP_X))
                 new_state = ENGAGED;    // moving away from current gate
             else {
                 status = 1;	/* plane id */
 
-                if (local_z_nw-GOOD_Z > AZI_Z ||
-                    fabsf(local_x) > AZI_X)
+                if (distance > AZI_Z || fabsf(local_x) > AZI_X) {
                     track=1;	/* lead-in only */
-                else {
-                    // round to multiples of 0.5m
-                    distance=((float)((int)((local_z_nw - GOOD_Z)*2))) / 2;
-
+                    distance = 0.0;
+                } else {
                     if (now > update_dgs_log_ts + 3.0)
                         logMsg("acf mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
                                "x: %0.1f, alpha: %0.0f, cross_z: %0.1f, aim_z: %0.1f",
@@ -686,18 +683,17 @@ run_state_machine()
                     if (azimuth > 4) azimuth = 4;
                     if (azimuth < -4) azimuth = -4;
 
-                    if (local_z_nw - GOOD_Z <= REM_Z/2) {
+                    /* the Marshaller OBJ has 12m hardwired in but we want azimuth guidance
+                     * until 6m */
+                    if (dgs_type == 0)
+                        distance *= 2;
+
+                    if (distance <= REM_Z/2) {
                         track=3;
-                        distance2=distance;
                         loop_delay = 0.1;
-                    } else {
-                        if (local_z_nw - GOOD_Z > REM_Z)
-                            /* azimuth only */
-                            distance=REM_Z;
+                    } else /* azimuth only */
                         track = 2;
-                        distance2 = distance - REM_Z/2;
-                    }
-                }
+                 }
             }
 
             if (lr != lr_prev) {          // no wild oscillations
@@ -766,11 +762,16 @@ run_state_machine()
     }
 
     if (state > ACTIVE) {
+        /* xform drefs into required constraints for the OBJs */
+        if (distance > REM_Z)
+            distance = REM_Z;
+        distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
+
         // don't flood the log
         if (now > update_dgs_log_ts + 3.0) {
             update_dgs_log_ts = now;
-            logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, distance2: %0.2f, azimuth: %0.1f",
-                   nearest_ramp->name, state_str[state], status, track, lr, distance, distance2, azimuth);
+            logMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
+                   nearest_ramp->name, state_str[state], status, track, lr, distance, azimuth);
         }
 
         XPLMDrawInfo_t drawinfo;
@@ -796,7 +797,6 @@ run_state_machine()
         drefs[DGS_DR_STATUS] = status;
         drefs[DGS_DR_TRACK] = track;
         drefs[DGS_DR_DISTANCE] = distance;
-        drefs[DGS_DR_DISTANCE2] = distance2;
         drefs[DGS_DR_AZIMUTH] = azimuth;
         drefs[DGS_DR_LR] = lr;
 
