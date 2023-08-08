@@ -466,9 +466,6 @@ find_nearest_ramp()
         float local_z = dx * s_dir_x + dz * s_dir_z;
         float local_x = dx * s_dir_z - dz * s_dir_x;
 
-        // relative reading to stand +/- 180
-        float local_hdgt = rel_angle(ramp->hdgt, XPLMGetDataf(ref_plane_true_psi));
-
         // nose wheel
         float local_z_nw = local_z - plane_nw_z;
         float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
@@ -486,7 +483,7 @@ find_nearest_ramp()
         }
 
         if (local_z_nw > 10.0) {
-            angle = atan(local_x_nw / local_z_nw) / D2R;
+            float angle = atan(local_x_nw / local_z_nw) / D2R;
             //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
 
             // check whether plane is in a +-60° sector relative to stand
