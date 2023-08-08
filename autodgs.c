@@ -939,7 +939,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_plane_true_psi = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
     ref_parkbrake      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
-    ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
+    ref_beacon         = XPLMFindDataRef("sim/cockpit/electrical/beacon_lights_on");
     ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_acf_cg_y       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
