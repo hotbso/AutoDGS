@@ -55,8 +55,8 @@ static const float AZI_A = 15;	    /* provide azimuth guidance */
 static const float AZI_DISP_A = 10; /* max value for display */
 static const float AZI_Z = 90;
 
-static const float GOOD_Z= 0.5; /* stop position */
-static const float GOOD_X = 5;
+static const float GOOD_Z= 0.5;     /* stop position for nw */
+static const float GOOD_X = 2.0;    /* for mw */
 
 static const float REM_Z = 12;	/* Distance remaining from here on*/
 
@@ -467,23 +467,23 @@ find_nearest_ramp()
         float local_x = dx * s_dir_z - dz * s_dir_x;
 
         // nose wheel
-        float local_z_nw = local_z - plane_nw_z;
-        float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
+        float nw_z = local_z - plane_nw_z;
+        float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
 
-        float d = sqrt(SQR(local_x_nw) + SQR(local_z_nw));
+        float d = sqrt(SQR(nw_x) + SQR(nw_z));
         if (d > CAP_Z + 50) // fast exit
             continue;
 
-        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, local_z_nw, local_x_nw);
+        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
 
         // behind
-        if (local_z_nw < -4.0) {
+        if (nw_z < -4.0) {
             //logMsg("behind: %s", ramp->name);
             continue;
         }
 
-        if (local_z_nw > 10.0) {
-            float angle = atan(local_x_nw / local_z_nw) / D2R;
+        if (nw_z > 10.0) {
+            float angle = atan(nw_x / nw_z) / D2R;
             //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
 
             // check whether plane is in a +-60° sector relative to stand
@@ -492,10 +492,10 @@ find_nearest_ramp()
 
             // drive-by and beyond a +- 60° sector relative to plane's direction
             float rel_to_stand = rel_angle(local_hdgt, -angle);
-            //logMsg("rel_to_stand: %s, local_x_nw: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
-            //       ramp->name, local_x_nw, local_hdgt, rel_to_stand);
-            if ((local_x_nw > 10.0 && rel_to_stand < -60.0)
-                || (local_x_nw < -10.0 && rel_to_stand > 60.0)) {
+            //logMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
+            //       ramp->name, nw_x, local_hdgt, rel_to_stand);
+            if ((nw_x > 10.0 && rel_to_stand < -60.0)
+                || (nw_x < -10.0 && rel_to_stand > 60.0)) {
                 //logMsg("drive by %s", ramp->name);
                 continue;
             }
@@ -503,10 +503,10 @@ find_nearest_ramp()
 
         // for the final comparison give azimuth a higher weight
         static const float azi_weight = 4.0;
-        d = sqrt(SQR(azi_weight * local_x_nw)+ SQR(local_z_nw));
+        d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
 
         if (d < dist) {
-            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, local_z_nw, local_x_nw);
+            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
             dist = d;
             min_ramp = ramp;
             stand_x = s_x;
@@ -565,38 +565,38 @@ run_state_machine()
     float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(ref_plane_true_psi));
 
     // nose wheel
-    float local_z_nw = local_z - plane_nw_z;
-    float local_x_nw = local_x + plane_nw_z * sin(D2R * local_hdgt);
+    float nw_z = local_z - plane_nw_z;
+    float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
 
     // main wheel pos on logitudinal axis
-    float local_z_mw = local_z - plane_mw_z;
-    float local_x_mw = local_x + plane_mw_z * sin(D2R * local_hdgt);
+    float mw_z = local_z - plane_mw_z;
+    float mw_x = local_x + plane_mw_z * sin(D2R * local_hdgt);
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should nw if dist is below 6 m
-    float a = clampf((local_z_nw - 6.0) / 20.0, 0.0, 1.0);
+    float a = clampf((nw_z - 6.0) / 20.0, 0.0, 1.0);
     float plane_ref_z = (1.0 - a) * plane_nw_z + a * plane_mw_z;
-    float local_z_ref = local_z - plane_ref_z;
-    float local_x_ref = local_x + plane_ref_z * sin(D2R * local_hdgt);
+    float ref_z = local_z - plane_ref_z;
+    float ref_x = local_x + plane_ref_z * sin(D2R * local_hdgt);
 
-    if (fabs(local_x_ref) > 0.5 && local_z_ref > 0)
-        azimuth = atanf(local_x_ref / (local_z_ref + 0.5 * dgs_ramp_dist)) / D2R;
+    if (fabs(ref_x) > 0.5 && ref_z > 0)
+        azimuth = atanf(ref_x / (ref_z + 0.5 * dgs_ramp_dist)) / D2R;
     else
         azimuth = 0.0;
 
     float azimuth_nw;
-    if (local_z_nw > 0)
-        azimuth_nw = atanf(local_x_nw / (local_z_nw + 0.5 * dgs_ramp_dist)) / D2R;
+    if (nw_z > 0)
+        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * dgs_ramp_dist)) / D2R;
     else
         azimuth_nw = 0.0;
 
-    int locgood = (fabsf(local_x) <= GOOD_X && fabsf(local_z_nw) <= GOOD_Z);
+    int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
     int beacon = check_beacon();
 
     int lr_prev = lr;
 
     status = lr = track = 0;
-    distance = local_z_nw - GOOD_Z;
+    distance = nw_z - GOOD_Z;
 
     /* set drefs according to *current* state */
     switch (state) {
@@ -615,7 +615,7 @@ run_state_machine()
                 break;
             }
 
-            if (local_z_nw < -GOOD_Z) {
+            if (nw_z < -GOOD_Z) {
                 new_state = BAD;
                 break;
             }
@@ -639,8 +639,8 @@ run_state_machine()
             if (now > update_dgs_log_ts + 2.0)
                 logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
                        "x: %0.1f, local_hdgt: %0.0f, d_hdgt: %0.1f",
-                       azimuth, local_x_mw, local_z_mw, local_x_nw, local_z_nw,
-                       local_x_ref, local_z_ref,
+                       azimuth, mw_x, mw_z, nw_x, nw_z,
+                       ref_x, ref_z,
                        local_x, local_hdgt, d_hdgt);
 
             if (d_hdgt < -1.0)
@@ -690,7 +690,7 @@ run_state_machine()
                 return loop_delay;
             }
 
-            if (local_z_nw >= -GOOD_Z)
+            if (nw_z >= -GOOD_Z)
                 new_state = TRACK;
             else {
                 /* Too far */
