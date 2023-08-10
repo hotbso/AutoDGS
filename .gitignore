@@ -5,6 +5,5 @@ OBJ
 OBJ_LX
 OBJ_osx
 *.dep
-*.obj
 *.pdb
 *.xpl
