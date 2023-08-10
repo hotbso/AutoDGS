@@ -17651,7 +17651,6 @@ IDX	11622
 IDX	11692
 
 ATTR_LOD	0 500
-GLOBAL_luminance 200
 TRIS	0 14589
 ANIM_begin
 	ANIM_hide	1.0 2.0	hotbso/dgs/status

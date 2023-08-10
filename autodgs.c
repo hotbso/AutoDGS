@@ -115,7 +115,7 @@ static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
-static XPLMDataRef ref_percent_lights;
+static XPLMDataRef ref_percent_lights, ref_xp_version;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -904,6 +904,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     }
 
     /* Datarefs */
+    ref_xp_version     = XPLMFindDataRef("sim/version/xplane_internal_version");
     ref_plane_x        = XPLMFindDataRef("sim/flightmodel/position/local_x");
     ref_plane_y        = XPLMFindDataRef("sim/flightmodel/position/local_y");
     ref_plane_z        = XPLMFindDataRef("sim/flightmodel/position/local_z");
@@ -956,16 +957,25 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
                              (void *)API_RAMP, NULL);
 
-    dgs_obj[0] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/Marshaller.obj");
-    if (dgs_obj[0] == NULL) {
-        logMsg("error loading Marshaller");
-        return 0;
+    int is_XP11 = (XPLMGetDatai(ref_xp_version) < 120000);
+    const char *obj_name[2];
+
+    if (is_XP11) {
+        logMsg("XP11 detected");
+        obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller_XP11.obj";
+        obj_name[1] =  "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole_XP11.obj";
+    } else {
+        obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller.obj";
+        obj_name[1] =  "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj";
     }
 
-    dgs_obj[1] = XPLMLoadObject("Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj");
-    if (dgs_obj[1] == NULL) {
-        logMsg("error loading SafedockT2");
-        return 0;
+    for (int i = 0; i < 2; i++) {
+        dgs_obj[i] = XPLMLoadObject(obj_name[i]);
+
+        if (dgs_obj[i] == NULL) {
+            logMsg("error loading obj: %s", obj_name[i]);
+            return 0;
+        }
     }
 
     /* own commands */
