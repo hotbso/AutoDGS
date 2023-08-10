@@ -115,6 +115,7 @@ static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
+static XPLMDataRef ref_percent_lights;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -155,6 +156,7 @@ enum _DGS_DREF {
     DGS_DR_ICAO_1,
     DGS_DR_ICAO_2,
     DGS_DR_ICAO_3,
+    DGS_DR_BRIGHTNESS,
     DGS_DR_NUM             // # of drefs
 };
 
@@ -169,6 +171,7 @@ static const char *dgs_dref_list[] = {
     "hotbso/dgs/icao_1",
     "hotbso/dgs/icao_2",
     "hotbso/dgs/icao_3",
+    "hotbso/dgs/vdgs_brightness",
     NULL
 };
 
@@ -778,6 +781,7 @@ run_state_machine()
                 drefs[DGS_DR_ICAO_3] += 0.98;    // bug in VDGS
         }
 
+        drefs[DGS_DR_BRIGHTNESS] = 1.0 - 0.96 * XPLMGetDataf(ref_percent_lights);
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
@@ -915,6 +919,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
     ref_gear_z         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
     ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
+    ref_percent_lights = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
     for (int i = 0; i < DGS_DR_NUM; i++)
