@@ -105,9 +105,6 @@ static opmode_t operation_mode = MODE_AUTO;
 static state_t state = DISABLED;
 static float timestamp;
 
-static char xpdir[512];
-static const char *psep;
-
 static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
@@ -115,7 +112,7 @@ static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
-static XPLMDataRef ref_percent_lights, ref_xp_version;
+static XPLMDataRef ref_percent_lights, ref_xp_version, ref_eng_running;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -126,7 +123,7 @@ static float azimuth, distance;
 
 /* Internal state */
 static float now;           /* current timestamp */
-static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch action */
+static int beacon_state, beacon_on_seen, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch action */
 static float beacon_off_ts, beacon_on_ts;
 static airportdb_t airportdb;
 static const airport_t *arpt;
@@ -255,15 +252,15 @@ check_beacon(void)
        to the APU generator (e.g. for the ToLiss fleet).
        Report only state transitions when the new state persisted for 3 seconds */
 
-    int beacon_state_prev = beacon_state;
-
     int beacon = XPLMGetDatai(ref_beacon);
     if (beacon) {
         if (! beacon_last_pos) {
             beacon_on_ts = now;
             beacon_last_pos = 1;
-        } else if (now > beacon_on_ts + 3.0)
+        } else if (now > beacon_on_ts + 3.0) {
             beacon_state = 1;
+            beacon_on_seen = 1;
+        }
     } else {
         if (beacon_last_pos) {
             beacon_off_ts = now;
@@ -272,10 +269,19 @@ check_beacon(void)
             beacon_state = 0;
    }
 
-    if (beacon_state != beacon_state_prev)
-        logMsg("beacon transition to: %d", beacon_state);
+    /* some plane don't use the beacon dataref. So if we've never seen the beacon on
+     * we return the state of the engines instead */
 
-   return beacon_state;
+    if (beacon_on_seen)
+        return beacon_state;
+
+    int er[8];
+    int n = XPLMGetDatavi(ref_eng_running, er, 0, 8);
+    for (int i = 0; i < n; i++)
+        if (er[i])
+            return 1;
+
+    return 0;
 }
 
 // dummy accessor routine
@@ -594,7 +600,7 @@ run_state_machine()
         azimuth_nw = 0.0;
 
     int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
-    int beacon = check_beacon();
+    int beacon_on = check_beacon();
 
     int lr_prev = lr;
 
@@ -604,10 +610,10 @@ run_state_machine()
     /* set drefs according to *current* state */
     switch (state) {
         case ENGAGED:
-            if (beacon) {
+            if (beacon_on) {
                 if ((distance <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
                     new_state = TRACK;
-            } else { // not beacon
+            } else { // not beacon_on
                 new_state = DONE;
             }
             break;
@@ -682,12 +688,12 @@ run_state_machine()
             int parkbrake_set = (XPLMGetDataf(ref_parkbrake) > 0.5);
             if (!locgood)
                 new_state = TRACK;
-            else if (parkbrake_set || !beacon)
+            else if (parkbrake_set || !beacon_on)
                 new_state = PARKED;
             break;
 
         case BAD:
-            if (!beacon
+            if (!beacon_on
                 && (now > timestamp + 5.0)) {
                 reset_state(INACTIVE);
                 return loop_delay;
@@ -706,7 +712,7 @@ run_state_machine()
             status = 3;
             lr = 0;
             /* wait for beacon off */
-            if (! beacon) {
+            if (! beacon_on) {
                 new_state = DONE;
                 if (operation_mode == MODE_AUTO)
                     XPLMCommandOnce(toggle_jetway_cmdr);
@@ -725,7 +731,7 @@ run_state_machine()
     }
 
     if (new_state != state) {
-        logMsg("state transition %s -> %s", state_str[state], state_str[new_state]);
+        logMsg("state transition %s -> %s, beacon: %d", state_str[state], state_str[new_state], beacon_on);
         state = new_state;
         timestamp = now;
         return -1;  // see you on next frame
@@ -889,11 +895,11 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     /* Refuse to initialise if Fat plugin has been moved out of its folder */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);			/* Get paths in posix format under X-Plane 10+ */
 
-    psep = XPLMGetDirectorySeparator();
+    char xpdir[512];
 	XPLMGetSystemPath(xpdir);
 
     char cache_path[512];
-    snprintf(cache_path, sizeof(cache_path), "%sOutput%scaches%sAutoDGS.cache", xpdir, psep, psep);
+    snprintf(cache_path, sizeof(cache_path), "%sOutput/caches/AutoDGS.cache", xpdir);
     fix_pathsep(cache_path);                        /* libacfutils requires a canonical path sep */
     airportdb_create(&airportdb, xpdir, cache_path);
     airportdb.ifr_only = B_TRUE;
@@ -914,7 +920,8 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
     ref_plane_true_psi = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
     ref_parkbrake      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
-    ref_beacon         = XPLMFindDataRef("sim/cockpit/electrical/beacon_lights_on");
+    ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
+    ref_eng_running    = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running");
     ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
     ref_acf_cg_y       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
     ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
@@ -963,10 +970,10 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     if (is_XP11) {
         logMsg("XP11 detected");
         obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller_XP11.obj";
-        obj_name[1] =  "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole_XP11.obj";
+        obj_name[1] = "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole_XP11.obj";
     } else {
         obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller.obj";
-        obj_name[1] =  "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj";
+        obj_name[1] = "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj";
     }
 
     for (int i = 0; i < 2; i++) {
@@ -1083,6 +1090,8 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
             fclose(acf);
         }
+
+        beacon_on_seen = 0;
 
         logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
                icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_nw_z, plane_mw_z, pe_y_plane_0_valid, pe_y_plane_0);
