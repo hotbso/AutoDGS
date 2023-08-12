@@ -123,8 +123,10 @@ static float azimuth, distance;
 
 /* Internal state */
 static float now;           /* current timestamp */
-static int beacon_state, beacon_on_seen, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch action */
+static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch actions */
 static float beacon_off_ts, beacon_on_ts;
+static int use_engine_running;              /* instead of beacon, e.g. MD11 */
+
 static airportdb_t airportdb;
 static const airport_t *arpt;
 static int on_ground = 1;
@@ -248,6 +250,16 @@ set_active(void)
 static int
 check_beacon(void)
 {
+    if (use_engine_running) {
+        int er[8];
+        int n = XPLMGetDatavi(ref_eng_running, er, 0, 8);
+        for (int i = 0; i < n; i++)
+            if (er[i])
+                return 1;
+
+        return 0;
+    }
+
     /* when checking the beacon guard against power transitions when switching
        to the APU generator (e.g. for the ToLiss fleet).
        Report only state transitions when the new state persisted for 3 seconds */
@@ -257,10 +269,8 @@ check_beacon(void)
         if (! beacon_last_pos) {
             beacon_on_ts = now;
             beacon_last_pos = 1;
-        } else if (now > beacon_on_ts + 3.0) {
+        } else if (now > beacon_on_ts + 3.0)
             beacon_state = 1;
-            beacon_on_seen = 1;
-        }
     } else {
         if (beacon_last_pos) {
             beacon_off_ts = now;
@@ -269,19 +279,7 @@ check_beacon(void)
             beacon_state = 0;
    }
 
-    /* some plane don't use the beacon dataref. So if we've never seen the beacon on
-     * we return the state of the engines instead */
-
-    if (beacon_on_seen)
-        return beacon_state;
-
-    int er[8];
-    int n = XPLMGetDatavi(ref_eng_running, er, 0, 8);
-    for (int i = 0; i < n; i++)
-        if (er[i])
-            return 1;
-
-    return 0;
+   return beacon_state;
 }
 
 // dummy accessor routine
@@ -1047,8 +1045,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
         reset_state(INACTIVE);
         memset(acf_icao, 0, sizeof(acf_icao));
-        if (ref_acf_icao)
-            XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
+        XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
 
         for (int i=0; i<4; i++)
             icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
@@ -1091,7 +1088,33 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             fclose(acf);
         }
 
-        beacon_on_seen = 0;
+        /* check whether acf is listed in acf_use_engine_running.txt */
+        use_engine_running = 0;
+
+        char path[512];
+        path[0] = '\0';
+        XPLMGetPluginInfo(XPLMGetMyID(), NULL, path, NULL, NULL);
+        char *cptr = strrchr(path, '/');    /* basename */
+        if (cptr)
+            *cptr = '\0';
+        strcat(path, "/../acf_use_engine_running.txt");
+
+        FILE *f = fopen(path, "r");
+        if (f) {
+            logMsg("check whether acf is in exception file %s", path);
+            char line[100];
+            acf_icao[4] = '\0';
+            while (fgets(line, sizeof(line), f)) {
+                line[4] = '\0';
+                if (0 == strcmp(line, acf_icao)) {
+                    logMsg("found acf %s in acf_use_engine_running.txt", acf_icao);
+                    use_engine_running = 1;
+                    break;
+                }
+            }
+
+            fclose(f);
+        }
 
         logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
                icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_nw_z, plane_mw_z, pe_y_plane_0_valid, pe_y_plane_0);
