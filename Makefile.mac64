@@ -37,10 +37,10 @@ LIBS+=-liconv
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
 
-$(OBJDIR)/%.o_arm: %.c
+$(OBJDIR)/%.o_arm: %.c version.mak
 	$(CC) $(ARCH_arm) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o_x86: %.c
+$(OBJDIR)/%.o_x86: %.c version.mak
 	$(CC) $(ARCH_x86) $(CFLAGS) -o $@ -c $<
 
 $(OBJDIR)/%.o_arm: libacfutils/src/%.c
