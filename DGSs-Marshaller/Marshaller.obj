@@ -17670,46 +17670,46 @@ ANIM_begin
 ANIM_end
 ANIM_begin
 	ANIM_hide	0.0 1.0	hotbso/dgs/track
-	ANIM_hide	12.0 1000.0	hotbso/dgs/distance
+	ANIM_hide	6.0 1000.0	hotbso/dgs/distance
 	ANIM_begin
 		ANIM_trans	  -0.1924    1.4478   -0.0000	  -0.1924    1.4478   -0.0000	0 0	no_ref
-		ANIM_rotate	  -1.0000    0.0000   -0.0000	135.00   0.00	-0.5 12.0	hotbso/dgs/distance
-		ANIM_rotate	  -0.3467    0.2428   -0.9060	  0.00  75.40	-0.5 12.0	hotbso/dgs/distance
+		ANIM_rotate	  -1.0000    0.0000   -0.0000	135.00   0.00	-0.5 6.0	hotbso/dgs/distance
+		ANIM_rotate	  -0.3467    0.2428   -0.9060	  0.00  75.40	-0.5 6.0	hotbso/dgs/distance
 		TRIS	31977 1377
 		ANIM_begin
 			ANIM_trans	  -0.0410   -0.2535   -0.0341	  -0.0410   -0.2535   -0.0341	0 0	no_ref
-			ANIM_rotate	  -0.4824   -0.1521    0.8626	 40.16   0.00	-0.5 12.0	hotbso/dgs/distance
-			ANIM_rotate	  -0.3747   -0.9271    0.0051	  0.00 129.78	-0.5 12.0	hotbso/dgs/distance
+			ANIM_rotate	  -0.4824   -0.1521    0.8626	 40.16   0.00	-0.5 6.0	hotbso/dgs/distance
+			ANIM_rotate	  -0.3747   -0.9271    0.0051	  0.00 129.78	-0.5 6.0	hotbso/dgs/distance
 			TRIS	33354 558
 			ANIM_begin
 				ANIM_trans	  -0.0730   -0.2558    0.0196	  -0.0730   -0.2558    0.0196	0 0	no_ref
-				ANIM_rotate	   1.0000    0.0000    0.0000	 30.00   0.00	-0.5 12.0	hotbso/dgs/distance
-				ANIM_rotate	   0.6947   -0.1862   -0.6947	  0.00  42.18	-0.5 12.0	hotbso/dgs/distance
+				ANIM_rotate	   1.0000    0.0000    0.0000	 30.00   0.00	-0.5 6.0	hotbso/dgs/distance
+				ANIM_rotate	   0.6947   -0.1862   -0.6947	  0.00  42.18	-0.5 6.0	hotbso/dgs/distance
 				TRIS	33912 966
 			ANIM_end
 		ANIM_end
 	ANIM_end
 	ANIM_begin
 		ANIM_trans	   0.1774    1.4480    0.0000	   0.1774    1.4480    0.0000	0 0	no_ref
-		ANIM_rotate	  -1.0000    0.0000   -0.0000	135.00   0.00	-0.5 12.0	hotbso/dgs/distance
-		ANIM_rotate	  -0.3467   -0.2428    0.9060	  0.00  75.40	-0.5 12.0	hotbso/dgs/distance
+		ANIM_rotate	  -1.0000    0.0000   -0.0000	135.00   0.00	-0.5 6.0	hotbso/dgs/distance
+		ANIM_rotate	  -0.3467   -0.2428    0.9060	  0.00  75.40	-0.5 6.0	hotbso/dgs/distance
 		TRIS	34878 1377
 		ANIM_begin
 			ANIM_trans	   0.0514   -0.2540   -0.0341	   0.0514   -0.2540   -0.0341	0 0	no_ref
-			ANIM_rotate	  -0.4824    0.1521   -0.8626	 40.16   0.00	-0.5 12.0	hotbso/dgs/distance
-			ANIM_rotate	  -0.3747    0.9271   -0.0051	  0.00 129.78	-0.5 12.0	hotbso/dgs/distance
+			ANIM_rotate	  -0.4824    0.1521   -0.8626	 40.16   0.00	-0.5 6.0	hotbso/dgs/distance
+			ANIM_rotate	  -0.3747    0.9271   -0.0051	  0.00 129.78	-0.5 6.0	hotbso/dgs/distance
 			TRIS	36255 558
 			ANIM_begin
 				ANIM_trans	   0.0731   -0.2555    0.0196	   0.0731   -0.2555    0.0196	0 0	no_ref
-				ANIM_rotate	   1.0000    0.0000    0.0000	 30.00   0.00	-0.5 12.0	hotbso/dgs/distance
-				ANIM_rotate	   0.6947    0.1862    0.6947	  0.00  42.18	-0.5 12.0	hotbso/dgs/distance
+				ANIM_rotate	   1.0000    0.0000    0.0000	 30.00   0.00	-0.5 6.0	hotbso/dgs/distance
+				ANIM_rotate	   0.6947    0.1862    0.6947	  0.00  42.18	-0.5 6.0	hotbso/dgs/distance
 				TRIS	36813 960
 			ANIM_end
 		ANIM_end
 	ANIM_end
 ANIM_end
 ANIM_begin
-	ANIM_hide	0.0 11.9	hotbso/dgs/distance
+	ANIM_hide	0.0 5.999	hotbso/dgs/distance
 	TRIS	37773 2754
 	ANIM_begin
 		ANIM_hide	2.0 2.0	hotbso/dgs/lr

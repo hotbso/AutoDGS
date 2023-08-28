@@ -112,12 +112,11 @@ static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
 static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
-static XPLMDataRef ref_percent_lights, ref_xp_version, ref_eng_running;
+static XPLMDataRef ref_percent_lights, ref_xp_version, ref_eng_running, ref_sin_wave;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
 static int status, track, lr;
-static float lr_change_time;
 static int icao[4];
 static float azimuth, distance;
 
@@ -143,6 +142,7 @@ float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
 
 static int update_dgs_log_ts;   // throttling of logging
 static int dgs_type = 0;
+static float sin_wave_prev;
 static XPLMObjectRef dgs_obj[2];
 
 enum _DGS_DREF {
@@ -559,6 +559,11 @@ run_state_machine()
         return 2.0;
     }
 
+
+    int lr_prev = lr;
+    int track_prev = track;
+    float distance_prev = distance;
+
     float loop_delay = 0.2;
     state_t new_state = state;
 
@@ -600,10 +605,13 @@ run_state_machine()
     int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
     int beacon_on = check_beacon();
 
-    int lr_prev = lr;
-
     status = lr = track = 0;
     distance = nw_z - GOOD_Z;
+
+    // catch the phase ~180° point -> the Marshaller's arm is straight
+    float sin_wave = XPLMGetDataf(ref_sin_wave);
+    int phase180 = (sin_wave_prev > 0.0) && (sin_wave <= 0.0);
+    sin_wave_prev = sin_wave;
 
     /* set drefs according to *current* state */
     switch (state) {
@@ -659,24 +667,21 @@ run_state_machine()
             azimuth = clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
             azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-            /* the Marshaller OBJ has 12m hardwired in but we want azimuth guidance
-             * until 6m */
-            if (dgs_type == 0)
-                distance *= 2;
-
             if (distance <= REM_Z/2) {
-                track=3;
-                loop_delay = 0.1;
+                track = 3;
+                loop_delay = 0.03;
             } else /* azimuth only */
                 track = 2;
 
-            if (lr != lr_prev) {          // no wild oscillations
-                if (now > 1 + lr_change_time)
-                    lr_change_time = now;
-                else
-                    lr = lr_prev;
-            }
+            if (! phase180) { // no wild oscillation
+                lr = lr_prev;
 
+                // sync transition with Marshaller's arm movement
+                if (dgs_type == 0 && track == 3 && track_prev == 2) {
+                    track = track_prev;
+                    distance = distance_prev;
+                }
+            }
             break;
 
         case GOOD:
@@ -742,7 +747,9 @@ run_state_machine()
             azimuth = 0.0;
         } else if (distance > REM_Z)
             distance = REM_Z;
-        distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
+
+        // is not necessary for Marshaller + SafedockT2
+        // distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
 
         // don't flood the log
         if (now > update_dgs_log_ts + 2.0) {
@@ -926,6 +933,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_gear_z         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
     ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
     ref_percent_lights = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
+    ref_sin_wave       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
     for (int i = 0; i < DGS_DR_NUM; i++)
