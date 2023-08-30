@@ -106,7 +106,7 @@ static opmode_t operation_mode = MODE_AUTO;
 static state_t state = DISABLED;
 static float timestamp;
 
-static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggle_jetway_cmdr;
+static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggle_jetway_cmdr, stop_stand_override_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
@@ -427,6 +427,7 @@ api_setbytes(void* ref, void *in, int ofs, int n) // to write the override datar
     memcpy(&overriden_ramp, buf + ofs, n);
     return n;
 }
+
 
 // move dgs some distance away
 static void
@@ -936,6 +937,16 @@ cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+
+static int
+cmd_stop_stand_override_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref) // overriden stand to empty string -> can select stands normally
+{
+    XPLMDataRef stand_override_ref = XPLMFindDataRef("AutoDGS/ramp_override_str");
+    XPLMSetDatab(stand_override_ref, "\0", 0, 1);
+
+    return 0;
+}
+
 /* call back for menu */
 static void
 menu_cb(void *menu_ref, void *item_ref)
@@ -1062,6 +1073,9 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     activate_cmdr = XPLMCreateCommand("AutoDGS/activate", "Manually activate searching for stands");
     XPLMRegisterCommandHandler(activate_cmdr, cmd_activate_cb, 0, NULL);
+    
+    stop_stand_override_cmdr = XPLMCreateCommand("AutoDGS/stop_stand_override", "Stop stand override, plugin will select stands automatically again");
+    XPLMRegisterCommandHandler(stop_stand_override_cmdr, cmd_stop_stand_override_cb, 0, NULL);
 
     /* menu */
     XPLMMenuID menu = XPLMFindPluginsMenu();
@@ -1071,6 +1085,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMAppendMenuItem(adgs_menu, "Manually activate", &activate_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Move DGS closer by 2m", &move_dgs_closer_cmdr, 0);
+    XPLMAppendMenuItem(adgs_menu, "Stop stand override", &stop_stand_override_cmdr, 0);
 
     /* foreign commands */
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
