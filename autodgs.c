@@ -84,7 +84,8 @@ enum {
 
     API_STATE_STR,  // convenience drefs
     API_OPERATION_MODE_STR,
-    API_RAMP
+    API_RAMP,
+    API_RAMP_OVERRIDE_STR
 };
 
 typedef enum
@@ -119,6 +120,9 @@ static XPLMProbeRef ref_probe;
 static int status, track, lr;
 static int icao[4];
 static float azimuth, distance;
+static char overriden_ramp[34];
+static int is_ramp_overridden = 0; 
+
 
 /* Internal state */
 static float now;           /* current timestamp */
@@ -196,6 +200,7 @@ reset_state(state_t new_state)
     state = new_state;
     nearest_ramp = NULL;
     dgs_ramp_dist = dgs_ramp_dist_default;
+    is_ramp_overridden = 0;
 
     if (dgs_inst_ref) {
         XPLMDestroyInstance(dgs_inst_ref);
@@ -352,6 +357,8 @@ api_setfloat(XPLMDataRef ref, float val)
     }
 }
 
+
+
 static int
 api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
 {
@@ -382,9 +389,42 @@ api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
             if (state >= ENGAGED)
                 strncpy(buf, nearest_ramp->name, buflen - 1);
             break;
+
+        case API_RAMP_OVERRIDE_STR:
+                strncpy(buf, overriden_ramp, buflen - 1);
+            break;
     }
 
     memcpy(out, buf, n);
+    return n;
+}
+
+api_setbytes(void* ref, void *in, int ofs, int n) // to write the override dataref
+{
+    static const int buflen = 34;
+    char buf[buflen];
+
+    if (in == NULL) 
+        return buflen;
+
+    if (n <= 0 || ofs < 0 || ofs >= buflen)
+        return 0;	
+
+    if (n + ofs > buflen) 
+        n = buflen - ofs;
+
+    memset(buf, 0, buflen);
+
+    switch ((long long)ref) {
+        case API_RAMP_OVERRIDE_STR:
+            if (state >= ACTIVE) { reset_state(ACTIVE); } else { reset_state(INACTIVE); }
+            // reset the state when changing the object. Reset back to active only if it was already activated
+
+            strncpy(buf + ofs, in, n - 1);
+            break;
+    }
+
+    memcpy(&overriden_ramp, buf + ofs, n);
     return n;
 }
 
@@ -436,6 +476,15 @@ set_dgs_pos(void)
 static void
 find_nearest_ramp()
 {
+    XPLMDataRef ramp_override_ref = XPLMFindDataRef("AutoDGS/ramp_override_str");
+    int ramp_name_len = XPLMGetDatab(ramp_override_ref, NULL, 0, 0);
+    char new_ramp_name[ramp_name_len + 1];
+
+    if (ramp_name_len > 0) {
+        XPLMGetDatab(ramp_override_ref, &new_ramp_name, 0, ramp_name_len + 1);
+        new_ramp_name[ramp_name_len] = '\0';
+    } // get the wanted ramp name and null terminate the string.
+    
     assert(arpt != NULL);
 
     double dist = 1.0E10;
@@ -455,11 +504,18 @@ find_nearest_ramp()
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
+        if (ramp_name_len > 0 && strcmp(ramp->name, new_ramp_name) == 0) { // Check if ramp override string is set and the ramp is found on current airport
+			is_ramp_overridden = 1;
+		} else {
+			is_ramp_overridden = 0;
+		}
+     
+
         // heading in local system
         float local_hdgt = rel_angle(ramp->hdgt, plane_hdgt);
 
-        if (fabs(local_hdgt) > 90.0)
-            continue;   // not looking to ramp
+        if (fabs(local_hdgt) > 90.0 && is_ramp_overridden == 0)
+            continue;   // not looking to ramp. Doesn't matter if ramp is overriden
 
         double s_x, s_y, s_z;
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
@@ -478,13 +534,13 @@ find_nearest_ramp()
         float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
 
         float d = sqrt(SQR(nw_x) + SQR(nw_z));
-        if (d > CAP_Z + 50) // fast exit
+        if (d > CAP_Z + 50 && is_ramp_overridden == 0) // fast exit
             continue;
 
         //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
 
         // behind
-        if (nw_z < -4.0) {
+        if (nw_z < -4.0 && is_ramp_overridden == 0) {
             //logMsg("behind: %s", ramp->name);
             continue;
         }
@@ -494,15 +550,15 @@ find_nearest_ramp()
             //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
 
             // check whether plane is in a +-60° sector relative to stand
-            if (fabsf(angle) > 60.0)
+            if (fabsf(angle) > 60.0 && is_ramp_overridden == 0)
                 continue;
 
             // drive-by and beyond a +- 60° sector relative to plane's direction
             float rel_to_stand = rel_angle(local_hdgt, -angle);
             //logMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
             //       ramp->name, nw_x, local_hdgt, rel_to_stand);
-            if ((nw_x > 10.0 && rel_to_stand < -60.0)
-                || (nw_x < -10.0 && rel_to_stand > 60.0)) {
+            if (((nw_x > 10.0 && rel_to_stand < -60.0)
+                || (nw_x < -10.0 && rel_to_stand > 60.0)) && is_ramp_overridden == 0) {
                 //logMsg("drive by %s", ramp->name);
                 continue;
             }
@@ -512,7 +568,7 @@ find_nearest_ramp()
         static const float azi_weight = 4.0;
         d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
 
-        if (d < dist) {
+        if (d < dist || is_ramp_overridden == 1) {
             //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
             dist = d;
             min_ramp = ramp;
@@ -521,6 +577,8 @@ find_nearest_ramp()
             stand_z = s_z;
             stand_dir_x = s_dir_x;
             stand_dir_z = s_dir_z;
+
+            if (is_ramp_overridden == 1) { break; } // if ramp is overwritten, set the position and break as there's no need to look through rest of the ramps
         }
     }
 
@@ -549,12 +607,12 @@ run_state_machine()
         return 2.0;
 
     // throttle costly search
-    if (now > nearest_ramp_ts + 2.0) {
+    if (now > nearest_ramp_ts + 2.0 && is_ramp_overridden == 0) {
         find_nearest_ramp();
         nearest_ramp_ts = now;
     }
 
-    if (nearest_ramp == NULL) {
+    if (nearest_ramp == NULL && is_ramp_overridden == 0) {
         state = ACTIVE;
         return 2.0;
     }
@@ -893,7 +951,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     strcpy(outSig,  pluginSig);
     strcpy(outDesc, pluginDesc);
 
-	log_init(XPLMDebugString, "AutoDGS");
+    log_init(XPLMDebugString, "AutoDGS");
 
     logMsg("startup " VERSION);
 
@@ -901,7 +959,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);			/* Get paths in posix format under X-Plane 10+ */
 
     char xpdir[512];
-	XPLMGetSystemPath(xpdir);
+    XPLMGetSystemPath(xpdir);
 
     char cache_path[512];
     snprintf(cache_path, sizeof(cache_path), "%sOutput/caches/AutoDGS.cache", xpdir);
@@ -969,6 +1027,10 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMRegisterDataAccessor("AutoDGS/ramp", xplmType_Data, 0, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
                              (void *)API_RAMP, NULL);
+
+    XPLMRegisterDataAccessor("AutoDGS/ramp_override_str", xplmType_Data, 1, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, api_setbytes,
+                             (void *)API_RAMP_OVERRIDE_STR, (void *)API_RAMP_OVERRIDE_STR);
 
     int is_XP11 = (XPLMGetDatai(ref_xp_version) < 120000);
     const char *obj_name[2];
