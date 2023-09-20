@@ -525,11 +525,16 @@ find_nearest_ramp()
     }
 
     if (min_ramp != NULL && min_ramp != nearest_ramp) {
-        logMsg("ramp: %s, %f, %f, %f, dist: %f", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
-               min_ramp->hdgt, dist);
-
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, stand_x, stand_y, stand_z, &probeinfo)) {
             logMsg("XPLMProbeTerrainXYZ failed");
+            reset_state(ACTIVE);
+            return;
+        }
+
+        logMsg("ramp: %s, %f, %f, %f, dist: %f, is_wet: %d", min_ramp->name, min_ramp->pos.lat, min_ramp->pos.lon,
+               min_ramp->hdgt, dist, probeinfo.is_wet);
+
+        if (probeinfo.is_wet) {
             reset_state(ACTIVE);
             return;
         }
@@ -745,8 +750,9 @@ run_state_machine()
         if (track == 0 || track == 1) {
             distance = 0;
             azimuth = 0.0;
-        } else if (distance > REM_Z)
-            distance = REM_Z;
+        }
+
+        distance = clampf(distance, -GOOD_Z, REM_Z);
 
         // is not necessary for Marshaller + SafedockT2
         // distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
