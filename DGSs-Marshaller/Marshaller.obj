@@ -17709,7 +17709,7 @@ ANIM_begin
 	ANIM_end
 ANIM_end
 ANIM_begin
-	ANIM_hide	0.0 5.999	hotbso/dgs/distance
+	ANIM_hide	-10.0 5.999	hotbso/dgs/distance
 	TRIS	37773 2754
 	ANIM_begin
 		ANIM_hide	2.0 2.0	hotbso/dgs/lr
