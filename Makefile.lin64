@@ -3,38 +3,43 @@ PLUGINS=../../../X-Plane-12/Resources/plugins/AutoDGS
 include version.mak
 
 SDK=../SDK
-OBJDIR=./OBJ_LX
+OBJDIR=./OBJ_lx
 
 LIBACFUTILS_VERSION="hotbso subset"
 TARGET=lin.xpl
 HEADERS=$(wildcard *.h)
-SOURCES=$(wildcard *.c)
-OBJECTS=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o))
+SOURCES_C=$(wildcard *.c)
+SOURCES_CPP=$(wildcard *.cpp)
+OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
 LACFU_OBJECTS=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o)))
 
 COMMON_CFLAGS=-DVERSION=\"$(VERSION)\" \
-    -Wall -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src -fPIC -DLIN=1 -fno-stack-protector
+    -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src -fPIC -DLIN=1 -fno-stack-protector
 CFLAGS=$(COMMON_CFLAGS)
 LACFU_CFLAGS=-fvisibility=hidden -DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(COMMON_CFLAGS)
 
+OBJECTS=$(addprefix $(OBJDIR)/, $(OBJECTS_))
+$(info $(OBJECTS))
 
 LNFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning
-#-fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
 LIBS=-L$(ACFUT)/lin64/lib
 
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
 
-$(OBJDIR)/%.o: %.c version.mak
+$(OBJDIR)/%.o: %.c version.mak $(HEADERS)
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o: %.cpp version.mak $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(OBJDIR)/%.o: libacfutils/src/%.c
 	$(CC) $(LACFU_CFLAGS) -o $@ -c $<
 
 $(TARGET): $(OBJECTS) $(LACFU_OBJECTS)
-	$(CC) -o $(TARGET) $(LNFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
+	g++ -o $(TARGET) $(LNFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) $(LACFU_OBJECTS) $(TARGET)

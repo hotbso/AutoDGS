@@ -25,23 +25,7 @@
 #  define strcasecmp(s1, s2) _stricmp(s1, s2)
 #endif
 
-#define XPLM200
-#define XPLM210
-#define XPLM300
-#define XPLM301
-
-#include "XPLMPlugin.h"
-#include "XPLMProcessing.h"
-#include "XPLMDataAccess.h"
-#include "XPLMMenus.h"
-#include "XPLMGraphics.h"
-#include "XPLMInstance.h"
-#include "XPLMNavigation.h"
-#include "XPLMUtilities.h"
-#include "XPLMPlanes.h"
-
-#include <acfutils/assert.h>
-#include <acfutils/airportdb.h>
+#include "autodgs.h"
 
 /* Constants */
 static const float D2R=M_PI/180.0;
@@ -105,7 +89,8 @@ static opmode_t operation_mode = MODE_AUTO;
 static state_t state = DISABLED;
 static float timestamp;
 
-static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr, toggle_jetway_cmdr;
+XPLMCommandRef cycle_dgs_cmdr;
+static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
 static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
@@ -113,6 +98,7 @@ static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_
 static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
 static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
 static XPLMDataRef ref_percent_lights, ref_xp_version, ref_eng_running, ref_sin_wave;
+XPLMDataRef ref_vr_enabled;
 static XPLMProbeRef ref_probe;
 
 /* Published DataRef values */
@@ -127,7 +113,7 @@ static float beacon_off_ts, beacon_on_ts;
 static int use_engine_running;              /* instead of beacon, e.g. MD11 */
 
 static airportdb_t airportdb;
-static const airport_t *arpt;
+const airport_t *arpt;
 static int on_ground = 1;
 static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
@@ -137,11 +123,12 @@ static float plane_nw_z, plane_mw_z, plane_cg_z;   // z value of plane's 0 to fw
 static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
 
+static char selected_ramp[RAMP_NAME_LEN];
 static const ramp_start_t *nearest_ramp;
 float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
 
 static int update_dgs_log_ts;   // throttling of logging
-static int dgs_type = 0;
+int dgs_type = 0;
 static float sin_wave_prev;
 static XPLMObjectRef dgs_obj[2];
 
@@ -186,7 +173,6 @@ clampf(float x, float min, float max)
     return x;
 }
 
-/* new_state <= INACTIVE */
 static void
 reset_state(state_t new_state)
 {
@@ -196,6 +182,11 @@ reset_state(state_t new_state)
     state = new_state;
     nearest_ramp = NULL;
     dgs_ramp_dist = dgs_ramp_dist_default;
+    if (state == INACTIVE) {
+        selected_ramp[0] = '\0';
+        arpt = NULL;
+        update_ui(1);
+    }
 
     if (dgs_inst_ref) {
         XPLMDestroyInstance(dgs_inst_ref);
@@ -245,6 +236,7 @@ set_active(void)
     logMsg("found in DGS cache: %s, new state: ACTIVE", arpt->icao);
     state = ACTIVE;
     dgs_ramp_dist_set = 0;
+    update_ui(1);
 }
 
 static int
@@ -433,10 +425,44 @@ set_dgs_pos(void)
     dgs_pos_y = probeinfo.locationY;
 }
 
+/* hooks for the ui */
+void
+set_selected_ramp(const char *ui_selected_ramp)
+{
+    logMsg("set_selected_ramp to '%s'", ui_selected_ramp);
+    if (0 == strcmp(ui_selected_ramp, "Automatic")) {
+        selected_ramp[0] = '\0';
+        if (state > ACTIVE)
+            reset_state(ACTIVE);
+    } else {
+        strcpy(selected_ramp, ui_selected_ramp);
+        if (state > ACTIVE)
+            reset_state(ACTIVE);
+    }
+}
+
+void
+set_dgs_type(int new_dgs_type)
+{
+    if (new_dgs_type == dgs_type)
+        return;
+
+    if (dgs_inst_ref) {
+        XPLMDestroyInstance(dgs_inst_ref);
+        dgs_inst_ref = NULL;
+    }
+
+    dgs_type = new_dgs_type;
+}
+
 static void
 find_nearest_ramp()
 {
     assert(arpt != NULL);
+
+    // check whether we already have a selected ramp
+    if (nearest_ramp && selected_ramp[0])
+        return;
 
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
@@ -464,63 +490,76 @@ find_nearest_ramp()
         double s_x, s_y, s_z;
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
 
-        float dx = s_x - plane_x;
-        float dz = s_z - plane_z;
-
         /* transform into gate local coordinate system */
         float s_dir_x =  sinf(D2R * ramp->hdgt);
         float s_dir_z = -cosf(D2R * ramp->hdgt);
-        float local_z = dx * s_dir_x + dz * s_dir_z;
-        float local_x = dx * s_dir_z - dz * s_dir_x;
 
-        // nose wheel
-        float nw_z = local_z - plane_nw_z;
-        float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
+        if (selected_ramp[0] == '\0') {
+            float dx = s_x - plane_x;
+            float dz = s_z - plane_z;
 
-        float d = sqrt(SQR(nw_x) + SQR(nw_z));
-        if (d > CAP_Z + 50) // fast exit
-            continue;
+            float local_z = dx * s_dir_x + dz * s_dir_z;
+            float local_x = dx * s_dir_z - dz * s_dir_x;
 
-        //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
+            // nose wheel
+            float nw_z = local_z - plane_nw_z;
+            float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
 
-        // behind
-        if (nw_z < -4.0) {
-            //logMsg("behind: %s", ramp->name);
-            continue;
-        }
-
-        if (nw_z > 10.0) {
-            float angle = atan(nw_x / nw_z) / D2R;
-            //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
-
-            // check whether plane is in a +-60° sector relative to stand
-            if (fabsf(angle) > 60.0)
+            float d = sqrt(SQR(nw_x) + SQR(nw_z));
+            if (d > CAP_Z + 50) // fast exit
                 continue;
 
-            // drive-by and beyond a +- 60° sector relative to plane's direction
-            float rel_to_stand = rel_angle(local_hdgt, -angle);
-            //logMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
-            //       ramp->name, nw_x, local_hdgt, rel_to_stand);
-            if ((nw_x > 10.0 && rel_to_stand < -60.0)
-                || (nw_x < -10.0 && rel_to_stand > 60.0)) {
-                //logMsg("drive by %s", ramp->name);
+            //logMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
+
+            // behind
+            if (nw_z < -4.0) {
+                //logMsg("behind: %s", ramp->name);
                 continue;
             }
-        }
 
-        // for the final comparison give azimuth a higher weight
-        static const float azi_weight = 4.0;
-        d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
+            if (nw_z > 10.0) {
+                float angle = atan(nw_x / nw_z) / D2R;
+                //logMsg("angle to plane: %s, %3.1f", ramp->name, angle);
 
-        if (d < dist) {
-            //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
-            dist = d;
+                // check whether plane is in a +-60° sector relative to stand
+                if (fabsf(angle) > 60.0)
+                    continue;
+
+                // drive-by and beyond a +- 60° sector relative to plane's direction
+                float rel_to_stand = rel_angle(local_hdgt, -angle);
+                //logMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
+                //       ramp->name, nw_x, local_hdgt, rel_to_stand);
+                if ((nw_x > 10.0 && rel_to_stand < -60.0)
+                    || (nw_x < -10.0 && rel_to_stand > 60.0)) {
+                    //logMsg("drive by %s", ramp->name);
+                    continue;
+                }
+            }
+
+            // for the final comparison give azimuth a higher weight
+            static const float azi_weight = 4.0;
+            d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
+
+            if (d < dist) {
+                //logMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
+                dist = d;
+                min_ramp = ramp;
+                stand_x = s_x;
+                stand_y = s_y;
+                stand_z = s_z;
+                stand_dir_x = s_dir_x;
+                stand_dir_z = s_dir_z;
+            }
+
+        } else if (0 == strcmp(ramp->name, selected_ramp)) {
+            dist = 0.0;
             min_ramp = ramp;
             stand_x = s_x;
             stand_y = s_y;
             stand_z = s_z;
             stand_dir_x = s_dir_x;
             stand_dir_z = s_dir_z;
+            break;
         }
     }
 
@@ -847,12 +886,8 @@ cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     if (xplm_CommandBegin != phase)
         return 0;
 
-    if (dgs_inst_ref) {
-        XPLMDestroyInstance(dgs_inst_ref);
-        dgs_inst_ref = NULL;
-    }
-
-    dgs_type = (dgs_type + 1) % 2;
+    set_dgs_type(!dgs_type);
+    update_ui(1);
     return 0;
 }
 
@@ -884,6 +919,18 @@ cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+static int
+cmd_toggle_ui_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    logMsg("cmd toggle_ui");
+    toggle_ui();
+    return 0;
+}
+
 /* call back for menu */
 static void
 menu_cb(void *menu_ref, void *item_ref)
@@ -905,6 +952,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     /* Refuse to initialise if Fat plugin has been moved out of its folder */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);			/* Get paths in posix format under X-Plane 10+ */
+    XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
     char xpdir[512];
 	XPLMGetSystemPath(xpdir);
@@ -940,6 +988,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
     ref_percent_lights = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
     ref_sin_wave       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
+    ref_vr_enabled     = XPLMFindDataRef("sim/graphics/VR/enabled");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
     for (int i = 0; i < DGS_DR_NUM; i++)
@@ -1007,6 +1056,9 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     activate_cmdr = XPLMCreateCommand("AutoDGS/activate", "Manually activate searching for stands");
     XPLMRegisterCommandHandler(activate_cmdr, cmd_activate_cb, 0, NULL);
 
+    toggle_ui_cmdr = XPLMCreateCommand("AutoDGS/toggle_ui", "Open UI");
+    XPLMRegisterCommandHandler(toggle_ui_cmdr, cmd_toggle_ui_cb, 0, NULL);
+
     /* menu */
     XPLMMenuID menu = XPLMFindPluginsMenu();
     int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
@@ -1015,6 +1067,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMAppendMenuItem(adgs_menu, "Manually activate", &activate_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Move DGS closer by 2m", &move_dgs_closer_cmdr, 0);
+    XPLMAppendMenuItem(adgs_menu, "Toggle UI", &toggle_ui_cmdr, 0);
 
     /* foreign commands */
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");

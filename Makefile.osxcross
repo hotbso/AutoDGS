@@ -11,8 +11,11 @@ OBJDIR=./OBJ_osx
 LIBACFUTILS_VERSION="hotbso subset"
 TARGET=mac.xpl
 HEADERS=$(wildcard *.h)
-SOURCES=$(wildcard *.c)
-OBJECTS_arm=$(addprefix $(OBJDIR)/, $(SOURCES:.c=.o_arm))
+SOURCES_C=$(wildcard *.c)
+SOURCES_CPP=$(wildcard *.cpp)
+OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
+
+OBJECTS_arm=$(addprefix $(OBJDIR)/, $(OBJECTS_:.o=.o_arm))
 OBJECTS_x86=$(OBJECTS_arm:.o_arm=.o_x86)
 
 LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
@@ -22,15 +25,18 @@ LACFU_OBJECTS_x86=$(LACFU_OBJECTS_arm:.o_arm=.o_x86)
 CCx=o64-clang -mmacosx-version-min=10.10
 CCa=oa64-clang -mmacosx-version-min=10.10
 
+CCppx=o64-clang++ -mmacosx-version-min=10.10
+CCppa=oa64-clang++ -mmacosx-version-min=10.10
+
 DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden -ffast-math -DNDEBUG
 
-CFLAGS+=-O2 -Wall -I$(SDK)/CHeaders/XPLM -Ilibacfutils/src -DVERSION=\"$(VERSION)\" $(DEFS)
+CFLAGS+=-O2 -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src -DVERSION=\"$(VERSION)\" $(DEFS)
 LACFU_CFLAGS=-DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(CFLAGS)
 
 LNFLAGS+=-dynamiclib -shared -rdynamic -fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
 
 # https://pewpewthespells.com/blog/static_and_dynamic_libraries.html
-LIBS+= -F $(SDK)/Libraries/Mac -framework XPLM
+LIBS+= -F $(SDK)/Libraries/Mac -framework XPLM -framework XPWidgets
 
 # ships with macOS
 LIBS+=-liconv
@@ -47,6 +53,12 @@ $(OBJDIR)/%.o_arm: %.c version.mak
 $(OBJDIR)/%.o_x86: %.c version.mak
 	$(CCx) $(CFLAGS) -o $@ -c $<
 
+$(OBJDIR)/%.o_arm: %.cpp version.mak
+	$(CCa) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/%.o_x86: %.cpp version.mak
+	$(CCx) $(CFLAGS) -o $@ -c $<
+
 $(OBJDIR)/%.o_arm: libacfutils/src/%.c
 	$(CCa) $(LACFU_CFLAGS) -o $@ -c $<
 
@@ -54,10 +66,10 @@ $(OBJDIR)/%.o_x86: libacfutils/src/%.c
 	$(CCx) $(LACFU_CFLAGS) -o $@ -c $<
 
 $(OBJDIR)/$(TARGET)_arm: $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
-	$(CCa) -o $@ $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
+	$(CCppa) -o $@ $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
 
 $(OBJDIR)/$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
-	$(CCx) -o $@ $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
+	$(CCppx) -o $@ $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
 
 $(TARGET): $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
 	lipo -create -output $@ $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
