@@ -93,13 +93,13 @@ XPLMCommandRef cycle_dgs_cmdr;
 static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
-static XPLMDataRef ref_plane_x, ref_plane_y, ref_plane_z;
-static XPLMDataRef ref_plane_lat, ref_plane_lon, ref_plane_elevation, ref_plane_true_psi;
-static XPLMDataRef ref_gear_fnrml, ref_acf_cg_y, ref_acf_cg_z, ref_gear_z;
-static XPLMDataRef ref_beacon, ref_parkbrake, ref_acf_icao, ref_total_running_time_sec;
-static XPLMDataRef ref_percent_lights, ref_xp_version, ref_eng_running, ref_sin_wave;
-XPLMDataRef ref_vr_enabled;
-static XPLMProbeRef ref_probe;
+static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr;
+static XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
+static XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
+static XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
+static XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
+XPLMDataRef vr_enabled_dr;
+static XPLMProbeRef probe_ref;
 
 /* Published DataRef values */
 static int status, track, lr;
@@ -147,7 +147,7 @@ enum _DGS_DREF {
 };
 
 // keep exactly the same order as list above
-static const char *dgs_dref_list[] = {
+static const char *dgs_dlist_dr[] = {
     "hotbso/dgs/status",
     "hotbso/dgs/lr",
     "hotbso/dgs/track",
@@ -206,11 +206,11 @@ set_active(void)
     if (state > INACTIVE)
         return;
 
-    beacon_state = beacon_last_pos = XPLMGetDatai(ref_beacon);
+    beacon_state = beacon_last_pos = XPLMGetDatai(beacon_dr);
     beacon_on_ts = beacon_off_ts = -10.0;
 
-    float lat = XPLMGetDataf(ref_plane_lat);
-    float lon = XPLMGetDataf(ref_plane_lon);
+    float lat = XPLMGetDataf(plane_lat_dr);
+    float lon = XPLMGetDataf(plane_lon_dr);
     char airport_id[50];
 
     /* can be a teleportation so play it safe */
@@ -244,7 +244,7 @@ check_beacon(void)
 {
     if (use_engine_running) {
         int er[8];
-        int n = XPLMGetDatavi(ref_eng_running, er, 0, 8);
+        int n = XPLMGetDatavi(eng_running_dr, er, 0, 8);
         for (int i = 0; i < n; i++)
             if (er[i])
                 return 1;
@@ -256,7 +256,7 @@ check_beacon(void)
        to the APU generator (e.g. for the ToLiss fleet).
        Report only state transitions when the new state persisted for 3 seconds */
 
-    int beacon = XPLMGetDatai(ref_beacon);
+    int beacon = XPLMGetDatai(beacon_dr);
     if (beacon) {
         if (! beacon_last_pos) {
             beacon_on_ts = now;
@@ -389,13 +389,13 @@ set_dgs_pos(void)
     if (!dgs_ramp_dist_set) {
         /* determine dgs_ramp_dist_default depending on pilot eye height agl */
         if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
-            float plane_x = XPLMGetDataf(ref_plane_x);
-            float plane_y = XPLMGetDataf(ref_plane_y);
-            float plane_z = XPLMGetDataf(ref_plane_z);
+            float plane_x = XPLMGetDataf(plane_x_dr);
+            float plane_y = XPLMGetDataf(plane_y_dr);
+            float plane_z = XPLMGetDataf(plane_z_dr);
 
             /* get terrain y below plane y */
 
-            if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, plane_x, plane_y, plane_z, &probeinfo)) {
+            if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo)) {
                 logMsg("XPLMProbeTerrainXYZ failed");
                 reset_state(INACTIVE);
                 return;
@@ -416,7 +416,7 @@ set_dgs_pos(void)
     dgs_pos_x = stand_x + dgs_ramp_dist * stand_dir_x;
     dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
 
-    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
+    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
         logMsg("XPLMProbeTerrainXYZ failed");
         reset_state(ACTIVE);
         return;
@@ -467,16 +467,16 @@ find_nearest_ramp()
     double dist = 1.0E10;
     const ramp_start_t *min_ramp = NULL;
 
-    float plane_x = XPLMGetDataf(ref_plane_x);
-    float plane_z = XPLMGetDataf(ref_plane_z);
+    float plane_x = XPLMGetDataf(plane_x_dr);
+    float plane_z = XPLMGetDataf(plane_z_dr);
 
-    float plane_elevation = XPLMGetDataf(ref_plane_elevation);
-    float plane_hdgt = XPLMGetDataf(ref_plane_true_psi);
+    float plane_elevation = XPLMGetDataf(plane_elevation_dr);
+    float plane_hdgt = XPLMGetDataf(plane_true_psi_dr);
 
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
-    if (ref_probe == NULL)
-        ref_probe = XPLMCreateProbe(xplm_ProbeY);
+    if (probe_ref == NULL)
+        probe_ref = XPLMCreateProbe(xplm_ProbeY);
 
     for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
         ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
@@ -564,7 +564,7 @@ find_nearest_ramp()
     }
 
     if (min_ramp != NULL && min_ramp != nearest_ramp) {
-        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(ref_probe, stand_x, stand_y, stand_z, &probeinfo)) {
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, stand_x, stand_y, stand_z, &probeinfo)) {
             logMsg("XPLMProbeTerrainXYZ failed");
             reset_state(ACTIVE);
             return;
@@ -612,13 +612,13 @@ run_state_machine()
     state_t new_state = state;
 
     // xform plane pos into stand local coordinate system
-    float dx = stand_x - XPLMGetDataf(ref_plane_x);
-    float dz = stand_z - XPLMGetDataf(ref_plane_z);
+    float dx = stand_x - XPLMGetDataf(plane_x_dr);
+    float dz = stand_z - XPLMGetDataf(plane_z_dr);
     float local_z = dx * stand_dir_x + dz * stand_dir_z;
     float local_x = dx * stand_dir_z - dz * stand_dir_x;
 
     // relative reading to stand +/- 180
-    float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(ref_plane_true_psi));
+    float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(plane_true_psi_dr));
 
     // nose wheel
     float nw_z = local_z - plane_nw_z;
@@ -631,12 +631,12 @@ run_state_machine()
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should nw if dist is below 6 m
     float a = clampf((nw_z - 6.0) / 20.0, 0.0, 1.0);
-    float plane_ref_z = (1.0 - a) * plane_nw_z + a * plane_mw_z;
-    float ref_z = local_z - plane_ref_z;
-    float ref_x = local_x + plane_ref_z * sin(D2R * local_hdgt);
+    float plane_z_dr = (1.0 - a) * plane_nw_z + a * plane_mw_z;
+    float z_dr = local_z - plane_z_dr;
+    float x_dr = local_x + plane_z_dr * sin(D2R * local_hdgt);
 
-    if (fabs(ref_x) > 0.5 && ref_z > 0)
-        azimuth = atanf(ref_x / (ref_z + 0.5 * dgs_ramp_dist)) / D2R;
+    if (fabs(x_dr) > 0.5 && z_dr > 0)
+        azimuth = atanf(x_dr / (z_dr + 0.5 * dgs_ramp_dist)) / D2R;
     else
         azimuth = 0.0;
 
@@ -653,7 +653,7 @@ run_state_machine()
     distance = nw_z - GOOD_Z;
 
     // catch the phase ~180° point -> the Marshaller's arm is straight
-    float sin_wave = XPLMGetDataf(ref_sin_wave);
+    float sin_wave = XPLMGetDataf(sin_wave_dr);
     int phase180 = (sin_wave_prev > 0.0) && (sin_wave <= 0.0);
     sin_wave_prev = sin_wave;
 
@@ -699,7 +699,7 @@ run_state_machine()
                 logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
                        "x: %0.1f, local_hdgt: %0.0f, d_hdgt: %0.1f",
                        azimuth, mw_x, mw_z, nw_x, nw_z,
-                       ref_x, ref_z,
+                       x_dr, z_dr,
                        local_x, local_hdgt, d_hdgt);
 
             if (d_hdgt < -1.0)
@@ -732,7 +732,7 @@ run_state_machine()
             /* @stop position*/
             status = 2; lr = 3;
 
-            int parkbrake_set = (XPLMGetDataf(ref_parkbrake) > 0.5);
+            int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
             if (!locgood)
                 new_state = TRACK;
             else if (parkbrake_set || !beacon_on)
@@ -815,7 +815,7 @@ run_state_machine()
         drawinfo.pitch = drawinfo.roll = 0.0;
 
         if (dgs_inst_ref == NULL) {
-            dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dref_list);
+            dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dlist_dr);
             if (dgs_inst_ref == NULL) {
                 logMsg("error creating instance");
                 state = DISABLED;
@@ -837,7 +837,7 @@ run_state_machine()
                 drefs[DGS_DR_ICAO_3] += 0.98;    // bug in VDGS
         }
 
-        drefs[DGS_DR_BRIGHTNESS] = 1.0 - 0.96 * XPLMGetDataf(ref_percent_lights);
+        drefs[DGS_DR_BRIGHTNESS] = 1.0 - 0.96 * XPLMGetDataf(percent_lights_dr);
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
@@ -851,8 +851,8 @@ flight_loop_cb(float inElapsedSinceLastCall,
 {
     float loop_delay = 2.0;
 
-    now = XPLMGetDataf(ref_total_running_time_sec);
-    int og = (XPLMGetDataf(ref_gear_fnrml) != 0.0);
+    now = XPLMGetDataf(total_running_time_sec_dr);
+    int og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
 
     if (og != on_ground && now > on_ground_ts + 10.0) {
         on_ground = og;
@@ -865,9 +865,9 @@ flight_loop_cb(float inElapsedSinceLastCall,
         } else {
             // transition to airborne
             reset_state(INACTIVE);
-            if (ref_probe) {
-                XPLMDestroyProbe(ref_probe);
-                ref_probe = NULL;
+            if (probe_ref) {
+                XPLMDestroyProbe(probe_ref);
+                probe_ref = NULL;
             }
         }
     }
@@ -969,30 +969,30 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     }
 
     /* Datarefs */
-    ref_xp_version     = XPLMFindDataRef("sim/version/xplane_internal_version");
-    ref_plane_x        = XPLMFindDataRef("sim/flightmodel/position/local_x");
-    ref_plane_y        = XPLMFindDataRef("sim/flightmodel/position/local_y");
-    ref_plane_z        = XPLMFindDataRef("sim/flightmodel/position/local_z");
-    ref_gear_fnrml     = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
-    ref_plane_lat      = XPLMFindDataRef("sim/flightmodel/position/latitude");
-    ref_plane_lon      = XPLMFindDataRef("sim/flightmodel/position/longitude");
-    ref_plane_elevation= XPLMFindDataRef("sim/flightmodel/position/elevation");
-    ref_plane_true_psi = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
-    ref_parkbrake      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
-    ref_beacon         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
-    ref_eng_running    = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running");
-    ref_acf_icao       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
-    ref_acf_cg_y       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
-    ref_acf_cg_z       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
-    ref_gear_z         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
-    ref_total_running_time_sec = XPLMFindDataRef("sim/time/total_running_time_sec");
-    ref_percent_lights = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
-    ref_sin_wave       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
-    ref_vr_enabled     = XPLMFindDataRef("sim/graphics/VR/enabled");
+    xp_version_dr     = XPLMFindDataRef("sim/version/xplane_internal_version");
+    plane_x_dr        = XPLMFindDataRef("sim/flightmodel/position/local_x");
+    plane_y_dr        = XPLMFindDataRef("sim/flightmodel/position/local_y");
+    plane_z_dr        = XPLMFindDataRef("sim/flightmodel/position/local_z");
+    gear_fnrml_dr     = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
+    plane_lat_dr      = XPLMFindDataRef("sim/flightmodel/position/latitude");
+    plane_lon_dr      = XPLMFindDataRef("sim/flightmodel/position/longitude");
+    plane_elevation_dr= XPLMFindDataRef("sim/flightmodel/position/elevation");
+    plane_true_psi_dr = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
+    parkbrake_dr      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
+    beacon_dr         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
+    eng_running_dr    = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running");
+    acf_icao_dr       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    acf_cg_y_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
+    acf_cg_z_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
+    gear_z_dr         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
+    total_running_time_sec_dr = XPLMFindDataRef("sim/time/total_running_time_sec");
+    percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
+    sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
+    vr_enabled_dr     = XPLMFindDataRef("sim/graphics/VR/enabled");
 
     /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
     for (int i = 0; i < DGS_DR_NUM; i++)
-        XPLMRegisterDataAccessor(dgs_dref_list[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
+        XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
     /* API datarefs */
@@ -1025,7 +1025,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
                              (void *)API_RAMP, NULL);
 
-    int is_XP11 = (XPLMGetDatai(ref_xp_version) < 120000);
+    int is_XP11 = (XPLMGetDatai(xp_version_dr) < 120000);
     const char *obj_name[2];
 
     if (is_XP11) {
@@ -1080,8 +1080,8 @@ PLUGIN_API void
 XPluginStop(void)
 {
     XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
-    if (ref_probe)
-        XPLMDestroyProbe(ref_probe);
+    if (probe_ref)
+        XPLMDestroyProbe(probe_ref);
 
     for (int i = 0; i < 2; i++)
         if (dgs_obj[i])
@@ -1112,15 +1112,15 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
         reset_state(INACTIVE);
         memset(acf_icao, 0, sizeof(acf_icao));
-        XPLMGetDatab(ref_acf_icao, acf_icao, 0, 40);
+        XPLMGetDatab(acf_icao_dr, acf_icao, 0, 40);
 
         for (int i=0; i<4; i++)
             icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
 
-        plane_cg_z = F2M * XPLMGetDataf(ref_acf_cg_z);
+        plane_cg_z = F2M * XPLMGetDataf(acf_cg_z_dr);
 
         float gear_z[2];
-        if (2 == XPLMGetDatavf(ref_gear_z, gear_z, 0, 2)) {      // nose + main wheel
+        if (2 == XPLMGetDatavf(gear_z_dr, gear_z, 0, 2)) {      // nose + main wheel
             plane_nw_z = -gear_z[0];
             plane_mw_z = -gear_z[1];
         } else
@@ -1144,7 +1144,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             while (fgets(line, sizeof(line), acf)) {
                 if (line == strstr(line, "P acf/_pe_xyz/1 ")) {
                     if (1 == sscanf(line + 16, "%f", &pe_y_plane_0)) {
-                        pe_y_plane_0 -= XPLMGetDataf(ref_acf_cg_y);
+                        pe_y_plane_0 -= XPLMGetDataf(acf_cg_y_dr);
                         pe_y_plane_0 *= F2M;
                         pe_y_plane_0_valid = 1;
                     }

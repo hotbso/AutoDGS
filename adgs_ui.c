@@ -45,7 +45,7 @@ show_widget(widget_ctx_t *ctx)
     XPSetWidgetGeometry(ctx->widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
     XPShowWidget(ctx->widget);
 
-    int in_vr = XPLMGetDatai(ref_vr_enabled);
+    int in_vr = XPLMGetDatai(vr_enabled_dr);
     if (in_vr) {
         logMsg("VR mode detected");
         XPLMWindowID window =  XPGetWidgetUnderlyingWindow(ctx->widget);

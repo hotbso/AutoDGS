@@ -21,7 +21,7 @@
 #define RAMP_NAME_LEN sizeof(((ramp_start_t *)0)->name)
 
 extern XPLMCommandRef cycle_dgs_cmdr;
-extern XPLMDataRef ref_vr_enabled;
+extern XPLMDataRef vr_enabled_dr;
 
 extern const airport_t *arpt;
 extern int dgs_type;
