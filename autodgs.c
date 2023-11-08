@@ -93,7 +93,7 @@ XPLMCommandRef cycle_dgs_cmdr;
 static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
 
 /* Datarefs */
-static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr;
+static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
 static XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
 static XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 static XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
@@ -122,6 +122,7 @@ static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 static float plane_nw_z, plane_mw_z, plane_cg_z;   // z value of plane's 0 to fw, mw and cg
 static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
+static int is_helicopter;
 
 static char selected_ramp[RAMP_NAME_LEN];
 static const ramp_start_t *nearest_ramp;
@@ -852,7 +853,11 @@ flight_loop_cb(float inElapsedSinceLastCall,
     float loop_delay = 2.0;
 
     now = XPLMGetDataf(total_running_time_sec_dr);
-    int og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
+    int og;
+    if (is_helicopter)
+        og = (XPLMGetDataf(y_agl_dr) < 10.0);
+    else
+        og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
 
     if (og != on_ground && now > on_ground_ts + 10.0) {
         on_ground = og;
@@ -985,6 +990,8 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     acf_cg_y_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
     acf_cg_z_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
     gear_z_dr         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
+    is_helicopter_dr  = XPLMFindDataRef("sim/aircraft2/metadata/is_helicopter");
+    y_agl_dr          = XPLMFindDataRef("sim/flightmodel2/position/y_agl");
     total_running_time_sec_dr = XPLMFindDataRef("sim/time/total_running_time_sec");
     percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
     sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
@@ -1126,33 +1133,39 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         } else
             plane_nw_z = plane_mw_z = plane_cg_z;         // fall back to CG
 
-        /* unfortunately the *default* pilot eye y coordinate is not published in
-           a dataref, only the dynamic values.
-           Therefore we pull it from the acf file. */
-
-        char acf_path[512];
-        char acf_file[256];
-
-        XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
-        logMsg(acf_path);
+        is_helicopter = XPLMGetDatai(is_helicopter_dr);
 
         pe_y_plane_0_valid = 0;
+        pe_y_plane_0 = 0.0;
 
-        FILE *acf = fopen(acf_path, "r");
-        if (acf) {
-            char line[200];
-            while (fgets(line, sizeof(line), acf)) {
-                if (line == strstr(line, "P acf/_pe_xyz/1 ")) {
-                    if (1 == sscanf(line + 16, "%f", &pe_y_plane_0)) {
-                        pe_y_plane_0 -= XPLMGetDataf(acf_cg_y_dr);
-                        pe_y_plane_0 *= F2M;
-                        pe_y_plane_0_valid = 1;
+        if (! is_helicopter) {
+            /* unfortunately the *default* pilot eye y coordinate is not published in
+               a dataref, only the dynamic values.
+               Therefore we pull it from the acf file. */
+
+            char acf_path[512];
+            char acf_file[256];
+
+            XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
+            logMsg(acf_path);
+
+
+            FILE *acf = fopen(acf_path, "r");
+            if (acf) {
+                char line[200];
+                while (fgets(line, sizeof(line), acf)) {
+                    if (line == strstr(line, "P acf/_pe_xyz/1 ")) {
+                        if (1 == sscanf(line + 16, "%f", &pe_y_plane_0)) {
+                            pe_y_plane_0 -= XPLMGetDataf(acf_cg_y_dr);
+                            pe_y_plane_0 *= F2M;
+                            pe_y_plane_0_valid = 1;
+                        }
+                        break;
                     }
-                    break;
                 }
-            }
 
-            fclose(acf);
+                fclose(acf);
+            }
         }
 
         /* check whether acf is listed in acf_use_engine_running.txt */
@@ -1183,7 +1196,9 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             fclose(f);
         }
 
-        logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f",
-               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_nw_z, plane_mw_z, pe_y_plane_0_valid, pe_y_plane_0);
+        logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
+               "pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f, is_helicopter: %d",
+               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_nw_z, plane_mw_z,
+               pe_y_plane_0_valid, pe_y_plane_0, is_helicopter);
     }
 }

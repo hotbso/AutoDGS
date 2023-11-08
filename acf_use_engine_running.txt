@@ -3,4 +3,5 @@
 # use engines running instead
 MD11
 DH8D
+R22
 # test C172
