@@ -693,19 +693,19 @@ run_state_machine()
 
             /* compute distance and guidance commands */
             azimuth = clampf(azimuth, -AZI_A, AZI_A);
-            float req_hdgt = -4.0 * azimuth;        // to track back to centerline
+            float req_hdgt = -3.5 * azimuth;        // to track back to centerline
             float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
 
             if (now > update_dgs_log_ts + 2.0)
                 logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                       "x: %0.1f, local_hdgt: %0.0f, d_hdgt: %0.1f",
+                       "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
                        azimuth, mw_x, mw_z, nw_x, nw_z,
                        x_dr, z_dr,
                        local_x, local_hdgt, d_hdgt);
 
-            if (d_hdgt < -1.0)
+            if (d_hdgt < -1.5)
                 lr = 2;
-            else if (d_hdgt > 1.0)
+            else if (d_hdgt > 1.5)
                 lr = 1;
 
             /* xform azimuth to values required ob OBJ */
