@@ -743,8 +743,23 @@ find_all_apt_dats(const airportdb_t *db, list_t *list)
 
 			fix_pathsep(scn_name);
 			e = safe_malloc(sizeof (*e));
+
+#ifdef IBM
+            /* check for resolved Windows shortcuts = starts with "letter:\" */
+            int len =strlen(scn_name);
+            if (len >= 3 && scn_name[1] == ':' && scn_name[2] == '\\') {
+                if (scn_name[len - 1 ]  == '\\')
+                    scn_name[len - 1 ]  = '\0';
+                e->fname = mkpathname(scn_name,
+                    "Earth nav data", "apt.dat", NULL);
+            } else
+                e->fname = mkpathname(db->xpdir, scn_name,
+                    "Earth nav data", "apt.dat", NULL);
+#else
 			e->fname = mkpathname(db->xpdir, scn_name,
 			    "Earth nav data", "apt.dat", NULL);
+
+#endif
 			list_insert_tail(list, e);
 		}
 		fclose(scenery_packs_ini);
