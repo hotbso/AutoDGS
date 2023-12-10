@@ -68,3 +68,4 @@ plugin: $(TARGET)
 	cp -p DGSs-*/* "$(PLUGDIR)/resources/."
 	cp -p *.lua "$(PLUGDIR)/lua_sample/."
 	cp -p acf_use_engine_running.txt "$(PLUGDIR)/."
+	cp -p acf_dont_connect_jetway.txt "$(PLUGDIR)/."

@@ -111,6 +111,7 @@ static float now;           /* current timestamp */
 static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch actions */
 static float beacon_off_ts, beacon_on_ts;
 static int use_engine_running;              /* instead of beacon, e.g. MD11 */
+static int dont_connect_jetway;             /* e.g. for ZIBO with own ground service */
 
 static airportdb_t airportdb;
 const airport_t *arpt;
@@ -762,7 +763,7 @@ run_state_machine()
             /* wait for beacon off */
             if (! beacon_on) {
                 new_state = DONE;
-                if (operation_mode == MODE_AUTO)
+                if (operation_mode == MODE_AUTO && ! dont_connect_jetway)
                     XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
@@ -941,6 +942,38 @@ static void
 menu_cb(void *menu_ref, void *item_ref)
 {
     XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
+}
+
+static int
+find_icao_in_file(const char *acf_icao, const char *dir, const char *fn)
+{
+    char fn_full[512];
+    snprintf(fn_full, sizeof(fn_full) - 1, "%s%s", dir, fn);
+
+    int res = 0;
+    FILE *f = fopen(fn_full, "r");
+    if (f) {
+        logMsg("check whether acf '%s' is in exception file %s", acf_icao, fn_full);
+        char line[100];
+        while (fgets(line, sizeof(line), f)) {
+            char *cptr = strchr(line, '\r');
+            if (cptr)
+                *cptr = '\0';
+            cptr = strchr(line, '\n');
+            if (cptr)
+                *cptr = '\0';
+
+            if (0 == strcmp(line, acf_icao)) {
+                logMsg("found acf %s in %s", acf_icao, fn);
+                res = 1;
+                break;
+            }
+        }
+
+        fclose(f);
+    }
+
+    return res;
 }
 
 /* =========================== plugin entry points ===============================================*/
@@ -1124,6 +1157,8 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         for (int i=0; i<4; i++)
             icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
 
+        acf_icao[4] = '\0';
+
         plane_cg_z = F2M * XPLMGetDataf(acf_cg_z_dr);
 
         float gear_z[2];
@@ -1168,33 +1203,28 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
             }
         }
 
-        /* check whether acf is listed in acf_use_engine_running.txt */
+        /* check whether acf is listed in exception files */
         use_engine_running = 0;
+        dont_connect_jetway = 0;
 
-        char path[512];
-        path[0] = '\0';
-        XPLMGetPluginInfo(XPLMGetMyID(), NULL, path, NULL, NULL);
-        char *cptr = strrchr(path, '/');    /* basename */
-        if (cptr)
+        char dir[512];
+        dir[0] = '\0';
+        XPLMGetPluginInfo(XPLMGetMyID(), NULL, dir, NULL, NULL);
+        char *cptr = strrchr(dir, '/');    /* basename */
+        if (cptr) {
             *cptr = '\0';
-        strcat(path, "/../acf_use_engine_running.txt");
-
-        FILE *f = fopen(path, "r");
-        if (f) {
-            logMsg("check whether acf is in exception file %s", path);
-            char line[100];
-            acf_icao[4] = '\0';
-            while (fgets(line, sizeof(line), f)) {
-                line[4] = '\0';
-                if (0 == strcmp(line, acf_icao)) {
-                    logMsg("found acf %s in acf_use_engine_running.txt", acf_icao);
-                    use_engine_running = 1;
-                    break;
-                }
-            }
-
-            fclose(f);
+            cptr = strrchr(dir, '/');       /* one level up */
         }
+
+        if (cptr)
+            *(cptr + 1) = '\0';             /* keep the / */
+
+        if (find_icao_in_file(acf_icao, dir, "acf_use_engine_running.txt"))
+            use_engine_running = 1;
+
+        if (find_icao_in_file(acf_icao, dir, "acf_dont_connect_jetway.txt"))
+            dont_connect_jetway = 1;
+
 
         logMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
                "pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f, is_helicopter: %d",
