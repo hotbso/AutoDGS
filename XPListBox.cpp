@@ -423,6 +423,27 @@ static int		XPListBoxProc(
             }
             return 1;
 
+        case xpMsg_MouseWheel: {
+            const XPMouseState_t *ms = (XPMouseState_t *)inParam1;
+
+            if (!IN_RECT(MOUSE_X(ms), MOUSE_Y(ms), Left, Top, Right, Bottom))
+                return 0;
+
+            XPGetTrackMetrics(Right-20, Bottom, Right, Top, Min, Max, SliderPosition, xpTrack_ScrollBar, &IsVertical, &DownBtnSize, &DownPageSize, &ThumbSize, &UpPageSize, &UpBtnSize);
+            int	Min = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMin, NULL);
+            int	Max = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMax, NULL);
+
+            int incr = std::max<int>(1, round(0.02 * (Max - Min)));
+            SliderPosition += ms->delta * incr;
+            if (SliderPosition < Min)
+                SliderPosition = Min;
+            if (SliderPosition > Max)
+                SliderPosition = Max;
+
+            XPSetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarSliderPosition, SliderPosition);
+            return 1;
+        }
+
 		default:
 			return 0;
 	}
