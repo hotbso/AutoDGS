@@ -631,7 +631,7 @@ run_state_machine()
     float mw_x = local_x + plane_mw_z * sin(D2R * local_hdgt);
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
-    // should nw if dist is below 6 m
+    // should be nw if dist is below 6 m
     float a = clampf((nw_z - 6.0) / 20.0, 0.0, 1.0);
     float plane_z_dr = (1.0 - a) * plane_nw_z + a * plane_mw_z;
     float z_dr = local_z - plane_z_dr;
