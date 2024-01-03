@@ -384,44 +384,44 @@ static int		XPListBoxProc(
 			}
 		return 1;
 
-	case xpMsg_MouseDrag:
-		if (IN_RECT(MOUSE_X(inParam1), MOUSE_Y(inParam1), Right-20, Top, Right, Bottom))
-		{
-			XPGetTrackMetrics(Right-20, Bottom, Right, Top, Min, Max, SliderPosition, xpTrack_ScrollBar, &IsVertical, &DownBtnSize, &DownPageSize, &ThumbSize, &UpPageSize, &UpBtnSize);
-			int	Min = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMin, NULL);
-			int	Max = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMax, NULL);
+        case xpMsg_MouseDrag:
+            if (IN_RECT(MOUSE_X(inParam1), MOUSE_Y(inParam1), Right-20, Top, Right, Bottom))
+            {
+                XPGetTrackMetrics(Right-20, Bottom, Right, Top, Min, Max, SliderPosition, xpTrack_ScrollBar, &IsVertical, &DownBtnSize, &DownPageSize, &ThumbSize, &UpPageSize, &UpBtnSize);
+                int	Min = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMin, NULL);
+                int	Max = XPGetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarMax, NULL);
 
-			ThumbSelected = Highlighted;
+                ThumbSelected = Highlighted;
 
-			if (ThumbSelected)
-			{
-				if (inParam1 != 0)
-				{
-					if (IsVertical)
-					{
-						y = MOUSE_Y(inParam1) + ScrollBarSlop;
-						SliderPosition = round((float)((float)(y - (Bottom + DownBtnSize + ThumbSize/2)) /
-									(float)((Top - UpBtnSize - ThumbSize/2) - (Bottom + DownBtnSize + ThumbSize/2))) * Max);
-					}
-					else
-					{
-						x = MOUSE_X(inParam1) + ScrollBarSlop;
-						SliderPosition = round((float)((float)(x - (Right-20 + DownBtnSize + ThumbSize/2)) / (float)((Right - UpBtnSize - ThumbSize/2) - (Right-20 + DownBtnSize + ThumbSize/2))) * Max);
-					}
+                if (ThumbSelected)
+                {
+                    if (inParam1 != 0)
+                    {
+                        if (IsVertical)
+                        {
+                            y = MOUSE_Y(inParam1) + ScrollBarSlop;
+                            SliderPosition = round((float)((float)(y - (Bottom + DownBtnSize + ThumbSize/2)) /
+                                        (float)((Top - UpBtnSize - ThumbSize/2) - (Bottom + DownBtnSize + ThumbSize/2))) * Max);
+                        }
+                        else
+                        {
+                            x = MOUSE_X(inParam1) + ScrollBarSlop;
+                            SliderPosition = round((float)((float)(x - (Right-20 + DownBtnSize + ThumbSize/2)) / (float)((Right - UpBtnSize - ThumbSize/2) - (Right-20 + DownBtnSize + ThumbSize/2))) * Max);
+                        }
 
-				}
-				else
-					SliderPosition = 0;
+                    }
+                    else
+                        SliderPosition = 0;
 
-				if (SliderPosition < Min)
-					SliderPosition = Min;
-				if (SliderPosition > Max)
-					SliderPosition = Max;
+                    if (SliderPosition < Min)
+                        SliderPosition = Min;
+                    if (SliderPosition > Max)
+                        SliderPosition = Max;
 
-				XPSetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarSliderPosition, SliderPosition);
-			}
-		}
-		return 1;
+                    XPSetWidgetProperty(inWidget, xpProperty_ListBoxScrollBarSliderPosition, SliderPosition);
+                }
+            }
+            return 1;
 
 		default:
 			return 0;
