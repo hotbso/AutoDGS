@@ -839,7 +839,9 @@ run_state_machine()
                 drefs[DGS_DR_ICAO_3] += 0.98;    // bug in VDGS
         }
 
-        drefs[DGS_DR_BRIGHTNESS] = 1.0 - 0.96 * XPLMGetDataf(percent_lights_dr);
+        static const float min_brightness = 0.025;   // relativ to 1
+        float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
+        drefs[DGS_DR_BRIGHTNESS] = brightness;
         XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
     }
 
