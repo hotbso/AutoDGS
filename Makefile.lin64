@@ -6,7 +6,7 @@ SDK=../SDK
 OBJDIR=./OBJ_lx
 
 LIBACFUTILS_VERSION="hotbso subset"
-TARGET=lin.xpl
+TARGET=$(OBJDIR)/lin.xpl
 HEADERS=$(wildcard *.h)
 SOURCES_C=$(wildcard *.c)
 SOURCES_CPP=$(wildcard *.cpp)
@@ -24,7 +24,6 @@ OBJECTS=$(addprefix $(OBJDIR)/, $(OBJECTS_))
 $(info $(OBJECTS))
 
 LNFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning
-LIBS=-L$(ACFUT)/lin64/lib
 
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
@@ -39,7 +38,7 @@ $(OBJDIR)/%.o: libacfutils/src/%.c
 	$(CC) $(LACFU_CFLAGS) -o $@ -c $<
 
 $(TARGET): $(OBJECTS) $(LACFU_OBJECTS)
-	g++ -o $(TARGET) $(LNFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
+	g++ -o $(TARGET) $(LNFLAGS) $(OBJECTS) $(LACFU_OBJECTS)
 
 clean:
 	rm -f $(OBJECTS) $(LACFU_OBJECTS) $(TARGET)

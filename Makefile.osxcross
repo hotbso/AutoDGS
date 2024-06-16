@@ -6,10 +6,10 @@ export PATH:=/osxcross/target/bin:$(PATH)
 PLUGDIR=../../../X-Plane-12/Resources/plugins/AutoDGS
 
 SDK=../SDK
-OBJDIR=./OBJ_osx
+OBJDIR=OBJ_osx
 
 LIBACFUTILS_VERSION="hotbso subset"
-TARGET=mac.xpl
+TARGET=$(OBJDIR)/mac.xpl
 HEADERS=$(wildcard *.h)
 SOURCES_C=$(wildcard *.c)
 SOURCES_CPP=$(wildcard *.cpp)
@@ -65,14 +65,14 @@ $(OBJDIR)/%.o_arm: libacfutils/src/%.c
 $(OBJDIR)/%.o_x86: libacfutils/src/%.c
 	$(CCx) $(LACFU_CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/$(TARGET)_arm: $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
+$(TARGET)_arm: $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
 	$(CCppa) -o $@ $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
 
-$(OBJDIR)/$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
+$(TARGET)_x86: $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
 	$(CCppx) -o $@ $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
 
-$(TARGET): $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
-	lipo -create -output $@ $(OBJDIR)/$(TARGET)_arm $(OBJDIR)/$(TARGET)_x86
+$(TARGET): $(TARGET)_arm $(TARGET)_x86
+	lipo -create -output $@ $(TARGET)_arm $(TARGET)_x86
 
 # install the just compiled target
 install: $(TARGET)
@@ -80,4 +80,4 @@ install: $(TARGET)
 	cp -p $(TARGET) "$(PLUGDIR)/64/."
 
 clean:
-	rm -f $(TARGET) $(OBJDIR)/*.o_* $(OBJDIR)/mac.xpl_*
+	rm -f $(TARGET) $(OBJDIR)/*.o_* $(OBJDIR)/mac.xpl*

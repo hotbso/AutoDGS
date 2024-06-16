@@ -2,12 +2,13 @@
 
 include version.mak
 
-TARGET=win.xpl
+OBJDIR=./OBJ_win
+
+TARGET=$(OBJDIR)/win.xpl
 HEADERS=$(wildcard *.h)
 SOURCES_C=$(wildcard *.c)
 SOURCES_CPP=$(wildcard *.cpp)
 OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
-OBJDIR=./OBJ
 
 LIBACFUTILS_VERSION="hotbso subset"
 SDK=../SDK
