@@ -1566,43 +1566,42 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
     int use_autodgs = 1;
 
     if (! fill_in_dups) {     /* !fill_in_dups means we are processing a custom scenery */
-        char *dir_name = lacf_dirname(apt_dat_fname);
-        char *fname = mkpathname(dir_name, "..", "sam.xml", NULL);
+        char *fname = safe_strdup(apt_dat_fname);
+        char *name_start = strstr(fname, "Earth nav data");
+
+        // the marker names are shorter than "Earth nav data/apt.dat"
+        // so strcpy is safe
+        strcpy(name_start, "sam.xml");
         if (file_exists(fname, NULL)) {
             logMsg("found %s", fname);
             use_autodgs = 0;
         }
-        lacf_free(fname);
 
-        fname = mkpathname(dir_name, "..", "no_autodgs", NULL);
+        strcpy(name_start, "no_autodgs");
         if (file_exists(fname, NULL)) {
             logMsg("found %s", fname);
             use_autodgs = 0;
         }
-        lacf_free(fname);
 
-        fname = mkpathname(dir_name, "..", "no_autodgs.txt", NULL);
+        strcpy(name_start, "no_autodgs.txt");
         if (file_exists(fname, NULL)) {
             logMsg("found %s", fname);
             use_autodgs = 0;
         }
-        lacf_free(fname);
 
-        fname = mkpathname(dir_name, "..", "use_autodgs", NULL);
+        strcpy(name_start, "use_autodgs");
         if (file_exists(fname, NULL)) {
             logMsg("found %s", fname);
             use_autodgs = 1;
         }
-        lacf_free(fname);
 
-        fname = mkpathname(dir_name, "..", "use_autodgs.txt", NULL);
+        strcpy(name_start, "use_autodgs.txt");
         if (file_exists(fname, NULL)) {
             logMsg("found %s", fname);
             use_autodgs = 1;
         }
-        lacf_free(fname);
 
-        lacf_free(dir_name);
+        free(fname);
     }
 
 	while (!feof(apt_dat_f)) {
