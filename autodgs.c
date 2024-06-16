@@ -671,6 +671,11 @@ run_state_machine()
             break;
 
         case TRACK:
+            if (!beacon_on) {       // don't get stuck in TRACK
+                new_state = DONE;
+                break;
+            }
+
             if (locgood) {
                 new_state = GOOD;
                 break;
