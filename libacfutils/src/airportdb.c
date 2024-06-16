@@ -57,7 +57,7 @@
 /* precomputed, since it doesn't change */
 #define	RWY_APCH_PROXIMITY_LAT_DISPL	(RWY_APCH_PROXIMITY_LON_DISPL * \
 	__builtin_tan(DEG2RAD(RWY_APCH_PROXIMITY_LAT_ANGLE)))
-#define	ARPTDB_CACHE_VERSION		20
+#define	ARPTDB_CACHE_VERSION		21
 
 #define	VGSI_LAT_DISPL_FACT		2	/* rwy width multiplier */
 #define	VGSI_HDG_MATCH_THRESH		5	/* degrees */
@@ -1554,26 +1554,56 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 		return;
 	}
 
-    /* look for the "use_autodgs" marker file besides apt.dat */
-    int apt_has_marker = 0;
+    /* It's an AutoDGS airport UNLESS the scenery directory contains a file
+     * "sam.xml"
+     * "no_autodgs"
+     * "no_autodgs.txt"
+     *
+     * If there is a
+     * "use_autodgs" or "use_autodgs.txt" then autodgs is forced.
+     */
 
-    int len = strlen(apt_dat_fname) + 100;
-    char *marker_name = safe_malloc(len);
-    lacf_strlcpy(marker_name, apt_dat_fname, len);
-    char *cptr = strrchr(marker_name, '\\');
-    if (cptr == NULL)
-        cptr = strrchr(marker_name, '/');
-    if (cptr) {
-        lacf_strlcpy(cptr + 1, "use_autodgs", 100);
-        //logMsg("marker: %s", marker_name);
-        FILE *f;
-        if ((f = fopen(marker_name, "r")) != NULL) {
-            fclose(f);
-            apt_has_marker = 1;
+    int use_autodgs = 1;
+
+    if (! fill_in_dups) {     /* !fill_in_dups means we are processing a custom scenery */
+        char *dir_name = lacf_dirname(apt_dat_fname);
+        char *fname = mkpathname(dir_name, "..", "sam.xml", NULL);
+        if (file_exists(fname, NULL)) {
+            logMsg("found %s", fname);
+            use_autodgs = 0;
         }
-    }
+        lacf_free(fname);
 
-    free(marker_name);
+        fname = mkpathname(dir_name, "..", "no_autodgs", NULL);
+        if (file_exists(fname, NULL)) {
+            logMsg("found %s", fname);
+            use_autodgs = 0;
+        }
+        lacf_free(fname);
+
+        fname = mkpathname(dir_name, "..", "no_autodgs.txt", NULL);
+        if (file_exists(fname, NULL)) {
+            logMsg("found %s", fname);
+            use_autodgs = 0;
+        }
+        lacf_free(fname);
+
+        fname = mkpathname(dir_name, "..", "use_autodgs", NULL);
+        if (file_exists(fname, NULL)) {
+            logMsg("found %s", fname);
+            use_autodgs = 1;
+        }
+        lacf_free(fname);
+
+        fname = mkpathname(dir_name, "..", "use_autodgs.txt", NULL);
+        if (file_exists(fname, NULL)) {
+            logMsg("found %s", fname);
+            use_autodgs = 1;
+        }
+        lacf_free(fname);
+
+        lacf_free(dir_name);
+    }
 
 	while (!feof(apt_dat_f)) {
 		int row_code;
@@ -1606,10 +1636,10 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 			    fill_in_dups ? &dup_arpt : NULL);
 
             if (arpt != NULL) {
-                if (fill_in_dups || apt_has_marker)
-                    arpt->is_global_arpt = 1;    /* fill_in_dups means we are reading the global apt.dat */
+                if (fill_in_dups || use_autodgs)
+                    arpt->is_autodgs_arpt = 1;    /* fill_in_dups means we are reading the global apt.dat */
 
-                logMsg("ident: %s, %p, is_global_arpt: %d, %s", arpt->ident, arpt, arpt->is_global_arpt, apt_dat_fname);
+                logMsg("ident: %s, %p, is_autodgs_arpt: %d, %s", arpt->ident, arpt, arpt->is_autodgs_arpt, apt_dat_fname);
             }
 		}
 		if (arpt == NULL) {
@@ -2562,7 +2592,7 @@ adb_recreate_cache(airportdb_t *db, int app_version)
 		 * we are in ifr_only=B_FALSE mode, then accept it anyway.
 		 */
 		if ((!arpt->have_iaps && db->ifr_only)
-            || (db->global_airports_only && !arpt->is_global_arpt)) {
+            || (db->autodgs_airports_only && !arpt->is_autodgs_arpt)) {
             logMsg("prune %s", arpt->ident);
 			geo_unlink_airport(db, arpt);
 			avl_remove(&db->apt_dat, arpt);

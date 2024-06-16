@@ -1002,7 +1002,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     fix_pathsep(cache_path);                        /* libacfutils requires a canonical path sep */
     airportdb_create(&airportdb, xpdir, cache_path);
     airportdb.ifr_only = B_TRUE;
-    airportdb.global_airports_only = B_TRUE;
+    airportdb.autodgs_airports_only = B_TRUE;
     if (!recreate_cache(&airportdb)) {
         logMsg("init failure: recreate_cache failed");
         return 0;

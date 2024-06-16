@@ -145,7 +145,7 @@ extern "C" {
 typedef struct {
 	bool_t		inited;
 	bool_t		ifr_only;
-    bool_t      global_airports_only;
+    bool_t      autodgs_airports_only;
 	bool_t		normalize_gate_names;
 	bool_t		override_settings;
 	char		*xpdir;
@@ -299,7 +299,7 @@ struct airport {
 	fpp_t		fpp;		/**< Orthographic fpp_t centered on refpt. */
 	bool_t		in_navdb;	/**< Used by recreate_apt_dat_cache. */
 	bool_t		have_iaps;	/**< Used by recreate_apt_dat_cache. */
-    bool_t      is_global_arpt; /**< used by recreate_apt_dat_cache */
+    bool_t      is_autodgs_arpt; /**< used by recreate_apt_dat_cache */
 
 	avl_node_t	apt_dat_node;	/**< Used by apt_dat tree. */
 	list_node_t	cur_arpts_node;	/**< Used by cur_arpts list. */
