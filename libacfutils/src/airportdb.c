@@ -1565,40 +1565,42 @@ read_apt_dat(airportdb_t *db, const char *apt_dat_fname, bool_t fail_ok,
 
     int use_autodgs = 1;
 
-    if (! fill_in_dups) {     /* !fill_in_dups means we are processing a custom scenery */
+    if (! fill_in_dups) {     // !fill_in_dups == not the global airports file
         char *fname = safe_strdup(apt_dat_fname);
         char *name_start = strstr(fname, "Earth nav data");
 
-        // the marker names are shorter than "Earth nav data/apt.dat"
-        // so strcpy is safe
-        strcpy(name_start, "sam.xml");
-        if (file_exists(fname, NULL)) {
-            logMsg("found %s", fname);
-            use_autodgs = 0;
-        }
+        if (name_start) {    // a Custom scenery
+            // the marker names are shorter than "Earth nav data/apt.dat"
+            // so strcpy is safe
+            strcpy(name_start, "sam.xml");
+            if (file_exists(fname, NULL)) {
+                logMsg("found %s", fname);
+                use_autodgs = 0;
+            }
 
-        strcpy(name_start, "no_autodgs");
-        if (file_exists(fname, NULL)) {
-            logMsg("found %s", fname);
-            use_autodgs = 0;
-        }
+            strcpy(name_start, "no_autodgs");
+            if (file_exists(fname, NULL)) {
+                logMsg("found %s", fname);
+                use_autodgs = 0;
+            }
 
-        strcpy(name_start, "no_autodgs.txt");
-        if (file_exists(fname, NULL)) {
-            logMsg("found %s", fname);
-            use_autodgs = 0;
-        }
+            strcpy(name_start, "no_autodgs.txt");
+            if (file_exists(fname, NULL)) {
+                logMsg("found %s", fname);
+                use_autodgs = 0;
+            }
 
-        strcpy(name_start, "use_autodgs");
-        if (file_exists(fname, NULL)) {
-            logMsg("found %s", fname);
-            use_autodgs = 1;
-        }
+            strcpy(name_start, "use_autodgs");
+            if (file_exists(fname, NULL)) {
+                logMsg("found %s", fname);
+                use_autodgs = 1;
+            }
 
-        strcpy(name_start, "use_autodgs.txt");
-        if (file_exists(fname, NULL)) {
-            logMsg("found %s", fname);
-            use_autodgs = 1;
+            strcpy(name_start, "use_autodgs.txt");
+            if (file_exists(fname, NULL)) {
+                logMsg("found %s", fname);
+                use_autodgs = 1;
+            }
         }
 
         free(fname);
