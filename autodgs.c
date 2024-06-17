@@ -117,7 +117,7 @@ static airportdb_t airportdb;
 const airport_t *arpt;
 static int on_ground = 1;
 static float on_ground_ts;
-static float stand_x, stand_y, stand_z, stand_dir_x, stand_dir_z, stand_hdg;
+static float stand_x, stand_y, stand_z, stand_sin_hgt, stand_cos_hgt, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 
 static float plane_nw_z, plane_mw_z, plane_cg_z;   // z value of plane's 0 to fw, mw and cg
@@ -415,8 +415,9 @@ set_dgs_pos(void)
         dgs_ramp_dist_set = 1;
     }
 
-    dgs_pos_x = stand_x + dgs_ramp_dist * stand_dir_x;
-    dgs_pos_z = stand_z + dgs_ramp_dist * stand_dir_z;
+    // xform (0, -dgs_ramp_dist) into global frame
+    dgs_pos_x = stand_x + -stand_sin_hgt * (-dgs_ramp_dist);
+    dgs_pos_z = stand_z +  stand_cos_hgt * (-dgs_ramp_dist);
 
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
         logMsg("XPLMProbeTerrainXYZ failed");
@@ -493,19 +494,20 @@ find_nearest_ramp()
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
 
         /* transform into gate local coordinate system */
-        float s_dir_x =  sinf(D2R * ramp->hdgt);
-        float s_dir_z = -cosf(D2R * ramp->hdgt);
+        float s_sin_hgt = sinf(D2R * ramp->hdgt);
+        float s_cos_hgt = cosf(D2R * ramp->hdgt);
 
         if (selected_ramp[0] == '\0') {
-            float dx = s_x - plane_x;
-            float dz = s_z - plane_z;
+            // xlate + rotate into stand frame
+            float dx = plane_x - s_x;
+            float dz = plane_z - s_z;
 
-            float local_z = dx * s_dir_x + dz * s_dir_z;
-            float local_x = dx * s_dir_z - dz * s_dir_x;
+            float local_x =  s_cos_hgt * dx + s_sin_hgt * dz;
+            float local_z = -s_sin_hgt * dx + s_cos_hgt * dz;
 
             // nose wheel
             float nw_z = local_z - plane_nw_z;
-            float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
+            float nw_x = local_x + plane_nw_z * sinf(D2R * local_hdgt);
 
             float d = sqrt(SQR(nw_x) + SQR(nw_z));
             if (d > CAP_Z + 50) // fast exit
@@ -549,8 +551,8 @@ find_nearest_ramp()
                 stand_x = s_x;
                 stand_y = s_y;
                 stand_z = s_z;
-                stand_dir_x = s_dir_x;
-                stand_dir_z = s_dir_z;
+                stand_sin_hgt = s_sin_hgt;
+                stand_cos_hgt = s_cos_hgt;
             }
 
         } else if (0 == strcmp(ramp->name, selected_ramp)) {
@@ -559,8 +561,8 @@ find_nearest_ramp()
             stand_x = s_x;
             stand_y = s_y;
             stand_z = s_z;
-            stand_dir_x = s_dir_x;
-            stand_dir_z = s_dir_z;
+            stand_sin_hgt = s_sin_hgt;
+            stand_cos_hgt = s_cos_hgt;
             break;
         }
     }
@@ -614,28 +616,28 @@ run_state_machine()
     state_t new_state = state;
 
     // xform plane pos into stand local coordinate system
-    float dx = stand_x - XPLMGetDataf(plane_x_dr);
-    float dz = stand_z - XPLMGetDataf(plane_z_dr);
-    float local_z = dx * stand_dir_x + dz * stand_dir_z;
-    float local_x = dx * stand_dir_z - dz * stand_dir_x;
+    float dx = XPLMGetDataf(plane_x_dr) - stand_x;
+    float dz = XPLMGetDataf(plane_z_dr) - stand_z;
+    float local_x =  stand_cos_hgt * dx + stand_sin_hgt * dz;
+    float local_z = -stand_sin_hgt * dx + stand_cos_hgt * dz;
 
     // relative reading to stand +/- 180
     float local_hdgt = rel_angle(stand_hdg, XPLMGetDataf(plane_true_psi_dr));
 
     // nose wheel
     float nw_z = local_z - plane_nw_z;
-    float nw_x = local_x + plane_nw_z * sin(D2R * local_hdgt);
+    float nw_x = local_x + plane_nw_z * sinf(D2R * local_hdgt);
 
     // main wheel pos on logitudinal axis
     float mw_z = local_z - plane_mw_z;
-    float mw_x = local_x + plane_mw_z * sin(D2R * local_hdgt);
+    float mw_x = local_x + plane_mw_z * sinf(D2R * local_hdgt);
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should be nw if dist is below 6 m
     float a = clampf((nw_z - 6.0) / 20.0, 0.0, 1.0);
     float plane_z_dr = (1.0 - a) * plane_nw_z + a * plane_mw_z;
     float z_dr = local_z - plane_z_dr;
-    float x_dr = local_x + plane_z_dr * sin(D2R * local_hdgt);
+    float x_dr = local_x + plane_z_dr * sinf(D2R * local_hdgt);
 
     if (fabs(x_dr) > 0.5 && z_dr > 0)
         azimuth = atanf(x_dr / (z_dr + 0.5 * dgs_ramp_dist)) / D2R;
