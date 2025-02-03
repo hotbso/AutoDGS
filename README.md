@@ -8,6 +8,8 @@ Download link: https://github.com/hotbso/AutoDGS/releases
 
 Just drop the plugin in the plugins folder and you are in automatic set-and-forget mode.
 
+Support Discord: https://discord.gg/7GNmbFkyXt
+
 ## Automatic Mode
 After you LAND (= some air time!) on an airport the plugin activates and searches actively for suitable ramps in the direction that you are taxiing.
 Note that you MUST have your beacon on (a no-brainer with engine on, right?).
