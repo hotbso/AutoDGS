@@ -1,24 +1,35 @@
-/*
- * AutoDGS
- *
- * (c) Jonathan Harris 2006-2013
- * (c) Holger Teutsch 2023
- *
- * Licensed under GNU LGPL v2.1.
- */
+//
+//    AutoDGS: Show Marshaller or VDGS at default airports
+//
+//    Copyright (C) 2006-2013 Jonathan Harris
+//    Copyright (C) 2023, 2025 Holger Teutsch
+//
+//    This library is free software; you can redistribute it and/or
+//    modify it under the terms of the GNU Lesser General Public
+//    License as published by the Free Software Foundation; either
+//    version 2.1 of the License, or (at your option) any later version.
+//
+//    This library is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//    Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public
+//    License along with this library; if not, write to the Free Software
+//    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+//    USA
+//
 
 #ifdef _MSC_VER
 #  define _USE_MATH_DEFINES
 #  define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <math.h>
-#include <assert.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <cassert>
 
 #ifdef _MSC_VER
 #  define PATH_MAX MAX_PATH
@@ -80,10 +91,6 @@ typedef enum
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
 /* Globals */
-static const char pluginName[]="AutoDGS";
-static const char pluginSig[] ="hotbso.AutoDGS";
-static const char pluginDesc[]="Automatically provides DGS for gateway airports";
-
 static opmode_t operation_mode = MODE_AUTO;
 
 static state_t state = DISABLED;
@@ -481,8 +488,8 @@ find_nearest_ramp()
     if (probe_ref == NULL)
         probe_ref = XPLMCreateProbe(xplm_ProbeY);
 
-    for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
-        ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
+    for (const ramp_start_t *ramp = (const ramp_start_t *)avl_first(&arpt->ramp_starts); ramp != NULL;
+        ramp = (const ramp_start_t *)AVL_NEXT(&arpt->ramp_starts, ramp)) {
 
         // heading in local system
         float local_hdgt = rel_angle(ramp->hdgt, plane_hdgt);
@@ -672,80 +679,82 @@ run_state_machine()
             }
             break;
 
-        case TRACK:
-            if (!beacon_on) {       // don't get stuck in TRACK
-                new_state = DONE;
-                break;
-            }
+        case TRACK: {
+                if (!beacon_on) {       // don't get stuck in TRACK
+                    new_state = DONE;
+                    break;
+                }
 
-            if (locgood) {
-                new_state = GOOD;
-                break;
-            }
+                if (locgood) {
+                    new_state = GOOD;
+                    break;
+                }
 
-            if (nw_z < -GOOD_Z) {
-                new_state = BAD;
-                break;
-            }
+                if (nw_z < -GOOD_Z) {
+                    new_state = BAD;
+                    break;
+                }
 
-            if ((distance > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
-                new_state = ENGAGED;    // moving away from current gate
-                break;
-            }
+                if ((distance > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
+                    new_state = ENGAGED;    // moving away from current gate
+                    break;
+                }
 
-            status = 1;	/* plane id */
-            if (distance > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
-                track=1;	/* lead-in only */
-                break;
-            }
+                status = 1;	/* plane id */
+                if (distance > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
+                    track=1;	/* lead-in only */
+                    break;
+                }
 
-            /* compute distance and guidance commands */
-            azimuth = clampf(azimuth, -AZI_A, AZI_A);
-            float req_hdgt = -3.5 * azimuth;        // to track back to centerline
-            float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
+                /* compute distance and guidance commands */
+                azimuth = clampf(azimuth, -AZI_A, AZI_A);
+                float req_hdgt = -3.5 * azimuth;        // to track back to centerline
+                float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
 
-            if (now > update_dgs_log_ts + 2.0)
-                logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                       "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
-                       azimuth, mw_x, mw_z, nw_x, nw_z,
-                       x_dr, z_dr,
-                       local_x, local_hdgt, d_hdgt);
+                if (now > update_dgs_log_ts + 2.0)
+                    logMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
+                           "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
+                           azimuth, mw_x, mw_z, nw_x, nw_z,
+                           x_dr, z_dr,
+                           local_x, local_hdgt, d_hdgt);
 
-            if (d_hdgt < -1.5)
-                lr = 2;
-            else if (d_hdgt > 1.5)
-                lr = 1;
+                if (d_hdgt < -1.5)
+                    lr = 2;
+                else if (d_hdgt > 1.5)
+                    lr = 1;
 
-            /* xform azimuth to values required ob OBJ */
-            azimuth = clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
-            azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
+                /* xform azimuth to values required ob OBJ */
+                azimuth = clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
+                azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-            if (distance <= REM_Z/2) {
-                track = 3;
-                loop_delay = 0.03;
-            } else /* azimuth only */
-                track = 2;
+                if (distance <= REM_Z/2) {
+                    track = 3;
+                    loop_delay = 0.03;
+                } else /* azimuth only */
+                    track = 2;
 
-            if (! phase180) { // no wild oscillation
-                lr = lr_prev;
+                if (! phase180) { // no wild oscillation
+                    lr = lr_prev;
 
-                // sync transition with Marshaller's arm movement
-                if (dgs_type == 0 && track == 3 && track_prev == 2) {
-                    track = track_prev;
-                    distance = distance_prev;
+                    // sync transition with Marshaller's arm movement
+                    if (dgs_type == 0 && track == 3 && track_prev == 2) {
+                        track = track_prev;
+                        distance = distance_prev;
+                    }
                 }
             }
             break;
 
-        case GOOD:
-            /* @stop position*/
-            status = 2; lr = 3;
+        case GOOD:  {
+                /* @stop position*/
+                status = 2; lr = 3;
 
-            int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
-            if (!locgood)
-                new_state = TRACK;
-            else if (parkbrake_set || !beacon_on)
-                new_state = PARKED;
+                int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
+                if (!locgood)
+                    new_state = TRACK;
+                else if (parkbrake_set || !beacon_on)
+                    new_state = PARKED;
+            }
             break;
 
         case BAD:
@@ -989,11 +998,11 @@ find_icao_in_file(const char *acf_icao, const char *dir, const char *fn)
 PLUGIN_API int
 XPluginStart(char *outName, char *outSig, char *outDesc)
 {
-    sprintf(outName, "%s v%s", pluginName, VERSION);
-    strcpy(outSig,  pluginSig);
-    strcpy(outDesc, pluginDesc);
-
 	log_init(XPLMDebugString, "AutoDGS");
+
+    strcpy(outName, "AutoDGS " VERSION);
+    strcpy(outSig,  "hotbso.AutoDGS");
+    strcpy(outDesc, "Automatically provides DGS for gateway airports");
 
     logMsg("startup " VERSION);
 

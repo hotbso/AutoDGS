@@ -1,3 +1,25 @@
+//
+//    AutoDGS: Show Marshaller or VDGS at default airports
+//
+//    Copyright (C) 2006-2013 Jonathan Harris
+//    Copyright (C) 2023, 2025 Holger Teutsch
+//
+//    This library is free software; you can redistribute it and/or
+//    modify it under the terms of the GNU Lesser General Public
+//    License as published by the Free Software Foundation; either
+//    version 2.1 of the License, or (at your option) any later version.
+//
+//    This library is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//    Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public
+//    License along with this library; if not, write to the Free Software
+//    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+//    USA
+//
+
 #include "autodgs.h"
 #include <XPListBox.h>
 
@@ -145,8 +167,8 @@ update_ui(int only_if_visible)
         XPSetWidgetDescriptor(list_box, ui_selected_ramp);
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
-        for (const ramp_start_t *ramp = avl_first(&arpt->ramp_starts); ramp != NULL;
-             ramp = AVL_NEXT(&arpt->ramp_starts, ramp)) {
+        for (const ramp_start_t *ramp = (const ramp_start_t *)avl_first(&arpt->ramp_starts); ramp != NULL;
+            ramp = (const ramp_start_t *)AVL_NEXT(&arpt->ramp_starts, ramp)) {
             XPSetWidgetDescriptor(list_box, ramp->name);
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItem, 1);
         }

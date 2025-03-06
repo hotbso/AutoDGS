@@ -2,26 +2,27 @@
 
 include version.mak
 
-OBJDIR=./OBJ_win
+OBJDIR=./build/win
 
-TARGET=$(OBJDIR)/win.xpl
+TARGET=build/win.xpl
 HEADERS=$(wildcard *.h)
 SOURCES_C=$(wildcard *.c)
 SOURCES_CPP=$(wildcard *.cpp)
-OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
+OBJECTS:=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 LIBACFUTILS_VERSION="hotbso subset"
 SDK=../SDK
 #PLUGDIR=/F/X-Plane-12-vanilla/Resources/plugins/AutoDGS
-PLUGDIR=/E/X-Plane-12/Resources/plugins/AutoDGS
-OBJECTS=$(addprefix $(OBJDIR)/, $(OBJECTS_))
+PLUGDIR=/E/X-Plane-12-test/Resources/plugins/AutoDGS
+OBJECTS:=$(addprefix $(OBJDIR)/, $(OBJECTS))
 $(info $(OBJECTS))
 
 LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
 LACFU_OBJECTS=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o)))
 
-CC=x86_64-w64-mingw32-gcc
-LD=x86_64-w64-mingw32-g++
+CC=gcc
+CXX=g++
+LD=g++
 
 COMMON_CFLAGS=-O2 -s -Wall -fdiagnostics-color -Wno-format-overflow \
     -D_POSIX_C_SOURCE  \
@@ -32,28 +33,27 @@ COMMON_CFLAGS=-O2 -s -Wall -fdiagnostics-color -Wno-format-overflow \
 
 CFLAGS=-mdll $(COMMON_CFLAGS)
 LACFU_CFLAGS=-DUNICODE -DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(COMMON_CFLAGS)
-
+CXXFLAGS:=--std=c++20 $(CFLAGS)
 LDFLAGS=-shared -static-libgcc -static -lpthread
 LIBS=-L$(SDK)/Libraries/Win -lDbghelp -lpsapi -lXPLM_64 -lXPWidgets_64 -lz -liconv
 
-
 all: $(TARGET)
-    $(shell [ -d $(OBJDIR) ] || mkdir $(OBJDIR))
+    $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
 $(OBJDIR)/%.o: %.c version.mak $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(OBJDIR)/%.o: %.cpp version.mak $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(OBJDIR)/%.o: libacfutils/src/%.c
 	$(CC) $(LACFU_CFLAGS) -o $@ -c $<
 
 $(TARGET): $(OBJECTS) $(LACFU_OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
-	
+
 clean:
-	rm $(OBJECTS) $(LACFU_OBJECTS) $(TARGET)
+	rm -f $(TARGET) $(OBJDIR)/*.o*
 
 # install the just compiled target
 install: $(TARGET)

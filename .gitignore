@@ -1,9 +1,7 @@
 *.bak
 *.d
 *.o
-OBJ
-OBJ_LX
-OBJ_osx
+build
 *.dep
 *.pdb
 *.xpl
