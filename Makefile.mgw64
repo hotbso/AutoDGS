@@ -1,16 +1,9 @@
 
-SDK=../SDK
-#PLUGDIR=/F/X-Plane-12-vanilla/Resources/plugins/AutoDGS
-PLUGDIR=/E/X-Plane-12-test/Resources/plugins/AutoDGS
-
 include version.mak
+include Makefile.common
 
 OBJDIR=./build/win
-
 TARGET=build/win.xpl
-HEADERS=$(wildcard *.h)
-SOURCES_C=$(wildcard *.c)
-SOURCES_CPP=$(wildcard *.cpp)
 OBJECTS:=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 # all sources to the dep files
@@ -26,14 +19,13 @@ CC=gcc
 CXX=g++
 LD=g++
 
-COMMON_CFLAGS=-O2 -s -Wall -fdiagnostics-color -Wno-format-overflow \
+COMMON_CFLAGS=$(OPT) -s -Wall -fdiagnostics-color -Wno-format-overflow \
     -DIBM -DWINDOWS -DWIN32 \
-	-I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets \
     -DVERSION=\"$(VERSION)\" \
-    $(DEFINES)
+	$(INCLUDES) $(DEFINES)
 
 CFLAGS=-mdll $(COMMON_CFLAGS)
-CXXFLAGS:=--std=c++20 $(CFLAGS)
+CXXFLAGS:=$(CXXSTD) $(CFLAGS)
 LDFLAGS=-shared -static-libgcc -static
 LIBS=-L$(SDK)/Libraries/Win -lXPLM_64 -lXPWidgets_64
 
@@ -49,8 +41,12 @@ $(OBJDIR)/%.o: %.cpp $(DEPDIR)/%.d version.mak | $(DEPDIR)
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
+XPL_DIR=/e/X-Plane-12-test
+PLUGDIR:=$(XPL_DIR)/Resources/plugins/AutoDGS/64
+
 $(TARGET): $(OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)
+	if [ -d $(PLUGDIR) ]; then cp -p build/win.xpl $(PLUGDIR)/.; fi
 
 $(DEPDIR): ; @mkdir -p $@
 
@@ -59,19 +55,3 @@ include $(wildcard $(DEPFILES))
 
 clean:
 	rm -f $(TARGET) $(OBJDIR)/*.o*
-
-# install the just compiled target
-install: $(TARGET)
-	mkdir -p "$(PLUGDIR)/64"
-	cp -p $(TARGET) "$(PLUGDIR)/64/."
-
-# create the whole plugin directory
-plugin: $(TARGET)
-	mkdir -p "$(PLUGDIR)/64"
-	mkdir -p "$(PLUGDIR)/resources"
-	mkdir -p "$(PLUGDIR)/lua_sample"
-	cp -p $(TARGET) "$(PLUGDIR)/64/."
-	cp -p DGSs-*/* "$(PLUGDIR)/resources/."
-	cp -p *.lua "$(PLUGDIR)/lua_sample/."
-	cp -p acf_use_engine_running.txt "$(PLUGDIR)/."
-	cp -p acf_dont_connect_jetway.txt "$(PLUGDIR)/."

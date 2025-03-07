@@ -1,27 +1,24 @@
-PLUGINS=../../../X-Plane-12/Resources/plugins/AutoDGS
 
 include version.mak
+include Makefile.common
 
-SDK=../SDK
 OBJDIR=./build/lx
 
 TARGET=build/lin.xpl
 HEADERS=$(wildcard *.h)
-SOURCES_C=$(wildcard *.c)
-SOURCES_CPP=$(wildcard *.cpp)
 OBJECTS=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 CC=gcc
 CXX=g++
 LD=g++
 
-COMMON_CFLAGS=-DVERSION=\"$(VERSION)\" \
-    -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -fPIC -DLIN=1 -fno-stack-protector
+COMMON_CFLAGS=$(OPT) -DVERSION=\"$(VERSION)\" \
+    -Wall $(INCLUDES) $(DEFINES) -fPIC -DLIN=1 -fno-stack-protector
 CFLAGS=$(COMMON_CFLAGS)
-CXXFLAGS:=--std=c++20 $(CFLAGS)
+CXXFLAGS:=$(CXXSTD) $(CFLAGS)
 
 OBJECTS:=$(addprefix $(OBJDIR)/, $(OBJECTS))
-$(info $(OBJECTS))
+#$(info $(OBJECTS))
 
 LDFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning
 LIBS=

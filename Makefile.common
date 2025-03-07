@@ -1,0 +1,13 @@
+SDK=../SDK
+INCLUDES=-I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets
+
+# platform independent defines
+DEFINES=
+
+SOURCES_CPP=autodgs.cpp adgs_ui.cpp airport.cpp log_msg.cpp XPListBox.cpp
+SOURCES_C=
+
+# the c++ standard to use
+CXXSTD=-std=c++20
+
+OPT=-O3

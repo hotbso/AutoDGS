@@ -1,15 +1,12 @@
 include version.mak
+include Makefile.common
 
-SDK=../SDK
 OBJDIR=./build/mac
 
 TARGET=build/mac.xpl
 TARGET_arm=$(OBJDIR)/mac.xpl_arm
 TARGET_x86=$(OBJDIR)/mac.xpl_x86
 
-HEADERS=$(wildcard *.h)
-SOURCES_C=$(wildcard *.c)
-SOURCES_CPP=$(wildcard *.cpp)
 OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 OBJECTS_arm=$(addprefix $(OBJDIR)/, $(OBJECTS_:.o=.o_arm))
@@ -32,18 +29,16 @@ else
     CXXa=oa64-clang++ -mmacosx-version-min=13.0
 endif
 
-DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden
+DEFS= 
 
-CFLAGS+=-O2 -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DVERSION=\"$(VERSION)\" $(DEFS)
-CXXFLAGS:=--std=c++20 $(CFLAGS)
+CFLAGS+=$(OPT) -Wall -DVERSION=\"$(VERSION)\" -DAPL=1 $(INCLUDES) $(DEFINES) \
+	-fPIC -fno-stack-protector -fvisibility=hidden
+CXXFLAGS:=$(CXXSTD) $(CFLAGS)
 
 LNFLAGS+=-dynamiclib -shared -rdynamic -fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
 
 # https://pewpewthespells.com/blog/static_and_dynamic_libraries.html
-LIBS+= -F $(SDK)/Libraries/Mac -framework XPLM -framework XPWidgets
-
-# ships with macOS
-LIBS+=-liconv
+LIBS= -F $(SDK)/Libraries/Mac -framework XPLM -framework XPWidgets
 
 #test:
 #    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
