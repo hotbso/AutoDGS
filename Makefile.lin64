@@ -5,27 +5,22 @@ include version.mak
 SDK=../SDK
 OBJDIR=./build/lx
 
-LIBACFUTILS_VERSION="hotbso subset"
 TARGET=build/lin.xpl
 HEADERS=$(wildcard *.h)
 SOURCES_C=$(wildcard *.c)
 SOURCES_CPP=$(wildcard *.cpp)
-OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
-
-LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
-LACFU_OBJECTS=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o)))
+OBJECTS=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 CC=gcc
 CXX=g++
 LD=g++
 
 COMMON_CFLAGS=-DVERSION=\"$(VERSION)\" \
-    -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src -fPIC -DLIN=1 -fno-stack-protector
+    -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -fPIC -DLIN=1 -fno-stack-protector
 CFLAGS=$(COMMON_CFLAGS)
-LACFU_CFLAGS=-fvisibility=hidden -DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(COMMON_CFLAGS)
 CXXFLAGS:=--std=c++20 $(CFLAGS)
 
-OBJECTS=$(addprefix $(OBJDIR)/, $(OBJECTS_))
+OBJECTS:=$(addprefix $(OBJDIR)/, $(OBJECTS))
 $(info $(OBJECTS))
 
 LDFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning
@@ -40,15 +35,8 @@ $(OBJDIR)/%.o: %.c version.mak $(HEADERS)
 $(OBJDIR)/%.o: %.cpp version.mak $(HEADERS)
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o: libacfutils/src/%.c
-	$(CC) $(LACFU_CFLAGS) -o $@ -c $<
-
-$(TARGET): $(OBJECTS) $(LACFU_OBJECTS)
-	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LACFU_OBJECTS) $(LIBS)
+$(TARGET): $(OBJECTS)
+	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)
 
 clean:
 	rm -f $(TARGET) $(OBJDIR)/*.o*
-
-install: $(TARGET)
-	cp -p $(TARGET) $(PLUGINS)/64
-

@@ -3,8 +3,6 @@ include version.mak
 SDK=../SDK
 OBJDIR=./build/mac
 
-LIBACFUTILS_VERSION="hotbso subset"
-
 TARGET=build/mac.xpl
 TARGET_arm=$(OBJDIR)/mac.xpl_arm
 TARGET_x86=$(OBJDIR)/mac.xpl_x86
@@ -16,10 +14,6 @@ OBJECTS_=$(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o)
 
 OBJECTS_arm=$(addprefix $(OBJDIR)/, $(OBJECTS_:.o=.o_arm))
 OBJECTS_x86=$(OBJECTS_arm:.o_arm=.o_x86)
-
-LACFU_SOURCES=$(wildcard libacfutils/src/*.c)
-LACFU_OBJECTS_arm=$(addprefix $(OBJDIR)/, $(notdir $(LACFU_SOURCES:.c=.o_arm)))
-LACFU_OBJECTS_x86=$(LACFU_OBJECTS_arm:.o_arm=.o_x86)
 
 # if we run this script on Linux it's osxcross
 UNAME_S := $(shell uname -s)
@@ -38,10 +32,9 @@ else
     CXXa=oa64-clang++ -mmacosx-version-min=13.0
 endif
 
-DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden -DNDEBUG
+DEFS= -DAPL=1 -fPIC -fno-stack-protector -fvisibility=hidden
 
-CFLAGS+=-O2 -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -Ilibacfutils/src -DVERSION=\"$(VERSION)\" $(DEFS)
-LACFU_CFLAGS=-DLIBACFUTILS_VERSION='$(LIBACFUTILS_VERSION)' $(CFLAGS)
+CFLAGS+=-O2 -Wall -I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DVERSION=\"$(VERSION)\" $(DEFS)
 CXXFLAGS:=--std=c++20 $(CFLAGS)
 
 LNFLAGS+=-dynamiclib -shared -rdynamic -fvisibility=hidden -Wl,-exported_symbols_list -Wl,linkscript.mac
@@ -70,17 +63,11 @@ $(OBJDIR)/%.o_arm: %.cpp version.mak
 $(OBJDIR)/%.o_x86: %.cpp version.mak
 	$(CXXx) $(CXXFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o_arm: libacfutils/src/%.c
-	$(CCa) $(LACFU_CFLAGS) -o $@ -c $<
+$(TARGET_arm): $(OBJECTS_arm)
+	$(CXXa) -o $@ $(ARCH_arm) $(LNFLAGS) $(OBJECTS_arm) $(LIBS)
 
-$(OBJDIR)/%.o_x86: libacfutils/src/%.c
-	$(CCx) $(LACFU_CFLAGS) -o $@ -c $<
-
-$(TARGET_arm): $(OBJECTS_arm) $(LACFU_OBJECTS_arm)
-	$(CXXa) -o $@ $(ARCH_arm) $(LNFLAGS) $(OBJECTS_arm) $(LACFU_OBJECTS_arm) $(LIBS)
-
-$(TARGET_x86): $(OBJECTS_x86) $(LACFU_OBJECTS_x86)
-	$(CXXx) -o $@ $(ARCH_x86) $(LNFLAGS) $(OBJECTS_x86) $(LACFU_OBJECTS_x86) $(LIBS)
+$(TARGET_x86): $(OBJECTS_x86)
+	$(CXXx) -o $@ $(ARCH_x86) $(LNFLAGS) $(OBJECTS_x86) $(LIBS)
 
 $(TARGET): $(TARGET_arm) $(TARGET_x86)
 	lipo -create -output $@ $(TARGET_arm) $(TARGET_x86)

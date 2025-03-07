@@ -64,15 +64,11 @@ It's likely that this plane does not use the "beacon" datarefs in a standard way
 
 # Credits
 Jonathan Harris (aka Marginal) (https://github.com/Marginal) for creating Autogate\
-Saso Kiselkov (https://github.com/skiselkov) for creating libacfutils\
 @cxn0026 for explaining how Marshallers and VDGS really use guidance signals\
 @Papickx + @cxn0026 for providing better textures and day + night lighting
 
 ## License
 Please observe that this project is covered by various licenses.
-
-### libacfutil by Saso Kiselkov:
-http://www.illumos.org/license/CDDL
 
 ### The objects and textures and source code of Autogate by Marginal:
 -- copy of license remark from https://github.com/Marginal/AutoGate ---\

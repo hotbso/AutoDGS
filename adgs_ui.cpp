@@ -20,8 +20,13 @@
 //    USA
 //
 
+#include <cstring>
 #include "autodgs.h"
-#include <XPListBox.h>
+
+#include "XPWidgets.h"
+#include "XPStandardWidgets.h"
+
+#include "XPListBox.h"
 
 typedef struct _widget_ctx
 {
@@ -35,7 +40,7 @@ static widget_ctx_t ui_widget_ctx;
 static XPWidgetID ui_widget, list_box, selected_stand, marshaller_btn, vdgs_btn;
 
 /* current status of ui */
-static const airport_t *ui_arpt;
+static std::shared_ptr<Airport> ui_arpt;
 static char ui_arpt_icao[AIRPORTDB_ICAO_LEN];
 static int ui_dgs_type;
 static char ui_selected_ramp[RAMP_NAME_LEN];
@@ -61,7 +66,7 @@ show_widget(widget_ctx_t *ctx)
     ctx->t = (ctx->t - ctx->h > yl) ? ctx->t : (yr - ctx->h - 50);
     ctx->t = (ctx->t >= ctx->h) ? ctx->t : (yr / 2);
 
-    logMsg("show_widget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
+    LogMsg("show_widget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
            xl, yl, xr, yr, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
 
     XPSetWidgetGeometry(ctx->widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
@@ -69,13 +74,13 @@ show_widget(widget_ctx_t *ctx)
 
     int in_vr = XPLMGetDatai(vr_enabled_dr);
     if (in_vr) {
-        logMsg("VR mode detected");
+        LogMsg("VR mode detected");
         XPLMWindowID window =  XPGetWidgetUnderlyingWindow(ctx->widget);
         XPLMSetWindowPositioningMode(window, xplm_WindowVR, -1);
         ctx->in_vr = 1;
     } else {
         if (ctx->in_vr) {
-            logMsg("widget now out of VR, map at (%d,%d)", ctx->l, ctx->t);
+            LogMsg("widget now out of VR, map at (%d,%d)", ctx->l, ctx->t);
             XPLMWindowID window =  XPGetWidgetUnderlyingWindow(ctx->widget);
             XPLMSetWindowPositioningMode(window, xplm_WindowPositionFree, -1);
 
@@ -108,7 +113,7 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
         snprintf(buffer, sizeof buffer, "%s @ %s",
                  ui_selected_ramp, ui_arpt_icao[0] ? ui_arpt_icao : "unknown");
 		XPSetWidgetDescriptor(selected_stand, buffer);
-        logMsg("selected ramp is '%s'", ui_selected_ramp);
+        LogMsg("selected ramp is '%s'", ui_selected_ramp);
         set_selected_ramp(ui_selected_ramp);
         return 1;
     }
@@ -136,11 +141,11 @@ void
 update_ui(int only_if_visible)
 {
     if (ui_widget == NULL || (only_if_visible && !XPIsWidgetVisible(ui_widget))) {
-        logMsg("update_ui: widget is not visible");
+        LogMsg("update_ui: widget is not visible");
         return;
     }
 
-    logMsg("update_ui started");
+    LogMsg("update_ui started");
 
     if (ui_dgs_type != dgs_type) {
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, !dgs_type);
@@ -150,26 +155,25 @@ update_ui(int only_if_visible)
 
     if (arpt == NULL) {
         if (ui_arpt != NULL) {
-            logMsg("arpt changed to %p", arpt);
+            LogMsg("arpt changed to %p", arpt.get());
             strcpy(ui_selected_ramp, "Automatic");
             XPSetWidgetDescriptor(list_box, ui_selected_ramp);
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
             ui_arpt = NULL;
             ui_arpt_icao[0] = '\0';
         }
-    } else if (0 != strcmp(arpt->icao, ui_arpt_icao)) {
-        logMsg("airport changed to %s", arpt->icao);
-        strcpy(ui_arpt_icao, arpt->icao);
+    } else if (0 != strcmp(arpt->name_.c_str(), ui_arpt_icao)) {
+        LogMsg("airport changed to %s", arpt->name_.c_str());
+        strcpy(ui_arpt_icao, arpt->name_.c_str());
         ui_arpt = arpt;
 
-        logMsg("load ramps");
+        LogMsg("load ramps");
         strcpy(ui_selected_ramp, "Automatic");
         XPSetWidgetDescriptor(list_box, ui_selected_ramp);
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
-        for (const ramp_start_t *ramp = (const ramp_start_t *)avl_first(&arpt->ramp_starts); ramp != NULL;
-            ramp = (const ramp_start_t *)AVL_NEXT(&arpt->ramp_starts, ramp)) {
-            XPSetWidgetDescriptor(list_box, ramp->name);
+        for (auto & stand : arpt->stands_) {
+            XPSetWidgetDescriptor(list_box, stand.name.c_str());
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItem, 1);
         }
     }
@@ -184,7 +188,7 @@ update_ui(int only_if_visible)
         XPSetWidgetDescriptor(selected_stand, buffer);
     }
 
-    logMsg("update_ui finished");
+    LogMsg("update_ui finished");
 }
 
 static void
@@ -247,7 +251,7 @@ create_ui()
 
 void
 toggle_ui(void) {
-    logMsg("toggle_ui called");
+    LogMsg("toggle_ui called");
 
     if (ui_widget == NULL)
         create_ui();

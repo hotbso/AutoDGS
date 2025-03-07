@@ -21,6 +21,15 @@
 #define XPLM300
 #define XPLM301
 
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <memory>
+
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMDataAccess.h"
@@ -30,16 +39,8 @@
 #include "XPUIGraphics.h"
 #include "XPWidgetUtils.h"
 #include "XPLMUtilities.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <math.h>
-#include <vector>
-#include <string>
 
 #include <XPListBox.h>
-
 
 #define LISTBOX_ITEM_HEIGHT 12
 #define IN_RECT(x, y, l, t, r, b)	\
@@ -146,7 +147,11 @@ static int		XPListBoxProc(
 
 	int Left, Top, Right, Bottom, x, y, ListBoxDataOffset, ListBoxIndex;
     int BufferLen = XPGetWidgetDescriptor(inWidget, NULL, 0) + 1;
-	char Buffer[BufferLen];
+    char Buffer[250];
+
+    if (BufferLen > (int)sizeof(Buffer)) {
+        BufferLen = sizeof(Buffer);
+    }
 
 	int IsVertical, DownBtnSize, DownPageSize, ThumbSize, UpPageSize, UpBtnSize;
 	bool UpBtnSelected, DownBtnSelected, ThumbSelected, UpPageSelected, DownPageSelected;
