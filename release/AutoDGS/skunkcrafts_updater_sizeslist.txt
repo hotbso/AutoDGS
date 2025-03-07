@@ -1,0 +1,17 @@
+acf_dont_connect_jetway.txt|143
+acf_use_engine_running.txt|172
+resources/SafedockT2-6m-pole_XP11.obj|108159
+resources/SafedockT2-6m-pole.obj|108216
+resources/Marshaller_LIT.xcf|339503
+resources/SafedockT2.png|23569
+resources/Marshaller_LIT.dds|174904
+resources/Marshaller.obj|1137330
+resources/Marshaller.xcf|710053
+resources/Marshaller_XP11.obj|1137319
+resources/Marshaller.dds|174904
+resources/SafedockT2_LIT.png|6478
+resources/SafedockT2.xcf|1041134
+64/lin.xpl|442464
+64/win.xpl|3280031
+64/mac.xpl|221000
+lua_sample/autodgs_activate_on_taxi_light_off.lua|1061
