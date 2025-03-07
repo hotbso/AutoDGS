@@ -122,7 +122,6 @@ jobs:
         run: |
             # at this point version.mak should have the version number
             source version.mak
-
             RELEASE_FOLDER=release/AutoDGS
             mkdir -p "$(RELEASE_FOLDER)/64"
             mkdir -p "$(RELEASE_FOLDER)/resources"
@@ -133,7 +132,7 @@ jobs:
             cp -p acf_use_engine_running.txt "$(RELEASE_FOLDER)/."
             cp -p acf_dont_connect_jetway.txt "$(RELEASE_FOLDER)/."
             ls -lR release
-            
+
             ## skunkcrafts
             sed -e "s|@VERSION@|${VERSION}|g" \
                 skunkcrafts_updater.cfg.template > "${RELEASE_FOLDER}/skunkcrafts_updater.cfg"
@@ -155,7 +154,7 @@ jobs:
             touch ${RELEASE_FOLDER}/skunkcrafts_updater_blacklist.txt
 
             (cd ./release && 7z a "${{ github.workspace }}/AutoDGS-${VERSION}.zip" *)
- 
+
             TAG=${GITHUB_REF##*/}
             TARGET_BRANCH="release"
             if [[ $TAG == *"-test-"* ]]     # if TAG contains -test-
