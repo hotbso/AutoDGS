@@ -1,0 +1,187 @@
+name: Build and Release Executables
+
+# if the tag contains -test- the build is pushed into the build-test branch
+# so skunkcrafts does not see it
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-linux-macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # use oldest possible ubuntu version in order to avoid compatibility errors with libc
+        os: [ubuntu-22.04, macos-latest]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get XPlane SDK
+        shell: bash
+        run: |
+            SDK_VERSION=411
+            curl -L "https://developer.x-plane.com/wp-content/plugins/code-sample-generation/sdk_zip_files/XPSDK${SDK_VERSION}.zip" -o "XPSDK${SDK_VERSION}.zip"
+            unzip XPSDK${SDK_VERSION}.zip
+            mv SDK ../
+
+      - name: Build Executable
+        shell: bash
+        env:
+          OS: ${{ matrix.os }}
+        run: |
+          TAG=${GITHUB_REF##*/}
+          if [ ! -z "$TAG" ]; then
+            echo "VERSION=$TAG" > version.mak
+          fi
+
+          if [ $OS == "macos-latest" ]; then
+            make -f Makefile.mac64
+          else
+            make -f Makefile.lin64
+          fi
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: |
+            build/*.xpl
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            make
+
+      - uses: actions/checkout@v3
+
+      - name: Get XPlane SDK
+        shell: bash
+        run: |
+            SDK_VERSION=411
+            curl -L "https://developer.x-plane.com/wp-content/plugins/code-sample-generation/sdk_zip_files/XPSDK${SDK_VERSION}.zip" -o "XPSDK${SDK_VERSION}.zip"
+            unzip XPSDK${SDK_VERSION}.zip
+            mv SDK ../
+
+      - name: Build Windows binaries
+        shell: msys2 {0}
+        run: |
+            TAG=${GITHUB_REF##*/}
+            if [ ! -z "$TAG" ]; then
+              echo "VERSION=$TAG" > version.mak
+            fi
+            make -f Makefile.mgw64
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-windows
+          path: |
+            build/*.xpl
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-linux-macos, build-windows]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: setup crc32 tool
+        shell: bash
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y libarchive-zip-perl
+            TAG=${GITHUB_REF##*/}
+            if [ ! -z "$TAG" ]; then
+              echo "VERSION=$TAG" > version.mak
+            fi
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./download
+
+      - name: List artifacts
+        shell: bash
+        run: |
+            pwd
+            ls -lR ./download
+
+      - name: Prepare Skunkcrafts Updater
+        shell: bash
+        run: |
+            # at this point version.mak should have the version number
+            source version.mak
+            RELEASE_FOLDER=release/AutoDGS
+            mkdir -p "${RELEASE_FOLDER}/64"
+            mkdir -p "${RELEASE_FOLDER}/resources"
+            mkdir -p "${RELEASE_FOLDER}/lua_sample"
+            cp -p ./download/*/*.xpl "${RELEASE_FOLDER}/64/."
+            cp -p DGSs-*/* "${RELEASE_FOLDER}/resources/."
+            cp -p *.lua "${RELEASE_FOLDER}/lua_sample/."
+            cp -p acf_use_engine_running.txt "${RELEASE_FOLDER}/."
+            cp -p acf_dont_connect_jetway.txt "${RELEASE_FOLDER}/."
+            ls -lR release
+
+            ## skunkcrafts
+            sed -e "s|@VERSION@|${VERSION}|g" \
+                skunkcrafts_updater.cfg.template > "${RELEASE_FOLDER}/skunkcrafts_updater.cfg"
+            sed -e "s|@VERSION@|${VERSION}|g" \
+              skunkcrafts_updater_beta.cfg.template > "${RELEASE_FOLDER}/skunkcrafts_updater_beta.cfg"
+
+            find ${RELEASE_FOLDER}/ -type f ! \( -name '*skunkcrafts_updater*' -o -path '*skunkcrafts_updater*' \) -print0 | while IFS= read -r -d '' file; do
+                checksum_hex=$(crc32 "$file")
+                # Convert hex checksum to uint32 decimal
+                checksum_decimal=$((16#$checksum_hex))
+                # Remove "release/" prefix from $file
+                modified_file="${file#${RELEASE_FOLDER}/}"
+                echo "$modified_file|$checksum_decimal" >> ${RELEASE_FOLDER}/skunkcrafts_updater_whitelist.txt
+                # Get file size in bytes
+                filesize=$(stat -c%s "$file")
+                echo "$modified_file|$filesize" >> ${RELEASE_FOLDER}/skunkcrafts_updater_sizeslist.txt
+            done
+
+            touch ${RELEASE_FOLDER}/skunkcrafts_updater_blacklist.txt
+
+            (cd ./release && 7z a "${{ github.workspace }}/AutoDGS-${VERSION}.zip" *)
+
+            TAG=${GITHUB_REF##*/}
+            TARGET_BRANCH="release"
+            if [[ $TAG == *"-test-"* ]]     # if TAG contains -test-
+            then
+                echo "This is a just a build test"
+                TARGET_BRANCH="build-test"
+            elif [[ $TAG == *"-"* ]]        # if TAG contains -
+            then
+                echo "This is a beta release"
+                TARGET_BRANCH="beta"
+            fi
+
+            git checkout -b ${TARGET_BRANCH}
+            git config --global user.email "release@autodgs.com"
+            git config --global user.name "GH Release"
+            git add release/
+            # force add otherwise ignored directories
+            git add -f release/AutoDGS/64/*.xpl
+            git commit -m "new ${TARGET_BRANCH} - ${TAG}"
+            git push -f -u origin ${TARGET_BRANCH}
+
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ github.workspace }}/AutoDGS*.zip
+          prerelease: ${{ contains(github.ref_name, '-') }}
