@@ -123,14 +123,14 @@ jobs:
             # at this point version.mak should have the version number
             source version.mak
             RELEASE_FOLDER=release/AutoDGS
-            mkdir -p "$(RELEASE_FOLDER)/64"
-            mkdir -p "$(RELEASE_FOLDER)/resources"
-            mkdir -p "$(RELEASE_FOLDER)/lua_sample"
-            cp -p ./download/*/*.xpl "$(RELEASE_FOLDER)/64/."
-            cp -p DGSs-*/* "$(RELEASE_FOLDER)/resources/."
-            cp -p *.lua "$(RELEASE_FOLDER)/lua_sample/."
-            cp -p acf_use_engine_running.txt "$(RELEASE_FOLDER)/."
-            cp -p acf_dont_connect_jetway.txt "$(RELEASE_FOLDER)/."
+            mkdir -p "${RELEASE_FOLDER}/64"
+            mkdir -p "${RELEASE_FOLDER}/resources"
+            mkdir -p "${RELEASE_FOLDER}/lua_sample"
+            cp -p ./download/*/*.xpl "${RELEASE_FOLDER}/64/."
+            cp -p DGSs-*/* "${RELEASE_FOLDER}/resources/."
+            cp -p *.lua "${RELEASE_FOLDER}/lua_sample/."
+            cp -p acf_use_engine_running.txt "${RELEASE_FOLDER}/."
+            cp -p acf_dont_connect_jetway.txt "${RELEASE_FOLDER}/."
             ls -lR release
 
             ## skunkcrafts
