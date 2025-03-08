@@ -1,5 +1,5 @@
 //
-//    A contribution to https://github.com/xairline/xa-snow by zodiac1214
+//    AutoDGS: Show Marshaller or VDGS at default airports
 //
 //    Copyright (C) 2025  Holger Teutsch
 //
@@ -31,6 +31,13 @@
 struct SceneryPacks {
     std::vector<std::string> sc_paths;
     SceneryPacks(const std::string& xp_dir);
+};
+
+struct Jetway {
+	LLPos pos;
+	float hdgt;
+	float length;
+    LLPos cabin;    // = pos + length * dir(hdgt)
 };
 
 // SceneryPacks constructor
@@ -86,11 +93,15 @@ Airport::dump()
     LogMsg("Dump of airport: %s", name_.c_str());
 
     for (auto & s : stands_)
-        LogMsg("'%s', %0.6f, %0.6f, %0.6f", s.name.c_str(), s.pos.lat, s.pos.lon, s.hdgt);
+        LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.pos.lat, s.pos.lon, s.hdgt, s.has_jw);
 
+#if 0
     for (auto & jw : jetways_)
-         LogMsg("%0.6f, %0.6f, %0.2f, %0.1f", jw.pos.lat, jw.pos.lon, jw.hdgt, jw.length);
+         LogMsg("%0.8f, %0.8f, %0.2f, %0.1f, end: %0.8f,%0.8f",
+                jw.pos.lat, jw.pos.lon, jw.hdgt, jw.length, jw.cabin.lat, jw.cabin.lon);
+#endif
 }
+
 
 // go through apt.dat and collect stands
 static bool
@@ -106,13 +117,21 @@ ParseAptDat(const std::string& fn, bool ignore)
     line.reserve(2000);          // can be quite long
 
     std::shared_ptr<Airport> arpt;
+	std::vector<Jetway> jetways;
 
     // save arpt if it has a tower frequency and stands
     auto save_arpt = [&] () {
-            if (arpt && arpt->has_twr_ && arpt->stands_.size() > 0) {
+        if (arpt && arpt->has_twr_ && arpt->stands_.size() > 0) {
+            for (auto & s : arpt->stands_)
+                for (auto & jw : jetways)
+                    if (len(jw.cabin - s.pos) < kJw2Stand) {
+                        s.has_jw = true;
+                        break;
+                    }
+
             arpt->stands_.shrink_to_fit();
-            arpt->jetways_.shrink_to_fit();
             airports[arpt->name_] = std::move(arpt);
+            jetways.resize(0);
         } else
             arpt = nullptr;
     };
@@ -188,7 +207,9 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (line.starts_with("1500 ")) {
             Jetway jw;
 			sscanf(line.c_str(), "%*d %lf %lf %f %*d %*d %*f %f", &jw.pos.lat, &jw.pos.lon, &jw.hdgt, &jw.length);
-            arpt->jetways_.push_back(jw);
+            Vec2 dir{cosf((90.0f - jw.hdgt) * kD2R), sinf((90.0f - jw.hdgt) * kD2R)};
+            jw.cabin = jw.pos + jw.length * dir;
+            jetways.push_back(jw);
         }
 
     }
@@ -235,10 +256,10 @@ CollectAirports(const std::string& xp_dir)
 }
 
 #ifdef TEST_AIRPORTS
-//   g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O airport.cpp log_msg.cpp
+// g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O airport.cpp log_msg.cpp
 
 
-static std::shared_ptr<Airport> arpt;
+std::shared_ptr<Airport> arpt;
 std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
 
 static
@@ -272,5 +293,7 @@ int main()
 
     find_and_dump("EKBI");
     find_and_dump("EKBIx");
+    find_and_dump("EDDV");
+
 }
 #endif

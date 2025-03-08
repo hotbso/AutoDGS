@@ -43,8 +43,9 @@
 #include "XPLMPlanes.h"
 
 static constexpr float kD2R = std::numbers::pi/180.0;
-static constexpr float kLat2m = 111120;                 // 1° lat in m
-static constexpr float kF2M = 0.3048;                   // 1 ft [m]
+static constexpr float kLat2m = 111120;             // 1° lat in m
+static constexpr float kF2M = 0.3048;               // 1 ft [m]
+static constexpr float kJw2Stand = 18.0;            // m, max dist jw to stand
 
 // return relative angle in (-180, 180]
 static inline
@@ -126,12 +127,7 @@ struct Stand {
 	std::string name;
 	LLPos pos;
 	float hdgt;
-};
-
-struct Jetway {
-	LLPos pos;
-	float hdgt;
-	float length;
+    bool has_jw{false};
 };
 
 class Airport {
@@ -142,7 +138,6 @@ class Airport {
 	bool has_twr_{false};
 	bool ignore_{false};		// e.g. sam or no_autodgs marker present
 	std::vector<Stand> stands_;
-	std::vector<Jetway> jetways_;
 	Airport(const std::string& name) : name_(name) {}
 	void dump();
 };
