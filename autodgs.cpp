@@ -20,38 +20,43 @@
 //    USA
 //
 
+// This code is still mostly plain C.
+// Refactored or new code loosely follows
+// Google's style guide: https://google.github.io/styleguide/cppguide.html
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
 #include <cassert>
+#include <fstream>
 #include <algorithm>
 
 #include "autodgs.h"
 
-/* Constants */
-static const float F2M=0.3048;	/* 1 ft [m] */
+// Constants
+static const float F2M=0.3048;	// 1 ft [m]
 
-/* DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand) */
-static const float CAP_A = 15;  /* Capture */
-static const float CAP_Z = 100;	/* (50-80 in Safedock2 flier) */
+// DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
+static const float CAP_A = 15;  // Capture
+static const float CAP_Z = 100;	// (50-80 in Safedock2 flier)
 
-static const float AZI_A = 15;	    /* provide azimuth guidance */
-static const float AZI_DISP_A = 10; /* max value for display */
+static const float AZI_A = 15;	    // provide azimuth guidance
+static const float AZI_DISP_A = 10; // max value for display
 static const float AZI_Z = 90;
 
-static const float GOOD_Z= 0.5;     /* stop position for nw */
-static const float GOOD_X = 2.0;    /* for mw */
+static const float GOOD_Z= 0.5;     // stop position for nw
+static const float GOOD_X = 2.0;    // for mw
 
-static const float REM_Z = 12;	/* Distance remaining from here on*/
+static const float REM_Z = 12;	// Distance remaining from here on
 
-/* place DGS at this dist from stop position, exported as dataref */
+// place DGS at this dist from stop position, exported as dataref
 static float dgs_ramp_dist_default = 25.0;
 static float dgs_ramp_dist;
 static int dgs_ramp_dist_override;  // through API
 static int dgs_ramp_dist_set;
 
-/* types */
+// types
 typedef enum
 {
     DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
@@ -80,7 +85,10 @@ typedef enum
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
-/* Globals */
+// Globals
+std::string xp_dir;
+std::string base_dir; // base directory of AutoDGS
+
 static opmode_t operation_mode = MODE_AUTO;
 
 static state_t state = DISABLED;
@@ -89,7 +97,7 @@ static float timestamp;
 XPLMCommandRef cycle_dgs_cmdr;
 static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
 
-/* Datarefs */
+// Datarefs
 static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
 static XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
 static XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
@@ -98,17 +106,17 @@ static XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr
 XPLMDataRef vr_enabled_dr;
 static XPLMProbeRef probe_ref;
 
-/* Published DataRef values */
+// Published DataRef values
 static int status, track, lr;
 static int icao[4];
 static float azimuth, distance;
 
-/* Internal state */
-static float now;           /* current timestamp */
-static int beacon_state, beacon_last_pos;   /* beacon state, last switch_pos, ts of last switch actions */
+// Internal state
+static float now;           // current timestamp
+static int beacon_state, beacon_last_pos;   // beacon state, last switch_pos, ts of last switch actions
 static float beacon_off_ts, beacon_on_ts;
-static int use_engine_running;              /* instead of beacon, e.g. MD11 */
-static int dont_connect_jetway;             /* e.g. for ZIBO with own ground service */
+static int use_engine_running;              // instead of beacon, e.g. MD11
+static int dont_connect_jetway;             // e.g. for ZIBO with own ground service
 
 std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
 std::shared_ptr<Airport> arpt;
@@ -186,7 +194,7 @@ reset_state(state_t new_state)
     }
 }
 
-/* set mode to arrival */
+// set mode to arrival
 static void
 set_active(void)
 {
@@ -204,11 +212,11 @@ set_active(void)
     float lat = XPLMGetDataf(plane_lat_dr);
     float lon = XPLMGetDataf(plane_lon_dr);
 
-    /* can be a teleportation so play it safe */
+    // can be a teleportation so play it safe
     arpt = NULL;
     reset_state(INACTIVE);
 
-    /* find and load airport I'm on now */
+    // find and load airport I'm on now
     XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
     if (XPLM_NAV_NOT_FOUND != ref) {
         char buffer[50];
@@ -244,9 +252,9 @@ check_beacon(void)
         return 0;
     }
 
-    /* when checking the beacon guard against power transitions when switching
-       to the APU generator (e.g. for the ToLiss fleet).
-       Report only state transitions when the new state persisted for 3 seconds */
+    // when checking the beacon guard against power transitions when switching
+    // to the APU generator (e.g. for the ToLiss fleet).
+    // Report only state transitions when the new state persisted for 3 seconds
 
     int beacon = XPLMGetDatai(beacon_dr);
     if (beacon) {
@@ -379,13 +387,13 @@ set_dgs_pos(void)
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     if (!dgs_ramp_dist_set) {
-        /* determine dgs_ramp_dist_default depending on pilot eye height agl */
+        // determine dgs_ramp_dist_default depending on pilot eye height agl
         if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
             float plane_x = XPLMGetDataf(plane_x_dr);
             float plane_y = XPLMGetDataf(plane_y_dr);
             float plane_z = XPLMGetDataf(plane_z_dr);
 
-            /* get terrain y below plane y */
+            // get terrain y below plane y
 
             if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo)) {
                 LogMsg("XPLMProbeTerrainXYZ failed");
@@ -393,7 +401,7 @@ set_dgs_pos(void)
                 return;
             }
 
-            /* pilot eye above agl */
+            // pilot eye above agl
             float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
 
             // 4.3 ~ 1 / tan(13°) -> 13° down look
@@ -418,7 +426,7 @@ set_dgs_pos(void)
     dgs_pos_y = probeinfo.locationY;
 }
 
-/* hooks for the ui */
+// hooks for the ui
 void
 set_selected_ramp(const char *ui_selected_ramp)
 {
@@ -483,7 +491,7 @@ find_nearest_ramp()
         double s_x, s_y, s_z;
         XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
 
-        /* transform into gate local coordinate system */
+        // transform into gate local coordinate system
         float s_sin_hgt = sinf(kD2R * ramp->hdgt);
         float s_cos_hgt = cosf(kD2R * ramp->hdgt);
 
@@ -653,7 +661,7 @@ run_state_machine()
     int phase180 = (sin_wave_prev > 0.0) && (sin_wave <= 0.0);
     sin_wave_prev = sin_wave;
 
-    /* set drefs according to *current* state */
+    // set drefs according to *current* state
     switch (state) {
         case ENGAGED:
             if (beacon_on) {
@@ -685,13 +693,13 @@ run_state_machine()
                     break;
                 }
 
-                status = 1;	/* plane id */
+                status = 1;	// plane id
                 if (distance > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
-                    track=1;	/* lead-in only */
+                    track=1;	// lead-in only
                     break;
                 }
 
-                /* compute distance and guidance commands */
+                // compute distance and guidance commands
                 azimuth = std::clamp(azimuth, -AZI_A, AZI_A);
                 float req_hdgt = -3.5 * azimuth;        // to track back to centerline
                 float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
@@ -708,14 +716,14 @@ run_state_machine()
                 else if (d_hdgt > 1.5)
                     lr = 1;
 
-                /* xform azimuth to values required ob OBJ */
+                // xform azimuth to values required ob OBJ
                 azimuth = std::clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
                 azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
                 if (distance <= REM_Z/2) {
                     track = 3;
                     loop_delay = 0.03;
-                } else /* azimuth only */
+                } else // azimuth only
                     track = 2;
 
                 if (! phase180) { // no wild oscillation
@@ -731,7 +739,7 @@ run_state_machine()
             break;
 
         case GOOD:  {
-                /* @stop position*/
+                // @stop position
                 status = 2; lr = 3;
 
                 int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
@@ -752,7 +760,7 @@ run_state_machine()
             if (nw_z >= -GOOD_Z)
                 new_state = TRACK;
             else {
-                /* Too far */
+                // Too far
                 status = 4;
                 lr = 3;
             }
@@ -761,7 +769,7 @@ run_state_machine()
         case PARKED:
             status = 3;
             lr = 0;
-            /* wait for beacon off */
+            // wait for beacon off
             if (! beacon_on) {
                 new_state = DONE;
                 if (operation_mode == MODE_AUTO && ! dont_connect_jetway)
@@ -788,7 +796,7 @@ run_state_machine()
     }
 
     if (state > ACTIVE) {
-        /* xform drefs into required constraints for the OBJs */
+        // xform drefs into required constraints for the OBJs
         if (track == 0 || track == 1) {
             distance = 0;
             azimuth = 0.0;
@@ -887,7 +895,7 @@ flight_loop_cb(float inElapsedSinceLastCall,
     return loop_delay;
 }
 
-/* call backs for commands */
+// call backs for commands
 static int
 cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 {
@@ -936,46 +944,38 @@ cmd_toggle_ui_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] v
     return 0;
 }
 
-/* call back for menu */
+// call back for menu
 static void
 menu_cb([[maybe_unused]] void *menu_ref, void *item_ref)
 {
     XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
 }
 
-static int
-find_icao_in_file(const char *acf_icao, const char *dir, const char *fn)
+static bool
+FindIcaoInFile(const std::string& acf_icao, const std::string& fn)
 {
-    char fn_full[512];
-    snprintf(fn_full, sizeof(fn_full) - 1, "%s%s", dir, fn);
-
-    int res = 0;
-    FILE *f = fopen(fn_full, "r");
-    if (f) {
-        LogMsg("check whether acf '%s' is in exception file %s", acf_icao, fn_full);
-        char line[100];
-        while (fgets(line, sizeof(line), f)) {
-            char *cptr = strchr(line, '\r');
-            if (cptr)
-                *cptr = '\0';
-            cptr = strchr(line, '\n');
-            if (cptr)
-                *cptr = '\0';
-
-            if (0 == strcmp(line, acf_icao)) {
-                LogMsg("found acf %s in %s", acf_icao, fn);
-                res = 1;
-                break;
-            }
-        }
-
-        fclose(f);
+    std::ifstream f(fn);
+    if (!f.is_open()) {
+        LogMsg("Can't open '%s'", fn.c_str());
+        return false;
     }
 
-    return res;
+    LogMsg("check whether acf '%s' is in exception file %s", acf_icao.c_str(), fn.c_str());
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.size() > 0 && line.back() == '\r') // just in case
+            line.pop_back();
+
+        if (line == acf_icao) {
+            LogMsg("found acf %s in %s", acf_icao.c_str(), fn.c_str());
+            return true;
+        }
+    }
+
+    return false;
 }
 
-/* =========================== plugin entry points ===============================================*/
+// =========================== plugin entry points ===============================================
 PLUGIN_API int
 XPluginStart(char *outName, char *outSig, char *outDesc)
 {
@@ -985,20 +985,22 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     LogMsg("startup " VERSION);
 
-    /* Refuse to initialise if Fat plugin has been moved out of its folder */
-    XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);			/* Get paths in posix format under X-Plane 10+ */
+    XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
     XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
     char buffer[2048];
 	XPLMGetSystemPath(buffer);
-    std::string xp_dir = std::string(buffer);
+    xp_dir = std::string(buffer);
+
+    // set plugin's base dir
+    base_dir = xp_dir + "Resources/plugins/AutoDGS/";
 
     if (!CollectAirports(xp_dir)) {
         LogMsg("init failure: Can't load airports");
         return 0;
     }
 
-    /* Datarefs */
+    // Datarefs
     xp_version_dr     = XPLMFindDataRef("sim/version/xplane_internal_version");
     plane_x_dr        = XPLMFindDataRef("sim/flightmodel/position/local_x");
     plane_y_dr        = XPLMFindDataRef("sim/flightmodel/position/local_y");
@@ -1022,12 +1024,12 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
     vr_enabled_dr     = XPLMFindDataRef("sim/graphics/VR/enabled");
 
-    /* Published scalar datarefs, as we draw with the instancing API the accessors will never be called */
+    // Published scalar datarefs, as we draw with the instancing API the accessors will never be called
     for (int i = 0; i < DGS_DR_NUM; i++)
         XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
-    /* API datarefs */
+    // API datarefs
     XPLMRegisterDataAccessor("AutoDGS/operation_mode", xplmType_Int, 1, api_getint, api_setint, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
@@ -1062,23 +1064,24 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     if (is_XP11) {
         LogMsg("XP11 detected");
-        obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller_XP11.obj";
-        obj_name[1] = "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole_XP11.obj";
+        obj_name[0] = "Marshaller_XP11.obj";
+        obj_name[1] = "SafedockT2-6m-pole_XP11.obj";
     } else {
-        obj_name[0] = "Resources/plugins/AutoDGS/resources/Marshaller.obj";
-        obj_name[1] = "Resources/plugins/AutoDGS/resources/SafedockT2-6m-pole.obj";
+        obj_name[0] = "Marshaller.obj";
+        obj_name[1] = "SafedockT2-6m-pole.obj";
     }
 
     for (int i = 0; i < 2; i++) {
-        dgs_obj[i] = XPLMLoadObject(obj_name[i]);
+        std::string on = base_dir + "/resources/" + obj_name[i];
+        dgs_obj[i] = XPLMLoadObject(on.c_str());
 
         if (dgs_obj[i] == NULL) {
-            LogMsg("error loading obj: %s", obj_name[i]);
+            LogMsg("error loading obj: %s", on.c_str());
             return 0;
         }
     }
 
-    /* own commands */
+    // own commands
     cycle_dgs_cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
     XPLMRegisterCommandHandler(cycle_dgs_cmdr, cmd_cycle_dgs_cb, 0, NULL);
 
@@ -1091,7 +1094,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     toggle_ui_cmdr = XPLMCreateCommand("AutoDGS/toggle_ui", "Open UI");
     XPLMRegisterCommandHandler(toggle_ui_cmdr, cmd_toggle_ui_cb, 0, NULL);
 
-    /* menu */
+    // menu
     XPLMMenuID menu = XPLMFindPluginsMenu();
     int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
     XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
@@ -1101,7 +1104,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMAppendMenuItem(adgs_menu, "Move DGS closer by 2m", &move_dgs_closer_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Toggle UI", &toggle_ui_cmdr, 0);
 
-    /* foreign commands */
+    // foreign commands
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
 
     XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
@@ -1136,7 +1139,7 @@ XPluginDisable(void)
 PLUGIN_API void
 XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *in_param)
 {
-    /* my plane loaded */
+    // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         char acf_icao[41];
 
@@ -1164,9 +1167,9 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
         pe_y_plane_0 = 0.0;
 
         if (! is_helicopter) {
-            /* unfortunately the *default* pilot eye y coordinate is not published in
-               a dataref, only the dynamic values.
-               Therefore we pull it from the acf file. */
+            // unfortunately the *default* pilot eye y coordinate is not published in
+            // a dataref, only the dynamic values.
+            // Therefore we pull it from the acf file.
 
             char acf_path[512];
             char acf_file[256];
@@ -1193,26 +1196,14 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
             }
         }
 
-        /* check whether acf is listed in exception files */
+        // check whether acf is listed in exception files
         use_engine_running = 0;
         dont_connect_jetway = 0;
 
-        char dir[512];
-        dir[0] = '\0';
-        XPLMGetPluginInfo(XPLMGetMyID(), NULL, dir, NULL, NULL);
-        char *cptr = strrchr(dir, '/');    /* basename */
-        if (cptr) {
-            *cptr = '\0';
-            cptr = strrchr(dir, '/');       /* one level up */
-        }
-
-        if (cptr)
-            *(cptr + 1) = '\0';             /* keep the / */
-
-        if (find_icao_in_file(acf_icao, dir, "acf_use_engine_running.txt"))
+        if (FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt"))
             use_engine_running = 1;
 
-        if (find_icao_in_file(acf_icao, dir, "acf_dont_connect_jetway.txt"))
+        if (FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt"))
             dont_connect_jetway = 1;
 
 

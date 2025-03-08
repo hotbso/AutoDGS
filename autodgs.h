@@ -145,6 +145,9 @@ class Airport {
 #define RAMP_NAME_LEN 15
 #define AIRPORTDB_ICAO_LEN 6
 
+extern std::string xp_dir;
+extern std::string base_dir; // base directory of AutoDGS
+
 extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 extern std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
