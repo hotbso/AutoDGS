@@ -576,6 +576,8 @@ find_nearest_ramp()
         stand_hdg = min_ramp->hdgt;
         nearest_ramp = min_ramp;
         set_dgs_pos();
+        if (selected_ramp[0] == '\0')
+            set_dgs_type(nearest_ramp->has_jw ? 1 : 0);
         state = ENGAGED;
     }
 }
