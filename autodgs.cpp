@@ -131,7 +131,7 @@ static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static int pe_y_plane_0_valid;
 static int is_helicopter;
 
-static char selected_ramp[RAMP_NAME_LEN];
+static std::string selected_ramp;
 const Stand *nearest_ramp;
 float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
 
@@ -183,8 +183,8 @@ reset_state(state_t new_state)
     nearest_ramp = NULL;
     dgs_ramp_dist = dgs_ramp_dist_default;
     if (state == INACTIVE) {
-        selected_ramp[0] = '\0';
-        arpt = NULL;
+        selected_ramp.resize(0);
+        arpt = nullptr;
         update_ui(1);
     }
 
@@ -213,7 +213,7 @@ set_active(void)
     float lon = XPLMGetDataf(plane_lon_dr);
 
     // can be a teleportation so play it safe
-    arpt = NULL;
+    arpt = nullptr;
     reset_state(INACTIVE);
 
     // find and load airport I'm on now
@@ -428,15 +428,15 @@ set_dgs_pos(void)
 
 // hooks for the ui
 void
-set_selected_ramp(const char *ui_selected_ramp)
+set_selected_ramp(const std::string& ui_selected_ramp)
 {
-    LogMsg("set_selected_ramp to '%s'", ui_selected_ramp);
-    if (0 == strcmp(ui_selected_ramp, "Automatic")) {
-        selected_ramp[0] = '\0';
+    LogMsg("set_selected_ramp to '%s'", ui_selected_ramp.c_str());
+    if (ui_selected_ramp == "Automatic") {
+        selected_ramp.resize(0);
         if (state > ACTIVE)
             reset_state(ACTIVE);
     } else {
-        strcpy(selected_ramp, ui_selected_ramp);
+        selected_ramp = ui_selected_ramp;
         if (state > ACTIVE)
             reset_state(ACTIVE);
     }
@@ -462,7 +462,7 @@ find_nearest_ramp()
     assert(arpt != NULL);
 
     // check whether we already have a selected ramp
-    if (nearest_ramp && selected_ramp[0])
+    if (nearest_ramp && !selected_ramp.empty())
         return;
 
     double dist = 1.0E10;
@@ -495,7 +495,7 @@ find_nearest_ramp()
         float s_sin_hgt = sinf(kD2R * ramp->hdgt);
         float s_cos_hgt = cosf(kD2R * ramp->hdgt);
 
-        if (selected_ramp[0] == '\0') {
+        if (selected_ramp.empty()) {
             // xlate + rotate into stand frame
             float dx = plane_x - s_x;
             float dz = plane_z - s_z;
@@ -553,7 +553,7 @@ find_nearest_ramp()
                 stand_cos_hgt = s_cos_hgt;
             }
 
-        } else if (0 == strcmp(ramp->name.c_str(), selected_ramp)) {
+        } else if (ramp->name == selected_ramp) {
             dist = 0.0;
             min_ramp = ramp;
             stand_x = s_x;
@@ -584,7 +584,7 @@ find_nearest_ramp()
         stand_hdg = min_ramp->hdgt;
         nearest_ramp = min_ramp;
         set_dgs_pos();
-        if (selected_ramp[0] == '\0')
+        if (selected_ramp.empty())
             set_dgs_type(nearest_ramp->has_jw ? 1 : 0);
         state = ENGAGED;
     }

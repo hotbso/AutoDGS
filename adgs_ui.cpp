@@ -41,9 +41,9 @@ static XPWidgetID ui_widget, list_box, selected_stand, marshaller_btn, vdgs_btn;
 
 /* current status of ui */
 static std::shared_ptr<Airport> ui_arpt;
-static char ui_arpt_icao[AIRPORTDB_ICAO_LEN];
+static std::string ui_arpt_icao;
 static int ui_dgs_type;
-static char ui_selected_ramp[RAMP_NAME_LEN];
+static std::string ui_selected_ramp;
 
 static void
 show_widget(widget_ctx_t *ctx)
@@ -108,12 +108,11 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
 
 	if (msg == xpMessage_ListBoxItemSelected) {
         char buffer[100];
-		XPGetWidgetDescriptor(list_box, ui_selected_ramp, sizeof(ui_selected_ramp));
-        ui_selected_ramp[RAMP_NAME_LEN - 1] = '\0';
-        snprintf(buffer, sizeof buffer, "%s @ %s",
-                 ui_selected_ramp, ui_arpt_icao[0] ? ui_arpt_icao : "unknown");
-		XPSetWidgetDescriptor(selected_stand, buffer);
-        LogMsg("selected ramp is '%s'", ui_selected_ramp);
+		XPGetWidgetDescriptor(list_box, buffer, sizeof(buffer));
+        ui_selected_ramp = buffer;
+        std::string txt = ui_selected_ramp + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+		XPSetWidgetDescriptor(selected_stand, txt.c_str());
+        LogMsg("selected ramp is '%s'", ui_selected_ramp.c_str());
         set_selected_ramp(ui_selected_ramp);
         return 1;
     }
@@ -153,23 +152,22 @@ update_ui(int only_if_visible)
         ui_dgs_type = dgs_type;
     }
 
-    if (arpt == NULL) {
-        if (ui_arpt != NULL) {
-            LogMsg("arpt changed to %p", arpt.get());
-            strcpy(ui_selected_ramp, "Automatic");
-            XPSetWidgetDescriptor(list_box, ui_selected_ramp);
+    if (arpt == nullptr) {
+        if (ui_arpt != nullptr) {
+            ui_selected_ramp = "Automatic";
+            XPSetWidgetDescriptor(list_box, ui_selected_ramp.c_str());
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
-            ui_arpt = NULL;
-            ui_arpt_icao[0] = '\0';
+            ui_arpt = nullptr;
+            ui_arpt_icao.resize(0);
         }
-    } else if (0 != strcmp(arpt->name_.c_str(), ui_arpt_icao)) {
+    } else if (arpt->name_ != ui_arpt_icao) {
         LogMsg("airport changed to %s", arpt->name_.c_str());
-        strcpy(ui_arpt_icao, arpt->name_.c_str());
+        ui_arpt_icao = arpt->name_;
         ui_arpt = arpt;
 
         LogMsg("load ramps");
-        strcpy(ui_selected_ramp, "Automatic");
-        XPSetWidgetDescriptor(list_box, ui_selected_ramp);
+        ui_selected_ramp = "Automatic";
+        XPSetWidgetDescriptor(list_box, ui_selected_ramp.c_str());
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
         for (auto & stand : arpt->stands_) {
@@ -182,10 +180,8 @@ update_ui(int only_if_visible)
     if (ui_arpt == NULL)
         XPSetWidgetDescriptor(selected_stand, "inactive");
     else {
-        char buffer[100];
-        snprintf(buffer, sizeof buffer, "%s @ %s",
-                 ui_selected_ramp, ui_arpt_icao[0] ? ui_arpt_icao : "unknown");
-        XPSetWidgetDescriptor(selected_stand, buffer);
+        std::string txt = ui_selected_ramp + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+        XPSetWidgetDescriptor(selected_stand, txt.c_str());
     }
 
     LogMsg("update_ui finished");

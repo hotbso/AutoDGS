@@ -142,9 +142,6 @@ class Airport {
 	void dump();
 };
 
-#define RAMP_NAME_LEN 15
-#define AIRPORTDB_ICAO_LEN 6
-
 extern std::string xp_dir;
 extern std::string base_dir; // base directory of AutoDGS
 
@@ -161,5 +158,5 @@ extern int dgs_type;
 extern void toggle_ui(void);
 extern void update_ui(int only_if_visible);
 
-extern void set_selected_ramp(const char *ui_sr);
+extern void set_selected_ramp(const std::string& ui_selected_ramp);
 extern void set_dgs_type(int new_dgs_type);
