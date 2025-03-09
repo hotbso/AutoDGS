@@ -42,11 +42,11 @@ all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
 XPL_DIR=/e/X-Plane-12-test
-PLUGDIR:=$(XPL_DIR)/Resources/plugins/AutoDGS/64
+PLUGDIR:=$(XPL_DIR)/Resources/plugins/AutoDGS/win_x64
 
 $(TARGET): $(OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)
-	if [ -d $(PLUGDIR) ]; then cp -p build/win.xpl $(PLUGDIR)/.; fi
+	if [ -d $(PLUGDIR) ]; then cp -p build/win.xpl $(PLUGDIR)/AutoDGS.xpl; fi
 
 $(DEPDIR): ; @mkdir -p $@
 
