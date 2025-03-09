@@ -233,7 +233,7 @@ set_active(void)
         }
     }
 
-    LogMsg("airport activated: %s, new state: ACTIVE", arpt->name_.c_str());
+    LogMsg("airport activated: %s, new state: ACTIVE", arpt->icao_.c_str());
     state = ACTIVE;
     dgs_ramp_dist_set = 0;
     update_ui(1);

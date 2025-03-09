@@ -160,9 +160,9 @@ update_ui(int only_if_visible)
             ui_arpt = nullptr;
             ui_arpt_icao.resize(0);
         }
-    } else if (arpt->name_ != ui_arpt_icao) {
-        LogMsg("airport changed to %s", arpt->name_.c_str());
-        ui_arpt_icao = arpt->name_;
+    } else if (arpt->icao_ != ui_arpt_icao) {
+        LogMsg("airport changed to %s", arpt->icao_.c_str());
+        ui_arpt_icao = arpt->icao_;
         ui_arpt = arpt;
 
         LogMsg("load ramps");

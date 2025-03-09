@@ -59,7 +59,7 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
         if ((i = line.find('\r')) != std::string::npos)
             line.resize(i);
 
-        if (line.find("SCENERY_PACK ") != 0 || line.find("*GLOBAL_AIRPORTS*") != std::string::npos)
+        if (!line.starts_with("SCENERY_PACK ") || line.find("*GLOBAL_AIRPORTS*") != std::string::npos)
             continue;
 
         // autoortho pretends every file exists but
@@ -73,7 +73,7 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
         if (is_absolute)
             sc_path = line;
         else
-            sc_path = xp_dir + "/" + line;
+            sc_path = xp_dir + line;
 
         // posixify
         for (unsigned i = 0; i < sc_path.size(); i++)
@@ -90,7 +90,7 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
 void
 Airport::dump()
 {
-    LogMsg("Dump of airport: %s", name_.c_str());
+    LogMsg("Dump of airport: %s", icao_.c_str());
 
     for (auto & s : stands_)
         LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.pos.lat, s.pos.lon, s.hdgt, s.has_jw);
@@ -130,7 +130,7 @@ ParseAptDat(const std::string& fn, bool ignore)
                     }
 
             arpt->stands_.shrink_to_fit();
-            airports[arpt->name_] = std::move(arpt);
+            airports[arpt->icao_] = std::move(arpt);
             jetways.resize(0);
         } else
             arpt = nullptr;
@@ -164,7 +164,7 @@ ParseAptDat(const std::string& fn, bool ignore)
                     arpt->stands_.reserve(50);
                     if (ignore) {
                         arpt->ignore_ = true;
-                        airports[arpt->name_] = std::move(arpt);
+                        airports[arpt->icao_] = std::move(arpt);
                         // return ??
                     }
                 }
@@ -175,6 +175,12 @@ ParseAptDat(const std::string& fn, bool ignore)
 
         if (arpt == nullptr)
             continue;
+
+        // 1302 icao_code ENRM
+        if (line.starts_with("1302 icao_code ")) {
+            arpt->icao_ = line.substr(15, 4);
+            continue;
+        }
 
         // check for APP or DEP frequency
         if (line.starts_with("1055 ") || line.starts_with("1056 ") || line.starts_with("55 ") || line.starts_with("56 ")) {
@@ -284,7 +290,7 @@ int main()
         auto arpt = a.second;
 
         if (arpt->ignore_) {
-            LogMsg("Ignored: %s", arpt->name_.c_str());
+            LogMsg("Ignored: %s", arpt->icao_.c_str());
             continue;
         }
 

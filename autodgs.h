@@ -132,13 +132,13 @@ struct Stand {
 
 class Airport {
   public:
-    const std::string name_;
+    std::string icao_;
 
 	bool has_app_dep_{false};
 	bool has_twr_{false};
 	bool ignore_{false};		// e.g. sam or no_autodgs marker present
 	std::vector<Stand> stands_;
-	Airport(const std::string& name) : name_(name) {}
+	Airport(const std::string& name) : icao_(name) {}
 	void dump();
 };
 
