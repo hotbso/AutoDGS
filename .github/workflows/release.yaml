@@ -123,10 +123,14 @@ jobs:
             # at this point version.mak should have the version number
             source version.mak
             RELEASE_FOLDER=release/AutoDGS
-            mkdir -p "${RELEASE_FOLDER}/64"
+            mkdir -p "${RELEASE_FOLDER}/win_x64"
+            mkdir -p "${RELEASE_FOLDER}/lin_x64"
+            mkdir -p "${RELEASE_FOLDER}/mac_x64"
             mkdir -p "${RELEASE_FOLDER}/resources"
             mkdir -p "${RELEASE_FOLDER}/lua_sample"
-            cp -p ./download/*/*.xpl "${RELEASE_FOLDER}/64/."
+            cp -p ./download/*/win.xpl "${RELEASE_FOLDER}/win_x64/AutoDGS.xpl"
+            cp -p ./download/*/lin.xpl "${RELEASE_FOLDER}/lin_x64/AutoDGS.xpl"
+            cp -p ./download/*/mac.xpl "${RELEASE_FOLDER}/mac_x64/AutoDGS.xpl"
             cp -p DGSs-*/* "${RELEASE_FOLDER}/resources/."
             cp -p *.lua "${RELEASE_FOLDER}/lua_sample/."
             cp -p acf_use_engine_running.txt "${RELEASE_FOLDER}/."
@@ -172,7 +176,7 @@ jobs:
             git config --global user.name "GH Release"
             git add release/
             # force add otherwise ignored directories
-            git add -f release/AutoDGS/64/*.xpl
+            git add -f release/AutoDGS/*_x64/*.xpl
             git commit -m "new ${TARGET_BRANCH} - ${TAG}"
             git push -f -u origin ${TARGET_BRANCH}
 
