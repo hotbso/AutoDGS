@@ -27,6 +27,7 @@
 #include <chrono>
 
 #include "autodgs.h"
+#include "flat_earth_math.h"
 
 struct SceneryPacks {
     std::vector<std::string> sc_paths;
@@ -93,7 +94,7 @@ Airport::dump()
     LogMsg("Dump of airport: %s", icao_.c_str());
 
     for (auto & s : stands_)
-        LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.pos.lat, s.pos.lon, s.hdgt, s.has_jw);
+        LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.lat, s.lon, s.hdgt, s.has_jw);
 
 #if 0
     for (auto & jw : jetways_)
@@ -124,7 +125,7 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (arpt && arpt->has_twr_ && arpt->stands_.size() > 0) {
             for (auto & s : arpt->stands_)
                 for (auto & jw : jetways)
-                    if (len(jw.cabin - s.pos) < kJw2Stand) {
+                    if (len(jw.cabin - LLPos(s.lon, s.lat)) < kJw2Stand) {
                         s.has_jw = true;
                         break;
                     }
@@ -201,7 +202,7 @@ ParseAptDat(const std::string& fn, bool ignore)
 
             Stand st;
             int ofs;
-			sscanf(line.c_str(), "%*d %lf %lf %f %*s %*s %n", &st.pos.lat, &st.pos.lon, &st.hdgt, &ofs);
+			sscanf(line.c_str(), "%*d %lf %lf %f %*s %*s %n", &st.lat, &st.lon, &st.hdgt, &ofs);
 			if (ofs < (int)line.size())
                 st.name = line.substr(ofs, line.size() - ofs);
             arpt->stands_.push_back(st);

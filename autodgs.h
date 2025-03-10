@@ -32,100 +32,32 @@
 #define XPLM300
 #define XPLM301
 
-#include "XPLMPlugin.h"
-#include "XPLMProcessing.h"
 #include "XPLMDataAccess.h"
-#include "XPLMMenus.h"
-#include "XPLMGraphics.h"
-#include "XPLMInstance.h"
-#include "XPLMNavigation.h"
 #include "XPLMUtilities.h"
-#include "XPLMPlanes.h"
 
 static constexpr float kD2R = std::numbers::pi/180.0;
-static constexpr float kLat2m = 111120;             // 1° lat in m
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
 static constexpr float kJw2Stand = 18.0;            // m, max dist jw to stand
 
-// return relative angle in (-180, 180]
-static inline
-float RA(float angle)
+// types
+typedef enum
 {
-    angle = fmodf(angle, 360.0f);
-    if (angle > 180.0f)
-        return angle - 360.0f;
+    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
+} state_t;
 
-    if (angle <= -180.0f)
-        return angle + 360.0f;
+extern const char * const state_str[];
 
-    return angle;
-}
-
-//
-// Contrary to common belief the earth is flat. She has just a weird coordinate system with (lon,lat).
-// To overcome this we attach a 2-d vector space at each (lon, lat) point with orthogonal
-// basis scaled in meters. So (lon2, lat2) - (lon1, lat1) gives rise to a vector v in the vector space
-// attached at (lon1, lat1) and (lon1, lat1) + v again is (lon2, lat2).
-// As we do our math in a circle of ~ 20km this works pretty well.
-//
-// Should you still be tricked in believing that the earth is a ball you can consider this vector space
-// a tangent space. But this is for for visualisation only.
-//
-
-struct LLPos {
-	double lon, lat;
-};
-
-struct Vec2 {
-	double x,y;
-};
-
-static inline
-double len(const Vec2& v)
+typedef enum
 {
-	return sqrt(v.x * v.x + v.y * v.y);
-}
+    MODE_AUTO,
+    MODE_MANUAL
+} opmode_t;
 
-// pos - pos
-static inline
-Vec2 operator-(const LLPos& b, const LLPos& a)
-{
-	return {RA(b.lon -  a.lon) * kLat2m * cosf(a.lat * kD2R),
-		    RA(b.lat -  a.lat) * kLat2m};
-}
-
-// pos + vec
-static inline
-LLPos operator+(const LLPos &p, const Vec2& v)
-{
-	return {RA(p.lon + v.x / (kLat2m * cosf(p.lat * kD2R))),
-			RA(p.lat + v.y / kLat2m)};
-}
-
-// vec - vec
-static inline
-Vec2 operator-(const Vec2& b, const Vec2& a)
-{
-	return {b.x - a.x, b.y - a.y};
-}
-
-// vec + vec
-static inline
-Vec2 operator+(const Vec2& a, const Vec2& b)
-{
-	return {a.x + b.x, a.y + b.y};
-}
-
-// c * vec
-static inline
-Vec2 operator*(double c, const Vec2& v)
-{
-	return {c * v.x, c * v.y};
-}
+extern const char * const opmode_str[];
 
 struct Stand {
 	std::string name;
-	LLPos pos;
+	double lon, lat;
 	float hdgt;
     bool has_jw{false};
 };
@@ -154,11 +86,22 @@ extern bool CollectAirports(const std::string& xp_dir);
 extern XPLMCommandRef cycle_dgs_cmdr;
 extern XPLMDataRef vr_enabled_dr;
 
+extern opmode_t operation_mode;
+extern state_t state;
+extern int on_ground;
+extern float dgs_ramp_dist_default;
+extern int dgs_ramp_dist_override;
+
 extern int dgs_type;
 extern bool dgs_type_auto;
+
+extern const Stand *nearest_ramp;
+
+extern void create_api_drefs();
 extern void toggle_ui(void);
 extern void update_ui(int only_if_visible);
 
 extern void set_selected_ramp(const std::string& ui_selected_ramp);
 extern void set_dgs_type(int new_dgs_type);
 extern void set_dgs_type_auto();
+

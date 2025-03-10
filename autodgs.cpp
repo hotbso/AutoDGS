@@ -33,6 +33,15 @@
 #include <algorithm>
 
 #include "autodgs.h"
+#include "flat_earth_math.h"
+
+#include "XPLMPlugin.h"
+#include "XPLMProcessing.h"
+#include "XPLMGraphics.h"
+#include "XPLMInstance.h"
+#include "XPLMMenus.h"
+#include "XPLMNavigation.h"
+#include "XPLMPlanes.h"
 
 // Constants
 static const float F2M=0.3048;	// 1 ft [m]
@@ -51,37 +60,15 @@ static const float GOOD_X = 2.0;    // for mw
 static const float REM_Z = 12;	// Distance remaining from here on
 
 // place DGS at this dist from stop position, exported as dataref
-static float dgs_ramp_dist_default = 25.0;
+float dgs_ramp_dist_default = 25.0;
+int dgs_ramp_dist_override;  // through API
 static float dgs_ramp_dist;
-static int dgs_ramp_dist_override;  // through API
 static int dgs_ramp_dist_set;
-
-// types
-typedef enum
-{
-    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
-} state_t;
 
 const char * const state_str[] = {
     "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED",
     "TRACK", "GOOD", "BAD", "PARKED", "DONE" };
 
-enum {
-    API_OPERATION_MODE,
-    API_STATE,
-    API_ON_GROUND,
-    API_DGS_RAMP_DIST_DEFAULT,
-
-    API_STATE_STR,  // convenience drefs
-    API_OPERATION_MODE_STR,
-    API_RAMP
-};
-
-typedef enum
-{
-    MODE_AUTO,
-    MODE_MANUAL
-} opmode_t;
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
@@ -89,9 +76,9 @@ const char * const opmode_str[] = { "Automatic", "Manual" };
 std::string xp_dir;
 std::string base_dir; // base directory of AutoDGS
 
-static opmode_t operation_mode = MODE_AUTO;
+opmode_t operation_mode = MODE_AUTO;
+state_t state = DISABLED;
 
-static state_t state = DISABLED;
 static float timestamp;
 
 XPLMCommandRef cycle_dgs_cmdr;
@@ -121,7 +108,7 @@ static int dont_connect_jetway;             // e.g. for ZIBO with own ground ser
 std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
 std::shared_ptr<Airport> arpt;
 
-static int on_ground = 1;
+int on_ground = 1;
 static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_sin_hgt, stand_cos_hgt, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
@@ -283,105 +270,6 @@ getdgsfloat(XPLMDataRef inRefcon)
     return -1.0;
 }
 
-// API accessor routines
-static int
-api_getint(XPLMDataRef ref)
-{
-    switch ((long long)ref) {
-        case API_STATE:
-            return state;
-        case API_OPERATION_MODE:
-            return operation_mode;
-        case API_ON_GROUND:
-            return on_ground;
-    }
-
-    return 0;
-}
-
-static float
-api_getfloat(XPLMDataRef ref)
-{
-    switch ((long long)ref) {
-        case API_DGS_RAMP_DIST_DEFAULT:
-            return dgs_ramp_dist_default;
-    }
-
-    return 0;
-}
-
-static void
-api_setint(XPLMDataRef ref, int val)
-{
-    switch ((long long)ref) {
-        case API_OPERATION_MODE:
-            ; // required by some gcc versions
-            opmode_t mode = (opmode_t)val;
-            if (mode != MODE_AUTO && mode != MODE_MANUAL) {
-                LogMsg("API: trying to set invalid operation_mode %d, ignored", val);
-                return;
-            }
-
-            if (mode == operation_mode) // Lua hammers writeable drefs in a frame loop
-                return;
-
-            LogMsg("API: operation_mode set to %s", opmode_str[mode]);
-            operation_mode = mode;
-            break;
-    }
-}
-
-static void
-api_setfloat(XPLMDataRef ref, float val)
-{
-    switch ((long long)ref) {
-        case API_DGS_RAMP_DIST_DEFAULT:
-            if (val == dgs_ramp_dist_default) // Lua hammers writeable drefs in a frame loop
-                return;
-
-            dgs_ramp_dist_default = val;
-            dgs_ramp_dist_override = 1;
-            LogMsg("API: dgs_ramp_dist_default set to %0.1f", dgs_ramp_dist_default);
-            break;
-    }
-}
-
-static int
-api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
-{
-    static const int buflen = 34;
-    char buf[buflen];
-
-    if (out == NULL)
-        return buflen;
-
-    if (n <= 0 || ofs < 0 || ofs >= buflen)
-        return 0;
-
-    if (n + ofs > buflen)
-        n = buflen - ofs;
-
-    memset(buf, 0, buflen);
-
-    switch ((long long)ref) {
-        case API_STATE_STR:
-            strncpy(buf, state_str[state], buflen - 1);
-            break;
-
-        case API_OPERATION_MODE_STR:
-            strncpy(buf, opmode_str[operation_mode], buflen - 1);
-            break;
-
-        case API_RAMP:
-            if (state >= ENGAGED)
-                strncpy(buf, nearest_ramp->name.c_str(), buflen - 1);
-            break;
-    }
-
-    memcpy(out, buf, n);
-    return n;
-}
-
 // move dgs some distance away
 static void
 set_dgs_pos(void)
@@ -512,7 +400,7 @@ find_nearest_ramp()
             continue;   // not looking to ramp
 
         double s_x, s_y, s_z;
-        XPLMWorldToLocal(ramp->pos.lat, ramp->pos.lon, plane_elevation, &s_x, &s_y, &s_z);
+        XPLMWorldToLocal(ramp->lat, ramp->lon, plane_elevation, &s_x, &s_y, &s_z);
 
         // transform into gate local coordinate system
         float s_sin_hgt = sinf(kD2R * ramp->hdgt);
@@ -595,7 +483,7 @@ find_nearest_ramp()
             return;
         }
 
-        LogMsg("ramp: %s, %f, %f, %f, dist: %f, is_wet: %d", min_ramp->name.c_str(), min_ramp->pos.lat, min_ramp->pos.lon,
+        LogMsg("ramp: %s, %f, %f, %f, dist: %f, is_wet: %d", min_ramp->name.c_str(), min_ramp->lat, min_ramp->lon,
                min_ramp->hdgt, dist, probeinfo.is_wet);
 
         if (probeinfo.is_wet) {
@@ -1053,36 +941,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
         XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
-    // API datarefs
-    XPLMRegisterDataAccessor("AutoDGS/operation_mode", xplmType_Int, 1, api_getint, api_setint, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
-
-    XPLMRegisterDataAccessor("AutoDGS/operation_mode_str", xplmType_Data, 0, NULL, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
-                             (void *)API_OPERATION_MODE_STR, NULL);
-
-    XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_STATE, NULL);
-
-    XPLMRegisterDataAccessor("AutoDGS/on_ground", xplmType_Int, 0, api_getint, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_ON_GROUND, NULL);
-
-    XPLMRegisterDataAccessor("AutoDGS/dgs_ramp_dist_default", xplmType_Float, 1, NULL, NULL,
-                             api_getfloat, api_setfloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_DGS_RAMP_DIST_DEFAULT, (void *)API_DGS_RAMP_DIST_DEFAULT);
-
-    XPLMRegisterDataAccessor("AutoDGS/state_str", xplmType_Data, 0, NULL, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
-                             (void *)API_STATE_STR, NULL);
-
-    XPLMRegisterDataAccessor("AutoDGS/ramp", xplmType_Data, 0, NULL, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, api_getbytes, NULL,
-                             (void *)API_RAMP, NULL);
-
+    create_api_drefs();
     int is_XP11 = (XPLMGetDatai(xp_version_dr) < 120000);
     const char *obj_name[2];
 
