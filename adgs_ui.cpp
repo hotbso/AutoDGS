@@ -43,7 +43,7 @@ static XPWidgetID ui_widget, list_box, selected_stand,
 // current status of ui
 static std::shared_ptr<Airport> ui_arpt;
 static std::string ui_arpt_icao;
-static std::string ui_selected_ramp;
+static std::string ui_selected_stand;
 
 static void
 show_widget(widget_ctx_t *ctx)
@@ -109,11 +109,11 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
 	if (msg == xpMessage_ListBoxItemSelected) {
         char buffer[100];
 		XPGetWidgetDescriptor(list_box, buffer, sizeof(buffer));
-        ui_selected_ramp = buffer;
-        std::string txt = ui_selected_ramp + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+        ui_selected_stand = buffer;
+        std::string txt = ui_selected_stand + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
 		XPSetWidgetDescriptor(selected_stand, txt.c_str());
-        LogMsg("selected ramp is '%s'", ui_selected_ramp.c_str());
-        set_selected_ramp(ui_selected_ramp);
+        LogMsg("selected ramp is '%s'", ui_selected_stand.c_str());
+        set_selected_stand(ui_selected_stand);
         return 1;
     }
 
@@ -164,8 +164,8 @@ update_ui(int only_if_visible)
 
     if (arpt == nullptr) {
         if (ui_arpt != nullptr) {
-            ui_selected_ramp = "Automatic";
-            XPSetWidgetDescriptor(list_box, ui_selected_ramp.c_str());
+            ui_selected_stand = "Automatic";
+            XPSetWidgetDescriptor(list_box, ui_selected_stand.c_str());
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
             ui_arpt = nullptr;
             ui_arpt_icao.resize(0);
@@ -176,8 +176,8 @@ update_ui(int only_if_visible)
         ui_arpt = arpt;
 
         LogMsg("load ramps");
-        ui_selected_ramp = "Automatic";
-        XPSetWidgetDescriptor(list_box, ui_selected_ramp.c_str());
+        ui_selected_stand = "Automatic";
+        XPSetWidgetDescriptor(list_box, ui_selected_stand.c_str());
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
         for (auto & stand : arpt->stands_) {
@@ -190,7 +190,7 @@ update_ui(int only_if_visible)
     if (ui_arpt == NULL)
         XPSetWidgetDescriptor(selected_stand, "inactive");
     else {
-        std::string txt = ui_selected_ramp + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+        std::string txt = ui_selected_stand + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
         XPSetWidgetDescriptor(selected_stand, txt.c_str());
     }
 

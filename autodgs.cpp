@@ -62,13 +62,12 @@ static const float REM_Z = 12;	// Distance remaining from here on
 // place DGS at this dist from stop position, exported as dataref
 float dgs_ramp_dist_default = 25.0;
 int dgs_ramp_dist_override;  // through API
-static float dgs_ramp_dist;
-static int dgs_ramp_dist_set;
+static float dgs_stand_dist;
+static bool dgs_stand_dist_set;
 
 const char * const state_str[] = {
     "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED",
     "TRACK", "GOOD", "BAD", "PARKED", "DONE" };
-
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
@@ -78,8 +77,6 @@ std::string base_dir; // base directory of AutoDGS
 
 opmode_t operation_mode = MODE_AUTO;
 state_t state = DISABLED;
-
-static float timestamp;
 
 XPLMCommandRef cycle_dgs_cmdr;
 static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
@@ -93,39 +90,32 @@ static XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr
 XPLMDataRef vr_enabled_dr;
 static XPLMProbeRef probe_ref;
 
-// Published DataRef values
-static int status, track, lr;
-static int icao[4];
-static float azimuth, distance;
+static int icao[4];     // as int for the datatrefs
 
 // Internal state
 static float now;           // current timestamp
 static int beacon_state, beacon_last_pos;   // beacon state, last switch_pos, ts of last switch actions
 static float beacon_off_ts, beacon_on_ts;
-static int use_engine_running;              // instead of beacon, e.g. MD11
-static int dont_connect_jetway;             // e.g. for ZIBO with own ground service
+static bool use_engine_running;              // instead of beacon, e.g. MD11
+static bool dont_connect_jetway;             // e.g. for ZIBO with own ground service
 
 std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
 std::shared_ptr<Airport> arpt;
 
 int on_ground = 1;
-static float on_ground_ts;
 static float stand_x, stand_y, stand_z, stand_sin_hgt, stand_cos_hgt, stand_hdg;
 static float dgs_pos_x, dgs_pos_y, dgs_pos_z;
 
-static float plane_nw_z, plane_mw_z, plane_cg_z;   // z value of plane's 0 to fw, mw and cg
+static float plane_nw_z, plane_mw_z;   // z value of plane's 0 to fw, mw
 static float pe_y_plane_0;        // pilot eye y to plane's 0 point
-static int pe_y_plane_0_valid;
-static int is_helicopter;
+static bool pe_y_plane_0_valid;
+static bool is_helicopter;
 
-static std::string selected_ramp;
-const Stand *nearest_ramp;
-float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
+static std::string selected_stand;
+const Stand *active_stand;
 
-static int update_dgs_log_ts;   // throttling of logging
 bool dgs_type_auto = true;
 int dgs_type = 0;
-static float sin_wave_prev;
 static XPLMObjectRef dgs_obj[2];
 
 enum _DGS_DREF {
@@ -168,10 +158,10 @@ reset_state(state_t new_state)
         LogMsg("setting state to %s", state_str[new_state]);
 
     state = new_state;
-    nearest_ramp = NULL;
-    dgs_ramp_dist = dgs_ramp_dist_default;
+    active_stand = nullptr;
+    dgs_stand_dist = dgs_ramp_dist_default;
     if (state == INACTIVE) {
-        selected_ramp.resize(0);
+        selected_stand.resize(0);
         arpt = nullptr;
         update_ui(1);
     }
@@ -201,7 +191,6 @@ set_active(void)
     float lon = XPLMGetDataf(plane_lon_dr);
 
     // can be a teleportation so play it safe
-    arpt = nullptr;
     reset_state(INACTIVE);
 
     // find and load airport I'm on now
@@ -223,7 +212,7 @@ set_active(void)
 
     LogMsg("airport activated: %s, new state: ACTIVE", arpt->icao_.c_str());
     state = ACTIVE;
-    dgs_ramp_dist_set = 0;
+    dgs_stand_dist_set = false;
     dgs_type_auto = true;
     update_ui(1);
 }
@@ -276,7 +265,7 @@ set_dgs_pos(void)
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
-    if (!dgs_ramp_dist_set) {
+    if (!dgs_stand_dist_set) {
         // determine dgs_ramp_dist_default depending on pilot eye height agl
         if (! dgs_ramp_dist_override && pe_y_plane_0_valid) {
             float plane_x = XPLMGetDataf(plane_x_dr);
@@ -299,13 +288,13 @@ set_dgs_pos(void)
             LogMsg("setting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, dgs_ramp_dist_default);
         }
 
-        dgs_ramp_dist = dgs_ramp_dist_default;
-        dgs_ramp_dist_set = 1;
+        dgs_stand_dist = dgs_ramp_dist_default;
+        dgs_stand_dist_set = true;
     }
 
-    // xform (0, -dgs_ramp_dist) into global frame
-    dgs_pos_x = stand_x + -stand_sin_hgt * (-dgs_ramp_dist);
-    dgs_pos_z = stand_z +  stand_cos_hgt * (-dgs_ramp_dist);
+    // xform (0, -dgs_stand_dist) into global frame
+    dgs_pos_x = stand_x + -stand_sin_hgt * (-dgs_stand_dist);
+    dgs_pos_z = stand_z +  stand_cos_hgt * (-dgs_stand_dist);
 
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, dgs_pos_x, stand_y, dgs_pos_z, &probeinfo)) {
         LogMsg("XPLMProbeTerrainXYZ failed");
@@ -318,15 +307,15 @@ set_dgs_pos(void)
 
 // hooks for the ui
 void
-set_selected_ramp(const std::string& ui_selected_ramp)
+set_selected_stand(const std::string& ui_selected_stand)
 {
-    LogMsg("set_selected_ramp to '%s'", ui_selected_ramp.c_str());
-    if (ui_selected_ramp == "Automatic") {
-        selected_ramp.resize(0);
+    LogMsg("set_selected_stand to '%s'", ui_selected_stand.c_str());
+    if (ui_selected_stand == "Automatic") {
+        selected_stand.resize(0);
         if (state > ACTIVE)
             reset_state(ACTIVE);
     } else {
-        selected_ramp = ui_selected_ramp;
+        selected_stand = ui_selected_stand;
         if (state > ACTIVE)
             reset_state(ACTIVE);
     }
@@ -351,10 +340,10 @@ set_dgs_type_auto()
 {
     dgs_type_auto = true;
 
-    if (nearest_ramp == nullptr)
+    if (active_stand == nullptr)
         return;
 
-    int new_dgs_type = (nearest_ramp->has_jw ? 1 : 0);
+    int new_dgs_type = (active_stand->has_jw ? 1 : 0);
 
     if (new_dgs_type == dgs_type)
         return;
@@ -368,16 +357,14 @@ set_dgs_type_auto()
 }
 
 static void
-find_nearest_ramp()
+find_nearest_stand()
 {
-    assert(arpt != NULL);
-
-    // check whether we already have a selected ramp
-    if (nearest_ramp && !selected_ramp.empty())
+    // check whether we already have a selected stand
+    if (active_stand && !selected_stand.empty())
         return;
 
     double dist = 1.0E10;
-    const Stand *min_ramp = nullptr;
+    const Stand *min_stand = nullptr;
 
     float plane_x = XPLMGetDataf(plane_x_dr);
     float plane_z = XPLMGetDataf(plane_z_dr);
@@ -390,23 +377,23 @@ find_nearest_ramp()
     if (probe_ref == NULL)
         probe_ref = XPLMCreateProbe(xplm_ProbeY);
 
-    for (auto & r : arpt->stands_) {
-        const Stand *ramp = &r;
+    for (auto & s : arpt->stands_) {
+        const Stand *stand = &s;
 
         // heading in local system
-        float local_hdgt = RA(plane_hdgt - ramp->hdgt);
+        float local_hdgt = RA(plane_hdgt - stand->hdgt);
 
         if (fabs(local_hdgt) > 90.0)
-            continue;   // not looking to ramp
+            continue;   // not looking to stand
 
         double s_x, s_y, s_z;
-        XPLMWorldToLocal(ramp->lat, ramp->lon, plane_elevation, &s_x, &s_y, &s_z);
+        XPLMWorldToLocal(stand->lat, stand->lon, plane_elevation, &s_x, &s_y, &s_z);
 
         // transform into gate local coordinate system
-        float s_sin_hgt = sinf(kD2R * ramp->hdgt);
-        float s_cos_hgt = cosf(kD2R * ramp->hdgt);
+        float s_sin_hgt = sinf(kD2R * stand->hdgt);
+        float s_cos_hgt = cosf(kD2R * stand->hdgt);
 
-        if (selected_ramp.empty()) {
+        if (selected_stand.empty()) {
             // xlate + rotate into stand frame
             float dx = plane_x - s_x;
             float dz = plane_z - s_z;
@@ -422,17 +409,17 @@ find_nearest_ramp()
             if (d > CAP_Z + 50) // fast exit
                 continue;
 
-            //LogMsg("stand: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
+            //LogMsg("stand: %s, z: %2.1f, x: %2.1f", stand->name, nw_z, nw_x);
 
             // behind
             if (nw_z < -4.0) {
-                //LogMsg("behind: %s", ramp->name);
+                //LogMsg("behind: %s", stand->name);
                 continue;
             }
 
             if (nw_z > 10.0) {
                 float angle = atan(nw_x / nw_z) / kD2R;
-                //LogMsg("angle to plane: %s, %3.1f", ramp->name, angle);
+                //LogMsg("angle to plane: %s, %3.1f", stand->name, angle);
 
                 // check whether plane is in a +-60° sector relative to stand
                 if (fabsf(angle) > 60.0)
@@ -441,10 +428,10 @@ find_nearest_ramp()
                 // drive-by and beyond a +- 60° sector relative to plane's direction
                 float rel_to_stand = RA(-angle - local_hdgt);
                 //LogMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
-                //       ramp->name, nw_x, local_hdgt, rel_to_stand);
+                //       stand->name, nw_x, local_hdgt, rel_to_stand);
                 if ((nw_x > 10.0 && rel_to_stand < -60.0)
                     || (nw_x < -10.0 && rel_to_stand > 60.0)) {
-                    //LogMsg("drive by %s", ramp->name);
+                    //LogMsg("drive by %s", stand->name);
                     continue;
                 }
             }
@@ -454,9 +441,9 @@ find_nearest_ramp()
             d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
 
             if (d < dist) {
-                //LogMsg("new min: %s, z: %2.1f, x: %2.1f", ramp->name, nw_z, nw_x);
+                //LogMsg("new min: %s, z: %2.1f, x: %2.1f", stand->name, nw_z, nw_x);
                 dist = d;
-                min_ramp = ramp;
+                min_stand = stand;
                 stand_x = s_x;
                 stand_y = s_y;
                 stand_z = s_z;
@@ -464,9 +451,9 @@ find_nearest_ramp()
                 stand_cos_hgt = s_cos_hgt;
             }
 
-        } else if (ramp->name == selected_ramp) {
+        } else if (stand->name == selected_stand) {
             dist = 0.0;
-            min_ramp = ramp;
+            min_stand = stand;
             stand_x = s_x;
             stand_y = s_y;
             stand_z = s_z;
@@ -476,15 +463,15 @@ find_nearest_ramp()
         }
     }
 
-    if (min_ramp != NULL && min_ramp != nearest_ramp) {
+    if (min_stand != NULL && min_stand != active_stand) {
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, stand_x, stand_y, stand_z, &probeinfo)) {
             LogMsg("XPLMProbeTerrainXYZ failed");
             reset_state(ACTIVE);
             return;
         }
 
-        LogMsg("ramp: %s, %f, %f, %f, dist: %f, is_wet: %d", min_ramp->name.c_str(), min_ramp->lat, min_ramp->lon,
-               min_ramp->hdgt, dist, probeinfo.is_wet);
+        LogMsg("stand: %s, %f, %f, %f, dist: %f, is_wet: %d", min_stand->name.c_str(), min_stand->lat, min_stand->lon,
+               min_stand->hdgt, dist, probeinfo.is_wet);
 
         if (probeinfo.is_wet) {
             reset_state(ACTIVE);
@@ -492,8 +479,8 @@ find_nearest_ramp()
         }
 
         stand_y = probeinfo.locationY;
-        stand_hdg = min_ramp->hdgt;
-        nearest_ramp = min_ramp;
+        stand_hdg = min_stand->hdgt;
+        active_stand = min_stand;
         set_dgs_pos();
         if (dgs_type_auto)
             set_dgs_type_auto();
@@ -504,20 +491,24 @@ find_nearest_ramp()
 static float
 run_state_machine()
 {
+    // values that must survive a single run of the state_machine
+    static int status, track, lr;
+    static float timestamp, distance, sin_wave_prev;
+    static float nearest_stand_ts, update_dgs_log_ts;
+
     if (state <= INACTIVE)
         return 2.0;
 
     // throttle costly search
-    if (now > nearest_ramp_ts + 2.0) {
-        find_nearest_ramp();
-        nearest_ramp_ts = now;
+    if (now > nearest_stand_ts + 2.0) {
+        find_nearest_stand();
+        nearest_stand_ts = now;
     }
 
-    if (nearest_ramp == nullptr) {
+    if (active_stand == nullptr) {
         state = ACTIVE;
         return 2.0;
     }
-
 
     int lr_prev = lr;
     int track_prev = track;
@@ -550,14 +541,15 @@ run_state_machine()
     float z_dr = local_z - plane_z_dr;
     float x_dr = local_x + plane_z_dr * sinf(kD2R * local_hdgt);
 
+    float azimuth;
     if (fabs(x_dr) > 0.5 && z_dr > 0)
-        azimuth = atanf(x_dr / (z_dr + 0.5 * dgs_ramp_dist)) / kD2R;
+        azimuth = atanf(x_dr / (z_dr + 0.5 * dgs_stand_dist)) / kD2R;
     else
         azimuth = 0.0;
 
     float azimuth_nw;
     if (nw_z > 0)
-        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * dgs_ramp_dist)) / kD2R;
+        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * dgs_stand_dist)) / kD2R;
     else
         azimuth_nw = 0.0;
 
@@ -721,8 +713,8 @@ run_state_machine()
         // don't flood the log
         if (now > update_dgs_log_ts + 2.0) {
             update_dgs_log_ts = now;
-            LogMsg("ramp: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   nearest_ramp->name.c_str(), state_str[state], status, track, lr, distance, azimuth);
+            LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
+                   active_stand->name.c_str(), state_str[state], status, track, lr, distance, azimuth);
         }
 
         XPLMDrawInfo_t drawinfo;
@@ -736,9 +728,9 @@ run_state_machine()
         drawinfo.heading = stand_hdg;
         drawinfo.pitch = drawinfo.roll = 0.0;
 
-        if (dgs_inst_ref == NULL) {
+        if (dgs_inst_ref == nullptr) {
             dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dlist_dr);
-            if (dgs_inst_ref == NULL) {
+            if (dgs_inst_ref == nullptr) {
                 LogMsg("error creating instance");
                 state = DISABLED;
                 return 0.0;
@@ -773,6 +765,8 @@ flight_loop_cb(float inElapsedSinceLastCall,
                float inElapsedTimeSinceLastFlightLoop, int inCounter,
                void *inRefcon)
 {
+    static float on_ground_ts;  // debounce ground contact
+
     float loop_delay = 2.0;
 
     now = XPLMGetDataf(total_running_time_sec_dr);
@@ -795,7 +789,7 @@ flight_loop_cb(float inElapsedSinceLastCall,
             reset_state(INACTIVE);
             if (probe_ref) {
                 XPLMDestroyProbe(probe_ref);
-                probe_ref = NULL;
+                probe_ref = nullptr;
             }
         }
     }
@@ -836,9 +830,9 @@ cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]
     if (xplm_CommandBegin != phase || state < ENGAGED)
         return 0;
 
-    if (dgs_ramp_dist > 12.0) {
-        dgs_ramp_dist -= 2.0;
-        LogMsg("dgs_ramp_dist reduced to %0.1f", dgs_ramp_dist);
+    if (dgs_stand_dist > 12.0) {
+        dgs_stand_dist -= 2.0;
+        LogMsg("dgs_stand_dist reduced to %0.1f", dgs_stand_dist);
         set_dgs_pos();
     }
 
@@ -1035,7 +1029,7 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
 
         acf_icao[4] = '\0';
 
-        plane_cg_z = F2M * XPLMGetDataf(acf_cg_z_dr);
+        float plane_cg_z = F2M * XPLMGetDataf(acf_cg_z_dr);
 
         float gear_z[2];
         if (2 == XPLMGetDatavf(gear_z_dr, gear_z, 0, 2)) {      // nose + main wheel
@@ -1046,7 +1040,7 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
 
         is_helicopter = XPLMGetDatai(is_helicopter_dr);
 
-        pe_y_plane_0_valid = 0;
+        pe_y_plane_0_valid = false;
         pe_y_plane_0 = 0.0;
 
         if (! is_helicopter) {
@@ -1054,41 +1048,29 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
             // a dataref, only the dynamic values.
             // Therefore we pull it from the acf file.
 
-            char acf_path[512];
-            char acf_file[256];
-
+            char acf_path[512], acf_file[256];
             XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
-            LogMsg("%s", acf_path);
+            LogMsg("acf_path: '%s'", acf_path);
 
-
-            FILE *acf = fopen(acf_path, "r");
-            if (acf) {
-                char line[200];
-                while (fgets(line, sizeof(line), acf)) {
-                    if (line == strstr(line, "P acf/_pe_xyz/1 ")) {
-                        if (1 == sscanf(line + 16, "%f", &pe_y_plane_0)) {
+            std::ifstream acf(acf_path);
+            if (acf.is_open()) {
+                std::string line;
+                while (std::getline(acf, line)) {
+                    if (line.starts_with("P acf/_pe_xyz/1 ")) {
+                        if (1 == sscanf(line.c_str() + 16, "%f", &pe_y_plane_0)) {
                             pe_y_plane_0 -= XPLMGetDataf(acf_cg_y_dr);
                             pe_y_plane_0 *= F2M;
-                            pe_y_plane_0_valid = 1;
+                            pe_y_plane_0_valid = true;
                         }
                         break;
                     }
                 }
-
-                fclose(acf);
             }
         }
 
         // check whether acf is listed in exception files
-        use_engine_running = 0;
-        dont_connect_jetway = 0;
-
-        if (FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt"))
-            use_engine_running = 1;
-
-        if (FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt"))
-            dont_connect_jetway = 1;
-
+        use_engine_running = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
+        dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
 
         LogMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
                "pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f, is_helicopter: %d",

@@ -124,7 +124,7 @@ api_getbytes(XPLMDataRef ref, void *out, int ofs, int n)
 
         case API_RAMP:
             if (state >= ENGAGED)
-                strncpy(buf, nearest_ramp->name.c_str(), buflen - 1);
+                strncpy(buf, active_stand->name.c_str(), buflen - 1);
             break;
     }
 
