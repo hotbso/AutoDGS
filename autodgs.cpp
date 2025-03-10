@@ -136,6 +136,7 @@ const Stand *nearest_ramp;
 float nearest_ramp_ts; // timestamp of last find_nearest_ramp()
 
 static int update_dgs_log_ts;   // throttling of logging
+bool dgs_type_auto = true;
 int dgs_type = 0;
 static float sin_wave_prev;
 static XPLMObjectRef dgs_obj[2];
@@ -236,6 +237,7 @@ set_active(void)
     LogMsg("airport activated: %s, new state: ACTIVE", arpt->icao_.c_str());
     state = ACTIVE;
     dgs_ramp_dist_set = 0;
+    dgs_type_auto = true;
     update_ui(1);
 }
 
@@ -456,6 +458,27 @@ set_dgs_type(int new_dgs_type)
     dgs_type = new_dgs_type;
 }
 
+void
+set_dgs_type_auto()
+{
+    dgs_type_auto = true;
+
+    if (nearest_ramp == nullptr)
+        return;
+
+    int new_dgs_type = (nearest_ramp->has_jw ? 1 : 0);
+
+    if (new_dgs_type == dgs_type)
+        return;
+
+    if (dgs_inst_ref) {
+        XPLMDestroyInstance(dgs_inst_ref);
+        dgs_inst_ref = NULL;
+    }
+
+    dgs_type = new_dgs_type;
+}
+
 static void
 find_nearest_ramp()
 {
@@ -584,8 +607,8 @@ find_nearest_ramp()
         stand_hdg = min_ramp->hdgt;
         nearest_ramp = min_ramp;
         set_dgs_pos();
-        if (selected_ramp.empty())
-            set_dgs_type(nearest_ramp->has_jw ? 1 : 0);
+        if (dgs_type_auto)
+            set_dgs_type_auto();
         state = ENGAGED;
     }
 }
@@ -903,6 +926,7 @@ cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] v
         return 0;
 
     set_dgs_type(!dgs_type);
+    dgs_type_auto = false;
     update_ui(1);
     return 0;
 }

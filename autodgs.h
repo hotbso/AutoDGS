@@ -155,8 +155,10 @@ extern XPLMCommandRef cycle_dgs_cmdr;
 extern XPLMDataRef vr_enabled_dr;
 
 extern int dgs_type;
+extern bool dgs_type_auto;
 extern void toggle_ui(void);
 extern void update_ui(int only_if_visible);
 
 extern void set_selected_ramp(const std::string& ui_selected_ramp);
 extern void set_dgs_type(int new_dgs_type);
+extern void set_dgs_type_auto();

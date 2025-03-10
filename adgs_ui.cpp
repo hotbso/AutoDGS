@@ -31,18 +31,18 @@
 typedef struct _widget_ctx
 {
     XPWidgetID widget;
-    int in_vr;          /* currently in vr */
-    int l, t, w, h;     /* last geometry before bringing into vr */
+    int in_vr;          // currently in vr
+    int l, t, w, h;     // last geometry before bringing into vr
 } widget_ctx_t;
 
 static widget_ctx_t ui_widget_ctx;
 
-static XPWidgetID ui_widget, list_box, selected_stand, marshaller_btn, vdgs_btn;
+static XPWidgetID ui_widget, list_box, selected_stand,
+    dgs_auto_btn, marshaller_btn, vdgs_btn;
 
-/* current status of ui */
+// current status of ui
 static std::shared_ptr<Airport> ui_arpt;
 static std::string ui_arpt_icao;
-static int ui_dgs_type;
 static std::string ui_selected_ramp;
 
 static void
@@ -51,11 +51,11 @@ show_widget(widget_ctx_t *ctx)
     if (XPIsWidgetVisible(ctx->widget))
         return;
 
-    /* force window into visible area of screen
-       we use modern windows under the hut so UI coordinates are in boxels */
+    // force window into visible area of screen
+    //   we use modern windows under the hut so UI coordinates are in boxels
 
-    /* Note that (0,0) is the top left while for widgets it's bottom left
-     * so we pass the y* arguments that the outcome is in widget coordinates */
+    // Note that (0,0) is the top left while for widgets it's bottom left
+    // so we pass the y* arguments that the outcome is in widget coordinates
 
     int xl, yl, xr, yr;
     XPLMGetScreenBoundsGlobal(&xl, &yr, &xr, &yl);
@@ -117,19 +117,25 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
         return 1;
     }
 
+    // radio buttons get this message only when they are clicked to "selected"
+    if ((widget_id == dgs_auto_btn) && (msg == xpMsg_ButtonStateChanged)) {
+        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
+        set_dgs_type_auto();
+        return 1;
+    }
+
     if ((widget_id == marshaller_btn) && (msg == xpMsg_ButtonStateChanged)) {
-        int state = (int)param2;
-        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, !state);
-        ui_dgs_type = 0;
-        set_dgs_type(ui_dgs_type);
+        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
+        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
+        set_dgs_type(0);
         return 1;
     }
 
     if ((widget_id == vdgs_btn) && (msg == xpMsg_ButtonStateChanged)) {
-        int state = (int)param2;
-        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, !state);
-        ui_dgs_type = 1;
-        set_dgs_type(ui_dgs_type);
+        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
+        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+        set_dgs_type(1);
         return 1;
     }
 
@@ -146,10 +152,14 @@ update_ui(int only_if_visible)
 
     LogMsg("update_ui started");
 
-    if (ui_dgs_type != dgs_type) {
+    if (dgs_type_auto) {
+        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 1);
+        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
+    } else {
+        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, !dgs_type);
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, dgs_type);
-        ui_dgs_type = dgs_type;
     }
 
     if (arpt == nullptr) {
@@ -190,8 +200,8 @@ update_ui(int only_if_visible)
 static void
 create_ui()
 {
-    /* Note that (0,0) is the top left while for widgets it's bottom left
-     * so we pass the y* arguments that the outcome is in widget coordinates */
+    // Note that (0,0) is the top left while for widgets it's bottom left
+    // so we pass the y* arguments that the outcome is in widget coordinates
 
     int xl, yr;
     XPLMGetScreenBoundsGlobal(&xl, &yr, NULL, NULL);
@@ -215,8 +225,18 @@ create_ui()
     XPSetWidgetProperty(ui_widget, xpProperty_MainWindowHasCloseBoxes, 1);
     XPAddWidgetCallback(ui_widget, ui_widget_cb);
     left += 5;
-
     left1 = left + 60;
+
+    top -= 20;
+    XPCreateWidget(left, top, left + 50, top - 20,
+                                 1, "Automatic", 0, ui_widget, xpWidgetClass_Caption);
+    dgs_auto_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
+                                    1, "", 0, ui_widget, xpWidgetClass_Button);
+    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonType, xpRadioButton);
+    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
+    XPAddWidgetCallback(dgs_auto_btn, ui_widget_cb);
+    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 1);
+
     top -= 20;
     XPCreateWidget(left, top, left + 50, top - 20,
                                  1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
@@ -225,7 +245,6 @@ create_ui()
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
     XPAddWidgetCallback(marshaller_btn, ui_widget_cb);
-    XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
 
     top -= 20;
     XPCreateWidget(left, top, left + 50, top - 20,
