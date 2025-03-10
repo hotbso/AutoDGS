@@ -13,7 +13,10 @@ Support Discord: https://discord.gg/7GNmbFkyXt
 ## Automatic Mode
 After you LAND (= some air time!) on an airport the plugin activates and searches actively for suitable ramps in the direction that you are taxiing.
 Note that you MUST have your beacon on (a no-brainer with engine on, right?).
-When close enough to a stand a Marshaller appears and gives appropriate guidance information. The distance to the DGS is automatically adjusted according to the pilot's eye height AGL.
+
+The plugin automatically detects which stands have a jetway and selects a VDGS for these and the Marshaller for others.
+
+When close enough to a stand the selected DGS appears and gives appropriate guidance information. The distance to the DGS is automatically adjusted according to the pilot's eye height AGL.
 With the command "Cycle DGS" bound to a key or button or through the menu you can cycle between Marshaller or VDGS as you like.
 Should the DGS be hidden by wall or run over by ground traffic you can pull it forward in 2m increments with the command or menu entry "Move DGS closer by 2m".
 Once parked and the beacon is off the plugin removes the DGS, docks a jetway (XP12 only!) if there is one and deactivates.
@@ -47,7 +50,6 @@ Absolutely, but not on the same scenery.
 All custom sceneries that are not SAM-enabled (= have a sam.xml file) are automatically activated for AutoDGS.
 If you don't want such activation for a specific scenery (e.g. a scenery using AutoGate) you must place a file named "no_autodgs" in the scenery's top directory.
 If want to force activation even for a SAM-enabled scenery place a file "use_autodgs" in the scenery's top directory.
-After placing such marker files you must clear AutoDGS's cache.
 
 If you have problems with creating a file without extension you can create  .txt files as well, e.g. "no_autodgs.txt".
 
