@@ -263,6 +263,9 @@ getdgsfloat(XPLMDataRef inRefcon)
 static void
 set_dgs_pos(void)
 {
+    if (arpt == nullptr)
+        return;
+
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     if (!dgs_stand_dist_set) {
@@ -802,51 +805,27 @@ flight_loop_cb(float inElapsedSinceLastCall,
 
 // call backs for commands
 static int
-cmd_cycle_dgs_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
+CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 {
     if (xplm_CommandBegin != phase)
         return 0;
 
-    set_dgs_type(!dgs_type);
-    dgs_type_auto = false;
-    update_ui(1);
-    return 0;
-}
-
-static int
-cmd_activate_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
-{
-    if (xplm_CommandBegin != phase)
-        return 0;
-
-    LogMsg("cmd manually_activate");
-    set_active();
-    return 0;
-}
-
-static int
-cmd_move_dgs_closer(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
-{
-    if (xplm_CommandBegin != phase || state < ENGAGED)
-        return 0;
-
-    if (dgs_stand_dist > 12.0) {
+    if (cmdr == cycle_dgs_cmdr) {
+        set_dgs_type(!dgs_type);
+        dgs_type_auto = false;
+        update_ui(1);
+    } else if (cmdr == activate_cmdr) {
+        LogMsg("cmd manually_activate");
+        set_active();
+    } else if (cmdr == move_dgs_closer_cmdr && state >= ENGAGED && dgs_stand_dist > 12.0) {
         dgs_stand_dist -= 2.0;
         LogMsg("dgs_stand_dist reduced to %0.1f", dgs_stand_dist);
         set_dgs_pos();
+    } else if (cmdr == toggle_ui_cmdr) {
+        LogMsg("cmd toggle_ui");
+        toggle_ui();
     }
 
-    return 0;
-}
-
-static int
-cmd_toggle_ui_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
-{
-   if (xplm_CommandBegin != phase)
-        return 0;
-
-    LogMsg("cmd toggle_ui");
-    toggle_ui();
     return 0;
 }
 
@@ -960,16 +939,16 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     // own commands
     cycle_dgs_cmdr = XPLMCreateCommand("AutoDGS/cycle_dgs", "Cycle DGS between Marshaller, VDGS");
-    XPLMRegisterCommandHandler(cycle_dgs_cmdr, cmd_cycle_dgs_cb, 0, NULL);
+    XPLMRegisterCommandHandler(cycle_dgs_cmdr, CmdCb, 0, NULL);
 
     move_dgs_closer_cmdr = XPLMCreateCommand("AutoDGS/move_dgs_closer", "Move DGS closer by 2m");
-    XPLMRegisterCommandHandler(move_dgs_closer_cmdr, cmd_move_dgs_closer, 0, NULL);
+    XPLMRegisterCommandHandler(move_dgs_closer_cmdr, CmdCb, 0, NULL);
 
     activate_cmdr = XPLMCreateCommand("AutoDGS/activate", "Manually activate searching for stands");
-    XPLMRegisterCommandHandler(activate_cmdr, cmd_activate_cb, 0, NULL);
+    XPLMRegisterCommandHandler(activate_cmdr, CmdCb, 0, NULL);
 
     toggle_ui_cmdr = XPLMCreateCommand("AutoDGS/toggle_ui", "Open UI");
-    XPLMRegisterCommandHandler(toggle_ui_cmdr, cmd_toggle_ui_cb, 0, NULL);
+    XPLMRegisterCommandHandler(toggle_ui_cmdr, CmdCb, 0, NULL);
 
     // menu
     XPLMMenuID menu = XPLMFindPluginsMenu();
