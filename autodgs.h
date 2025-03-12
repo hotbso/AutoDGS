@@ -86,7 +86,7 @@ class Stand {
   //protected:
   public:
     Stand(Stand&&) = default;
-    Stand& operator=(Stand&&) = default;
+    Stand& operator=(Stand&&) = delete;
 
     double x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
