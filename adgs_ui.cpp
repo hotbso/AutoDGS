@@ -41,7 +41,6 @@ static XPWidgetID ui_widget, list_box, selected_stand,
     dgs_auto_btn, marshaller_btn, vdgs_btn;
 
 // current status of ui
-static std::shared_ptr<Airport> ui_arpt;
 static std::string ui_arpt_icao;
 static std::string ui_selected_stand;
 
@@ -113,7 +112,7 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
         std::string txt = ui_selected_stand + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
 		XPSetWidgetDescriptor(selected_stand, txt.c_str());
         LogMsg("selected ramp is '%s'", ui_selected_stand.c_str());
-        set_selected_stand(ui_selected_stand);
+        SetSelectedStand(ui_selected_stand);
         return 1;
     }
 
@@ -121,21 +120,22 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
     if ((widget_id == dgs_auto_btn) && (msg == xpMsg_ButtonStateChanged)) {
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-        set_dgs_type_auto();
+        if (arpt)
+            arpt->SetDgsTypeAuto();
         return 1;
     }
 
     if ((widget_id == marshaller_btn) && (msg == xpMsg_ButtonStateChanged)) {
         XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-        set_dgs_type(0);
+        SetDgsType(0);
         return 1;
     }
 
     if ((widget_id == vdgs_btn) && (msg == xpMsg_ButtonStateChanged)) {
         XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
-        set_dgs_type(1);
+        SetDgsType(1);
         return 1;
     }
 
@@ -163,34 +163,32 @@ update_ui(int only_if_visible)
     }
 
     if (arpt == nullptr) {
-        if (ui_arpt != nullptr) {
+        if (!ui_arpt_icao.empty()) {
             ui_selected_stand = "Automatic";
             XPSetWidgetDescriptor(list_box, ui_selected_stand.c_str());
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
-            ui_arpt = nullptr;
-            ui_arpt_icao.resize(0);
+            ui_arpt_icao.clear();
         }
-    } else if (arpt->icao_ != ui_arpt_icao) {
-        LogMsg("airport changed to %s", arpt->icao_.c_str());
-        ui_arpt_icao = arpt->icao_;
-        ui_arpt = arpt;
+    } else if (arpt->name() != ui_arpt_icao) {
+        LogMsg("airport changed to %s", arpt->name().c_str());
+        ui_arpt_icao = arpt->name();
 
         LogMsg("load ramps");
         ui_selected_stand = "Automatic";
         XPSetWidgetDescriptor(list_box, ui_selected_stand.c_str());
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
-        for (auto & stand : arpt->stands_) {
-            XPSetWidgetDescriptor(list_box, stand.name.c_str());
+        for (auto const & stand : arpt->stands_) {
+            XPSetWidgetDescriptor(list_box, stand.name().c_str());
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItem, 1);
         }
     }
 
     // that's cheap so we do it always
-    if (ui_arpt == NULL)
+    if (ui_arpt_icao.empty())
         XPSetWidgetDescriptor(selected_stand, "inactive");
     else {
-        std::string txt = ui_selected_stand + " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+        std::string txt = ui_selected_stand + " @ " + ui_arpt_icao;
         XPSetWidgetDescriptor(selected_stand, txt.c_str());
     }
 

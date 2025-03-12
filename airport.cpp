@@ -41,6 +41,8 @@ struct Jetway {
     LLPos cabin;    // = pos + length * dir(hdgt)
 };
 
+static std::unordered_map<std::string, AptAirport*> airports;
+
 // SceneryPacks constructor
 SceneryPacks::SceneryPacks(const std::string& xp_dir)
 {
@@ -89,11 +91,11 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
 }
 
 void
-Airport::dump()
+AptAirport::dump() const
 {
     LogMsg("Dump of airport: %s", icao_.c_str());
 
-    for (auto & s : stands_)
+    for (auto const & s : stands_)
         LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.lat, s.lon, s.hdgt, s.has_jw);
 
 #if 0
@@ -103,6 +105,7 @@ Airport::dump()
 #endif
 }
 
+static int n_stands;
 
 // go through apt.dat and collect stands
 static bool
@@ -117,7 +120,7 @@ ParseAptDat(const std::string& fn, bool ignore)
     std::string line;
     line.reserve(2000);          // can be quite long
 
-    std::shared_ptr<Airport> arpt;
+    AptAirport *arpt = nullptr;
 	std::vector<Jetway> jetways;
 
     // save arpt if it has a tower frequency and stands
@@ -130,11 +133,14 @@ ParseAptDat(const std::string& fn, bool ignore)
                         break;
                     }
 
+            n_stands += arpt->stands_.size();
             arpt->stands_.shrink_to_fit();
-            airports[arpt->icao_] = std::move(arpt);
+            airports[arpt->icao_] = arpt;
             jetways.resize(0);
-        } else
+        } else {
+            delete(arpt);
             arpt = nullptr;
+        }
     };
 
     while (std::getline(apt, line)) {
@@ -161,14 +167,14 @@ ParseAptDat(const std::string& fn, bool ignore)
                     airports.at(name);
                 } catch(const std::out_of_range& ex) {
                     // does not yet exist
-                    arpt = std::make_shared<Airport>(name);
-                    arpt->stands_.reserve(50);
+                    arpt = new AptAirport(name);
                     if (ignore) {
                         arpt->ignore_ = true;
-                        airports[arpt->icao_] = std::move(arpt);
-                        // return ??
-                    }
-                }
+                        airports[arpt->icao_] = arpt;
+                        arpt = nullptr;
+                    } else
+                        arpt->stands_.reserve(50);
+               }
             } else
                 LogMsg("could not locate airport id '%s'", line.c_str());
 			continue;
@@ -200,7 +206,7 @@ ParseAptDat(const std::string& fn, bool ignore)
             if (line.back() == '\r')
                 line.pop_back();
 
-            Stand st;
+            AptStand st;
             int ofs;
 			sscanf(line.c_str(), "%*d %lf %lf %f %*s %*s %n", &st.lat, &st.lon, &st.hdgt, &ofs);
 			if (ofs < (int)line.size())
@@ -227,7 +233,7 @@ ParseAptDat(const std::string& fn, bool ignore)
 }
 
 bool
-CollectAirports(const std::string& xp_dir)
+AptAirport::CollectAirports(const std::string& xp_dir)
 {
     const std::clock_t c_start = std::clock();
     auto t_start = std::chrono::high_resolution_clock::now();
@@ -239,6 +245,7 @@ CollectAirports(const std::string& xp_dir)
     }
 
     airports.reserve(5000);
+    n_stands = 0;
 
 	for (auto & path : scp.sc_paths) {
         bool ignore = (std::filesystem::exists(path + "no_autodgs") || std::filesystem::exists(path + "no_autodgs.txt"));
@@ -256,39 +263,49 @@ CollectAirports(const std::string& xp_dir)
     const std::clock_t c_end = std::clock();
     auto t_end = std::chrono::high_resolution_clock::now();
 
-    LogMsg("CollectAirports: # of airports: %d, CPU: %1.3fs, elapsed: %1.3fs", (int)airports.size(), (double)(c_end - c_start) / CLOCKS_PER_SEC,
+    LogMsg("CollectAirports: # of airports: %d, # of stands: %d, CPU: %1.3fs, elapsed: %1.3fs",
+           (int)airports.size(), n_stands, (double)(c_end - c_start) / CLOCKS_PER_SEC,
            std::chrono::duration<double>(t_end - t_start).count());
 
     return true;
 }
 
+const AptAirport *
+AptAirport::LookupAirport(const std::string& airport_id)
+{
+    try {
+        const AptAirport *arpt = airports.at(airport_id);
+        if (arpt->ignore_)
+            return nullptr;
+        return arpt;
+    } catch(const std::out_of_range& ex) {
+        LogMsg("sorry, '%s' is not an AutoDGS airport", airport_id.c_str());
+   }
+
+   return nullptr;
+}
+
 #ifdef TEST_AIRPORTS
 // g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O airport.cpp log_msg.cpp
 
-
-std::shared_ptr<Airport> arpt;
-std::unordered_map<std::string, std::shared_ptr<Airport>> airports;
+const AptAirport *arpt;
 
 static
 void find_and_dump(const std::string& name)
 {
-    try {
-        arpt = airports.at(name);
-    } catch(const std::out_of_range& ex) {
-        LogMsg("sorry, '%s' is not an AutoDGS airport", name.c_str());
-        arpt = nullptr;
-    }
-
+    arpt = AptAirport::LookupAirport(name);
     if (arpt)
         arpt->dump();
+    else
+        LogMsg("sorry, '%s' is not an AutoDGS airport", name.c_str());
 }
 
 int main()
 {
-	bool res = CollectAirports("e:/X-Plane-12-test/");
+	bool res = AptAirport::CollectAirports("e:/X-Plane-12-test/");
 
     for (auto & a : airports) {
-        auto arpt = a.second;
+        auto const arpt = a.second;
 
         if (arpt->ignore_) {
             LogMsg("Ignored: %s", arpt->icao_.c_str());
@@ -301,6 +318,7 @@ int main()
     find_and_dump("EKBI");
     find_and_dump("EKBIx");
     find_and_dump("EDDV");
+    find_and_dump("EDDF");
 
 }
 #endif
