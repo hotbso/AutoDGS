@@ -24,9 +24,7 @@
 
 enum {
     API_OPERATION_MODE,
-    API_STATE,
     API_ON_GROUND,
-    API_DGS_RAMP_DIST_DEFAULT
 };
 
 // API accessor routines
@@ -34,8 +32,6 @@ static int
 api_getint(XPLMDataRef ref)
 {
     switch ((long long)ref) {
-        case API_STATE:
-            return state;
         case API_OPERATION_MODE:
             return operation_mode;
         case API_ON_GROUND:
@@ -74,10 +70,6 @@ create_api_drefs()
     XPLMRegisterDataAccessor("AutoDGS/operation_mode", xplmType_Int, 1, api_getint, api_setint, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              (void *)API_OPERATION_MODE, (void *)API_OPERATION_MODE);
-
-    XPLMRegisterDataAccessor("AutoDGS/state", xplmType_Int, 0, api_getint, NULL, NULL,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                             (void *)API_STATE, NULL);
 
     XPLMRegisterDataAccessor("AutoDGS/on_ground", xplmType_Int, 0, api_getint, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

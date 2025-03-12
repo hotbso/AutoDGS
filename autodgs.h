@@ -40,14 +40,6 @@ static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
 static constexpr float kJw2Stand = 18.0;            // m, max dist jw to stand
 
-// types
-typedef enum
-{
-    DISABLED=0, INACTIVE, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
-} state_t;
-
-extern const char * const state_str[];
-
 typedef enum
 {
     MODE_AUTO,
@@ -108,23 +100,32 @@ class Stand {
 
 // AptAirport augmented
 class Airport {
+  public:
+    typedef enum
+    {
+        INACTIVE = 0, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
+    } state_t;
+
+    static const char * const state_str[];
+
+  private:
+    state_t state_;
     const AptAirport *apt_airport_;
     std::vector<Stand> stands_;
-    Stand *active_stand_ = nullptr;
+    Stand *active_stand_;
 
     void FindNearestStand();
 
     friend void update_ui(int only_if_visible); // TODO
 
   public:
-
     Airport() = delete;
     Airport(const AptAirport*);
     ~Airport();
     static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
 
     const std::string& name() const { return apt_airport_->icao_; }
-
+    state_t state() const { return state_; }
     void ResetState(state_t new_state);
     void SetDgsPos() { if (active_stand_) active_stand_->SetDgsPos(); } ;
     void SetDgsTypeAuto();
@@ -140,7 +141,6 @@ extern XPLMCommandRef cycle_dgs_cmdr;
 extern XPLMDataRef vr_enabled_dr;
 
 extern opmode_t operation_mode;
-extern state_t state;
 extern int on_ground;
 
 extern int dgs_type;

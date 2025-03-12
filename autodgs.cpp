@@ -63,10 +63,6 @@ static float dgs_ramp_dist_default = 25.0;
 static float dgs_stand_dist;
 static bool dgs_stand_dist_set;
 
-const char * const state_str[] = {
-    "DISABLED", "INACTIVE", "ACTIVE", "ENGAGED",
-    "TRACK", "GOOD", "BAD", "PARKED", "DONE" };
-
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
 // Globals
@@ -74,7 +70,7 @@ std::string xp_dir;
 std::string base_dir; // base directory of AutoDGS
 
 opmode_t operation_mode = MODE_AUTO;
-state_t state = DISABLED;
+static bool error_disabled;
 
 XPLMCommandRef cycle_dgs_cmdr;
 static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
@@ -173,7 +169,6 @@ Stand::SetDgsPos(void)
 
             if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo)) {
                 LogMsg("XPLMProbeTerrainXYZ failed");
-                arpt->ResetState(INACTIVE);
                 return;
             }
 
@@ -196,7 +191,7 @@ Stand::SetDgsPos(void)
     if (xplm_ProbeHitTerrain
         != XPLMProbeTerrainXYZ(probe_ref, drawinfo_.x, y_, drawinfo_.z, &probeinfo)) {
         LogMsg("XPLMProbeTerrainXYZ failed");
-        arpt->ResetState(ACTIVE);
+        arpt->ResetState(Airport::ACTIVE);
         return;
     }
 
@@ -205,6 +200,12 @@ Stand::SetDgsPos(void)
     drawinfo_.z = probeinfo.locationZ;
 }
 
+const char * const Airport::state_str[] = {
+    "INACTIVE", "ACTIVE", "ENGAGED",
+    "TRACK", "GOOD", "BAD", "PARKED", "DONE"
+};
+
+
 Airport::Airport(const AptAirport* apt_airport)
 {
     apt_airport_ = apt_airport;
@@ -212,11 +213,13 @@ Airport::Airport(const AptAirport* apt_airport)
     float arpt_elevation = XPLMGetDataf(plane_elevation_dr);    // best guess
     for (auto const & as : apt_airport->stands_)
         stands_.emplace_back(as, arpt_elevation);
+
+    state_ = INACTIVE;
+    active_stand_ = nullptr;
 }
 
 Airport::~Airport()
 {
-    state = INACTIVE;
     LogMsg("Airport '%s' destructed", name().c_str());
 }
 
@@ -233,18 +236,14 @@ Airport::LoadAirport(const std::string& icao)
 void
 Airport::ResetState(state_t new_state)
 {
-    if (state != new_state)
+    if (state_ != new_state)
         LogMsg("setting state to %s", state_str[new_state]);
 
-    state = new_state;
+    state_ = new_state;
     active_stand_ = nullptr;
     dgs_stand_dist = dgs_ramp_dist_default;
-    if (state == INACTIVE) {
-        selected_stand.resize(0);
-        stands_.clear();
-        arpt = nullptr;
-        update_ui(1);
-    }
+    dgs_stand_dist_set = false;
+    dgs_type_auto = true;
 
     if (dgs_inst_ref) {
         XPLMDestroyInstance(dgs_inst_ref);
@@ -254,14 +253,14 @@ Airport::ResetState(state_t new_state)
 
 // set mode to arrival
 static void
-SetActive(void)
+Activate(void)
 {
     if (! on_ground) {
         LogMsg("can't set active when not on ground");
         return;
     }
 
-    if (state > INACTIVE)
+    if (arpt && arpt->state() > Airport::INACTIVE)
         return;
 
     beacon_state = beacon_last_pos = XPLMGetDatai(beacon_dr);
@@ -269,10 +268,6 @@ SetActive(void)
 
     float lat = XPLMGetDataf(plane_lat_dr);
     float lon = XPLMGetDataf(plane_lon_dr);
-
-    // can be a teleportation so play it safe
-    if (arpt)
-        arpt->ResetState(INACTIVE);
 
     // find and load airport I'm on now
     XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
@@ -285,14 +280,15 @@ SetActive(void)
         if (arpt == nullptr || arpt->name() != airport_id) {   // don't reload same
             arpt = Airport::LoadAirport(airport_id);
         }
+    } else {
+        LogMsg("airport could not be identified at %0.8f,%0.8f", lat, lon);
+        arpt = nullptr;
     }
 
     if (arpt == nullptr)
         return;
     LogMsg("airport activated: %s, new state: ACTIVE", arpt->name().c_str());
-    state = ACTIVE;
-    dgs_stand_dist_set = false;
-    dgs_type_auto = true;
+    arpt->ResetState(Airport::ACTIVE);
     update_ui(1);
 }
 
@@ -344,15 +340,13 @@ SetSelectedStand(const std::string& ui_selected_stand)
 {
     assert(arpt != nullptr);
     LogMsg("SetSelectedStand to '%s'", ui_selected_stand.c_str());
-    if (ui_selected_stand == "Automatic") {
+    if (ui_selected_stand == "Automatic")
         selected_stand.resize(0);
-        if (state > ACTIVE)
-            arpt->ResetState(ACTIVE);
-    } else {
+    else
         selected_stand = ui_selected_stand;
-        if (state > ACTIVE)
-            arpt->ResetState(ACTIVE);
-    }
+
+    if (arpt && arpt->state() > Airport::ACTIVE)
+        arpt->ResetState(Airport::ACTIVE);
 }
 
 void
@@ -499,7 +493,7 @@ Airport::FindNearestStand()
         active_stand_->SetDgsPos();
         if (dgs_type_auto)
             SetDgsTypeAuto();
-        state = ENGAGED;
+        state_ = ENGAGED;
     }
 }
 
@@ -511,8 +505,8 @@ Airport::StateMachine()
     static float timestamp, distance, sin_wave_prev;
     static float nearest_stand_ts, update_dgs_log_ts;
 
-    if (state <= INACTIVE)
-        return 2.0;
+    if (error_disabled)
+        return 0.0f;
 
     // throttle costly search
     if (now > nearest_stand_ts + 2.0) {
@@ -521,7 +515,7 @@ Airport::StateMachine()
     }
 
     if (active_stand_ == nullptr) {
-        state = ACTIVE;
+        state_ = ACTIVE;
         return 2.0;
     }
 
@@ -530,7 +524,7 @@ Airport::StateMachine()
     float distance_prev = distance;
 
     float loop_delay = 0.2;
-    state_t new_state = state;
+    state_t new_state = state_;
 
     // xform plane pos into stand local coordinate system
     float dx = XPLMGetDataf(plane_x_dr) - active_stand_->x_;
@@ -580,7 +574,7 @@ Airport::StateMachine()
     sin_wave_prev = sin_wave;
 
     // set drefs according to *current* state
-    switch (state) {
+    switch (state_) {
         case ENGAGED:
             if (beacon_on) {
                 if ((distance <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
@@ -706,14 +700,14 @@ Airport::StateMachine()
             break;
     }
 
-    if (new_state != state) {
-        LogMsg("state transition %s -> %s, beacon: %d", state_str[state], state_str[new_state], beacon_on);
-        state = new_state;
+    if (new_state != state_) {
+        LogMsg("state transition %s -> %s, beacon: %d", state_str[state_], state_str[new_state], beacon_on);
+        state_ = new_state;
         timestamp = now;
         return -1;  // see you on next frame
     }
 
-    if (state > ACTIVE) {
+    if (state_ > ACTIVE) {
         // xform drefs into required constraints for the OBJs
         if (track == 0 || track == 1) {
             distance = 0;
@@ -729,7 +723,7 @@ Airport::StateMachine()
         if (now > update_dgs_log_ts + 2.0) {
             update_dgs_log_ts = now;
             LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   active_stand_->name().c_str(), state_str[state], status, track, lr, distance, azimuth);
+                   active_stand_->name().c_str(), state_str[state_], status, track, lr, distance, azimuth);
         }
 
         float drefs[DGS_DR_NUM];
@@ -739,7 +733,7 @@ Airport::StateMachine()
             dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dlist_dr);
             if (dgs_inst_ref == nullptr) {
                 LogMsg("error creating instance");
-                state = DISABLED;
+                error_disabled = true;
                 return 0.0;
             }
         }
@@ -750,7 +744,7 @@ Airport::StateMachine()
         drefs[DGS_DR_AZIMUTH] = azimuth;
         drefs[DGS_DR_LR] = lr;
 
-        if (state == TRACK) {
+        if (state_ == TRACK) {
             for (int i = 0; i < 4; i++)
                 drefs[DGS_DR_ICAO_0 + i] = icao[i];
 
@@ -790,7 +784,7 @@ flight_loop_cb(float inElapsedSinceLastCall,
 
         if (on_ground) {
             if (operation_mode == MODE_AUTO)
-                SetActive();
+                Activate();
         } else {
             // transition to airborne
             arpt = nullptr;
@@ -801,7 +795,7 @@ flight_loop_cb(float inElapsedSinceLastCall,
         }
     }
 
-    if (state >= ACTIVE)
+    if (arpt && arpt->state() >= Airport::ACTIVE)
         loop_delay = arpt->StateMachine();
 
     return loop_delay;
@@ -820,8 +814,9 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
         update_ui(1);
     } else if (cmdr == activate_cmdr) {
         LogMsg("cmd manually_activate");
-        SetActive();
-    } else if (cmdr == move_dgs_closer_cmdr && state >= ENGAGED && dgs_stand_dist > 12.0) {
+        Activate();
+    } else if (cmdr == move_dgs_closer_cmdr
+               && arpt && arpt->state() >= Airport::ENGAGED && dgs_stand_dist > 12.0) {
         dgs_stand_dist -= 2.0;
         LogMsg("dgs_stand_dist reduced to %0.1f", dgs_stand_dist);
         arpt->SetDgsPos();
@@ -986,7 +981,8 @@ XPluginStop(void)
 PLUGIN_API int
 XPluginEnable(void)
 {
-    state = INACTIVE;
+    if (error_disabled)
+        return 0;
     return 1;
 }
 
@@ -994,12 +990,14 @@ PLUGIN_API void
 XPluginDisable(void)
 {
     arpt = nullptr;
-    state = DISABLED;
 }
 
 PLUGIN_API void
 XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *in_param)
 {
+    if (error_disabled)
+        return;
+
     // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         char acf_icao[41];
