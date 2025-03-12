@@ -34,6 +34,7 @@
 
 #include "XPLMDataAccess.h"
 #include "XPLMUtilities.h"
+#include "XPLMInstance.h"
 
 static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
@@ -83,14 +84,16 @@ class AptAirport {
 class Stand {
 	const AptStand& as_;
 
-  //protected:
-  public:
-    Stand(Stand&&) = default;
-    Stand& operator=(Stand&&) = delete;
+  protected:
+    friend class Airport;
 
     double x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
-    float dgs_pos_x_, dgs_pos_y_, dgs_pos_z_;
+    XPLMDrawInfo_t drawinfo_;
+
+  public:
+    Stand(Stand&&) = default;
+    Stand& operator=(Stand&&) = delete;
 
     Stand(const AptStand& as, float elevation);
     const std::string& name() const { return as_.name; };

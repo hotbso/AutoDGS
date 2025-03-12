@@ -37,11 +37,10 @@
 
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
-#include "XPLMGraphics.h"
-#include "XPLMInstance.h"
 #include "XPLMMenus.h"
 #include "XPLMNavigation.h"
 #include "XPLMPlanes.h"
+#include "XPLMGraphics.h"
 
 // Constants
 static const float F2M=0.3048;	// 1 ft [m]
@@ -151,6 +150,10 @@ Stand::Stand(const AptStand& as, float elevation) : as_(as)
     // TODO: terrain probe
     sin_hdgt_ = sinf(kD2R * as_.hdgt);
     cos_hdgt_ = cosf(kD2R * as_.hdgt);
+
+    drawinfo_.structSize = sizeof(drawinfo_);
+    drawinfo_.heading = as_.hdgt;
+    drawinfo_.pitch = drawinfo_.roll = 0.0;
 }
 
 // move dgs some distance away
@@ -187,17 +190,19 @@ Stand::SetDgsPos(void)
     }
 
     // xform (0, -dgs_stand_dist) into global frame
-    dgs_pos_x_ = x_ + -sin_hdgt_ * (-dgs_stand_dist);
-    dgs_pos_z_ = z_ +  cos_hdgt_ * (-dgs_stand_dist);
+    drawinfo_.x = x_ + -sin_hdgt_ * (-dgs_stand_dist);
+    drawinfo_.z = z_ +  cos_hdgt_ * (-dgs_stand_dist);
 
     if (xplm_ProbeHitTerrain
-        != XPLMProbeTerrainXYZ(probe_ref, dgs_pos_x_, y_, dgs_pos_z_, &probeinfo)) {
+        != XPLMProbeTerrainXYZ(probe_ref, drawinfo_.x, y_, drawinfo_.z, &probeinfo)) {
         LogMsg("XPLMProbeTerrainXYZ failed");
         arpt->ResetState(ACTIVE);
         return;
     }
 
-    dgs_pos_y_ = probeinfo.locationY;
+    drawinfo_.x = probeinfo.locationX;
+    drawinfo_.y = probeinfo.locationY;
+    drawinfo_.z = probeinfo.locationZ;
 }
 
 Airport::Airport(const AptAirport* apt_airport)
@@ -727,16 +732,8 @@ Airport::StateMachine()
                    active_stand_->name().c_str(), state_str[state], status, track, lr, distance, azimuth);
         }
 
-        XPLMDrawInfo_t drawinfo;
         float drefs[DGS_DR_NUM];
         memset(drefs, 0, sizeof(drefs));
-
-        drawinfo.structSize = sizeof(drawinfo);
-        drawinfo.x = active_stand_->dgs_pos_x_;
-        drawinfo.y = active_stand_->dgs_pos_y_;
-        drawinfo.z = active_stand_->dgs_pos_z_;
-        drawinfo.heading = active_stand_->hdgt();
-        drawinfo.pitch = drawinfo.roll = 0.0;
 
         if (dgs_inst_ref == nullptr) {
             dgs_inst_ref = XPLMCreateInstance(dgs_obj[dgs_type], dgs_dlist_dr);
@@ -764,7 +761,7 @@ Airport::StateMachine()
         static const float min_brightness = 0.025;   // relativ to 1
         float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
         drefs[DGS_DR_BRIGHTNESS] = brightness;
-        XPLMInstanceSetPosition(dgs_inst_ref, &drawinfo, drefs);
+        XPLMInstanceSetPosition(dgs_inst_ref, &active_stand_->drawinfo_, drefs);
     }
 
     return loop_delay;

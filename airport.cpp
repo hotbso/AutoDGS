@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <chrono>
+#include <unordered_map>
 
 #include "autodgs.h"
 #include "flat_earth_math.h"
