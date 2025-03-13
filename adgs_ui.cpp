@@ -121,21 +121,21 @@ ui_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
         if (arpt)
-            arpt->SetDgsTypeAuto();
+            arpt->SetDgsType(kAutomatic);
         return 1;
     }
 
     if ((widget_id == marshaller_btn) && (msg == xpMsg_ButtonStateChanged)) {
         XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-        SetDgsType(0);
+        SetDgsType(kMarshaller);
         return 1;
     }
 
     if ((widget_id == vdgs_btn) && (msg == xpMsg_ButtonStateChanged)) {
         XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
-        SetDgsType(1);
+        SetDgsType(kVDGS);
         return 1;
     }
 
@@ -158,8 +158,8 @@ update_ui(int only_if_visible)
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
     } else {
         XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
-        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, !dgs_type);
-        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, dgs_type);
+        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, (dgs_type == kMarshaller ? 1 : 0));
+        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, (dgs_type == kVDGS ? 1 : 0));
     }
 
     if (arpt == nullptr) {

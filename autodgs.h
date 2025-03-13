@@ -40,6 +40,10 @@ static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
 static constexpr float kJw2Stand = 18.0;            // m, max dist jw to stand
 
+static constexpr int kMarshaller = 0;
+static constexpr int kVDGS = 1;
+static constexpr int kAutomatic = 2;
+
 typedef enum
 {
     MODE_AUTO,
@@ -81,13 +85,18 @@ class Stand {
 
     double x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
+    int dgs_type_;
     XPLMDrawInfo_t drawinfo_;
+    XPLMInstanceRef vdgs_inst_ref_;
+    float dgs_dist_;
 
   public:
     Stand(Stand&&) = default;
     Stand& operator=(Stand&&) = delete;
 
     Stand(const AptStand& as, float elevation);
+    ~Stand();
+
     const std::string& name() const { return as_.name; };
     const char *cname() const { return as_.name.c_str(); };
     bool has_jw() const { return as_.has_jw; }
@@ -95,7 +104,11 @@ class Stand {
     double lat() const { return as_.lat; }
     double lon() const { return as_.lon; }
 
-    void SetDgsPos(void);
+    void SetDgsType(int dgs_type);
+    void SetDgsDist(void);
+    void SetState(int status, int track, int lr, float azimuth, float distance,
+                  bool state_track, float brightness);
+    void Deactivate();
 };
 
 // AptAirport augmented
@@ -131,8 +144,9 @@ class Airport {
     const std::string& name() const { return apt_airport_->icao_; }
     state_t state() const { return state_; }
     void ResetState(state_t new_state);
-    void SetDgsPos() { if (active_stand_) active_stand_->SetDgsPos(); } ;
-    void SetDgsTypeAuto();
+    void SetDgsPos() { if (active_stand_) active_stand_->SetDgsDist(); } ;
+    void SetDgsType(int dgs_type) {if (active_stand_) active_stand_->SetDgsType(dgs_type); }
+    void CycleDgsType();
     float StateMachine();
 };
 
