@@ -216,6 +216,9 @@ Airport::Airport(const AptAirport* apt_airport)
 
     state_ = INACTIVE;
     active_stand_ = nullptr;
+
+    timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
+    nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
 }
 
 Airport::~Airport()
@@ -500,18 +503,13 @@ Airport::FindNearestStand()
 float
 Airport::StateMachine()
 {
-    // values that must survive a single run of the state_machine
-    static int status, track, lr;
-    static float timestamp, distance, sin_wave_prev;
-    static float nearest_stand_ts, update_dgs_log_ts;
-
     if (error_disabled)
         return 0.0f;
 
     // throttle costly search
-    if (now > nearest_stand_ts + 2.0) {
+    if (now > nearest_stand_ts_ + 2.0) {
         FindNearestStand();
-        nearest_stand_ts = now;
+        nearest_stand_ts_ = now;
     }
 
     if (active_stand_ == nullptr) {
@@ -519,9 +517,9 @@ Airport::StateMachine()
         return 2.0;
     }
 
-    int lr_prev = lr;
-    int track_prev = track;
-    float distance_prev = distance;
+    int lr_prev = lr_;
+    int track_prev = track_;
+    float distance_prev = distance_;
 
     float loop_delay = 0.2;
     state_t new_state = state_;
@@ -565,19 +563,19 @@ Airport::StateMachine()
     int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
     int beacon_on = CheckBeacon();
 
-    status = lr = track = 0;
-    distance = nw_z - GOOD_Z;
+    status_ = lr_ = track_ = 0;
+    distance_ = nw_z - GOOD_Z;
 
     // catch the phase ~180° point -> the Marshaller's arm is straight
     float sin_wave = XPLMGetDataf(sin_wave_dr);
-    int phase180 = (sin_wave_prev > 0.0) && (sin_wave <= 0.0);
-    sin_wave_prev = sin_wave;
+    int phase180 = (sin_wave_prev_ > 0.0) && (sin_wave <= 0.0);
+    sin_wave_prev_ = sin_wave;
 
     // set drefs according to *current* state
     switch (state_) {
         case ENGAGED:
             if (beacon_on) {
-                if ((distance <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
+                if ((distance_ <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
                     new_state = TRACK;
             } else { // not beacon_on
                 new_state = DONE;
@@ -600,23 +598,23 @@ Airport::StateMachine()
                     break;
                 }
 
-                if ((distance > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
+                if ((distance_ > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
                     new_state = ENGAGED;    // moving away from current gate
                     break;
                 }
 
-                status = 1;	// plane id
-                if (distance > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
-                    track=1;	// lead-in only
+                status_ = 1;	// plane id
+                if (distance_ > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
+                    track_=1;	// lead-in only
                     break;
                 }
 
-                // compute distance and guidance commands
+                // compute distance_ and guidance commands
                 azimuth = std::clamp(azimuth, -AZI_A, AZI_A);
                 float req_hdgt = -3.5 * azimuth;        // to track back to centerline
                 float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
 
-                if (now > update_dgs_log_ts + 2.0)
+                if (now > update_dgs_log_ts_ + 2.0)
                     LogMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
                            "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
                            azimuth, mw_x, mw_z, nw_x, nw_z,
@@ -624,27 +622,27 @@ Airport::StateMachine()
                            local_x, local_hdgt, d_hdgt);
 
                 if (d_hdgt < -1.5)
-                    lr = 2;
+                    lr_ = 2;
                 else if (d_hdgt > 1.5)
-                    lr = 1;
+                    lr_ = 1;
 
                 // xform azimuth to values required ob OBJ
                 azimuth = std::clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
                 azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-                if (distance <= REM_Z/2) {
-                    track = 3;
+                if (distance_ <= REM_Z/2) {
+                    track_ = 3;
                     loop_delay = 0.03;
                 } else // azimuth only
-                    track = 2;
+                    track_ = 2;
 
                 if (! phase180) { // no wild oscillation
-                    lr = lr_prev;
+                    lr_ = lr_prev;
 
                     // sync transition with Marshaller's arm movement
-                    if (dgs_type == 0 && track == 3 && track_prev == 2) {
-                        track = track_prev;
-                        distance = distance_prev;
+                    if (dgs_type == 0 && track_ == 3 && track_prev == 2) {
+                        track_ = track_prev;
+                        distance_ = distance_prev;
                     }
                 }
             }
@@ -652,7 +650,7 @@ Airport::StateMachine()
 
         case GOOD:  {
                 // @stop position
-                status = 2; lr = 3;
+                status_ = 2; lr_ = 3;
 
                 int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
                 if (!locgood)
@@ -664,7 +662,7 @@ Airport::StateMachine()
 
         case BAD:
             if (!beacon_on
-                && (now > timestamp + 5.0)) {
+                && (now > timestamp_ + 5.0)) {
                 ResetState(INACTIVE);
                 return loop_delay;
             }
@@ -673,14 +671,14 @@ Airport::StateMachine()
                 new_state = TRACK;
             else {
                 // Too far
-                status = 4;
-                lr = 3;
+                status_ = 4;
+                lr_ = 3;
             }
             break;
 
         case PARKED:
-            status = 3;
-            lr = 0;
+            status_ = 3;
+            lr_ = 0;
             // wait for beacon off
             if (! beacon_on) {
                 new_state = DONE;
@@ -690,7 +688,7 @@ Airport::StateMachine()
             break;
 
         case DONE:
-            if (now > timestamp + 5.0) {
+            if (now > timestamp_ + 5.0) {
                 ResetState(INACTIVE);
                 return loop_delay;
             }
@@ -703,27 +701,27 @@ Airport::StateMachine()
     if (new_state != state_) {
         LogMsg("state transition %s -> %s, beacon: %d", state_str[state_], state_str[new_state], beacon_on);
         state_ = new_state;
-        timestamp = now;
+        timestamp_ = now;
         return -1;  // see you on next frame
     }
 
     if (state_ > ACTIVE) {
         // xform drefs into required constraints for the OBJs
-        if (track == 0 || track == 1) {
-            distance = 0;
+        if (track_ == 0 || track_ == 1) {
+            distance_ = 0;
             azimuth = 0.0;
         }
 
-        distance = std::clamp(distance, -GOOD_Z, REM_Z);
+        distance_ = std::clamp(distance_, -GOOD_Z, REM_Z);
 
         // is not necessary for Marshaller + SafedockT2
-        // distance=((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
+        // distance_=((float)((int)((distance_)*2))) / 2;    // multiple of 0.5m
 
         // don't flood the log
-        if (now > update_dgs_log_ts + 2.0) {
-            update_dgs_log_ts = now;
+        if (now > update_dgs_log_ts_ + 2.0) {
+            update_dgs_log_ts_ = now;
             LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   active_stand_->name().c_str(), state_str[state_], status, track, lr, distance, azimuth);
+                   active_stand_->name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
         }
 
         float drefs[DGS_DR_NUM];
@@ -738,11 +736,11 @@ Airport::StateMachine()
             }
         }
 
-        drefs[DGS_DR_STATUS] = status;
-        drefs[DGS_DR_TRACK] = track;
-        drefs[DGS_DR_DISTANCE] = distance;
+        drefs[DGS_DR_STATUS] = status_;
+        drefs[DGS_DR_TRACK] = track_;
+        drefs[DGS_DR_DISTANCE] = distance_;
         drefs[DGS_DR_AZIMUTH] = azimuth;
-        drefs[DGS_DR_LR] = lr;
+        drefs[DGS_DR_LR] = lr_;
 
         if (state_ == TRACK) {
             for (int i = 0; i < 4; i++)

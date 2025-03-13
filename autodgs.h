@@ -101,8 +101,7 @@ class Stand {
 // AptAirport augmented
 class Airport {
   public:
-    typedef enum
-    {
+    typedef enum {
         INACTIVE = 0, ACTIVE, ENGAGED, TRACK, GOOD, BAD, PARKED, DONE
     } state_t;
 
@@ -113,6 +112,11 @@ class Airport {
     const AptAirport *apt_airport_;
     std::vector<Stand> stands_;
     Stand *active_stand_;
+
+    // values that must survive a single run of the state_machine
+    int status_, track_, lr_;
+    float timestamp_, distance_, sin_wave_prev_;
+    float nearest_stand_ts_, update_dgs_log_ts_;
 
     void FindNearestStand();
 
