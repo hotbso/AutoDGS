@@ -29,7 +29,9 @@
 #include <cmath>
 #include <cassert>
 #include <fstream>
+#include <map>
 #include <algorithm>
+#include <filesystem>
 
 #include "autodgs.h"
 #include "airport.h"
@@ -68,13 +70,14 @@ class Marshaller {
 static float marshaller_dist_default = 25.0;
 static bool marshaller_dist_default_set;        // according to pilot's eye AGL
 static float vdgs_dist_default = 25.0;
-static float dgs_dist_adjust;                   // for moving closer
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
 // Globals
 std::string xp_dir;
-std::string base_dir; // base directory of AutoDGS
+std::string base_dir;       // base directory of AutoDGS
+std::string sys_cfg_dir;    // <base_dir>/cfg
+std::string user_cfg_dir;   // <xp_dir>/Output/AutoDGS
 
 opmode_t operation_mode = MODE_AUTO;
 static bool error_disabled;
@@ -177,9 +180,10 @@ Stand::Stand(int idx, const AptStand& as, float elevation) : as_(as), idx_(idx)
     cos_hdgt_ = cosf(kD2R * as_.hdgt);
     drawinfo_.structSize = sizeof(drawinfo_);
     drawinfo_.heading = as_.hdgt;
-    drawinfo_.pitch = drawinfo_.roll = 0.0;
+    drawinfo_.pitch = drawinfo_.roll = 0.0f;
     vdgs_inst_ref_ = nullptr;
     dgs_dist_ = vdgs_dist_default;
+    dist_adjust_ = 0.0f;
     dgs_type_ = kMarshaller;
     SetDgsType(kAutomatic);
     LogMsg("Stand '%s', type: %d constructed", cname(), dgs_type_);
@@ -215,6 +219,13 @@ Stand::SetDgsType(int dgs_type)
         vdgs_inst_ref_ = XPLMCreateInstance(dgs_obj[kVDGS], dgs_dlist_dr);
         Deactivate();
     }
+}
+
+void
+Stand::CycleDgsType()
+{
+    int new_dgs_type = (dgs_type_ == kMarshaller ? kVDGS : kMarshaller);
+    SetDgsType(new_dgs_type);
 }
 
 void
@@ -256,6 +267,7 @@ void
 Stand::SetDgsDist(float adjust)
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
+    dist_adjust_ = adjust;
 
     if (dgs_type_ == kVDGS)
         dgs_dist_ = vdgs_dist_default + adjust;
@@ -322,6 +334,7 @@ Airport::Airport(const AptAirport* apt_airport)
     state_ = INACTIVE;
     active_stand_ = nullptr;
     selected_stand_ = -1;
+    user_cfg_changed_ = false;
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
     nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
@@ -329,7 +342,38 @@ Airport::Airport(const AptAirport* apt_airport)
 
 Airport::~Airport()
 {
+    FlushUserCfg();
     LogMsg("Airport '%s' destructed", name().c_str());
+}
+
+void
+Airport::FlushUserCfg()
+{
+    if (!user_cfg_changed_)
+        return;
+
+    std::string fn = user_cfg_dir + name() + ".cfg";
+    std::ofstream f(fn);
+    if (!f.is_open()) {
+        LogMsg("Can't create '%s'", fn.c_str());
+        return;
+    }
+
+    // The apt.dat spec claims that the stand names must be unique but they are not.
+    // Hence we build an ordered map first and write that out.
+    // Last entry wins.
+    std::map<std::string, std::string> cfg;
+    for (auto const & s : stands_) {
+        char line[200];
+        snprintf(line, sizeof(line), "%c, %5.1f, %s\n", (s.dgs_type_ == kMarshaller ? 'M' : 'V'),
+                 s.dist_adjust_, s.name().c_str());
+        cfg[s.name()] = line;
+    }
+
+    for (auto const & kv : cfg)
+        f << kv.second;
+
+    LogMsg("cfg written to '%s'", fn.c_str());
 }
 
 std::unique_ptr<Airport>
@@ -342,6 +386,16 @@ Airport::LoadAirport(const std::string& icao)
     return std::make_unique<Airport>(arpt);
 }
 
+std::tuple<int, const std::string>
+Airport::GetStand(int idx) const
+{
+    assert(0 <= idx && idx < (int)stands_.size());
+    const Stand& s = stands_[idx];
+    std::string name{s.name()};
+    int dgs_type = s.dgs_type_;
+    return std::make_tuple(dgs_type, name);
+}
+
 void
 Airport::SetSelectedStand(int selected_stand)
 {
@@ -352,6 +406,7 @@ Airport::SetSelectedStand(int selected_stand)
 
     if (arpt->state() > Airport::ACTIVE)
         arpt->ResetState(Airport::ACTIVE);
+    user_cfg_changed_ = true;
 }
 
 void
@@ -361,6 +416,8 @@ Airport::SetDgsDistAdjust(float adjust)
         stands_[selected_stand_].SetDgsDist(adjust);
     else if (active_stand_)
         active_stand_->SetDgsDist(adjust);
+
+    user_cfg_changed_ = true;
 }
 
 void
@@ -370,6 +427,19 @@ Airport::SetDgsType(int dgs_type)
         stands_[selected_stand_].SetDgsType(dgs_type);
     else if (active_stand_)
         active_stand_->SetDgsType(dgs_type);
+
+    user_cfg_changed_ = true;
+}
+
+int
+Airport::GetDgsType() const
+{
+    if (selected_stand_ >= 0)
+        return stands_[selected_stand_].dgs_type_;
+    else if (active_stand_)
+        return active_stand_->dgs_type_;
+
+    return kMarshaller;
 }
 
 void
@@ -383,8 +453,10 @@ Airport::ResetState(state_t new_state)
         active_stand_->Deactivate();
     active_stand_ = nullptr;
     marshaller = nullptr;
-    if (new_state == INACTIVE)
+    if (new_state == INACTIVE) {
         selected_stand_ = -1;
+        FlushUserCfg();
+    }
 
     marshaller_dist_default_set = false;
     UpdateUI();
@@ -393,9 +465,12 @@ Airport::ResetState(state_t new_state)
 void
 Airport::CycleDgsType()
 {
-    if (active_stand_ == nullptr)
-        return;
-    active_stand_->SetDgsType(active_stand_->dgs_type_ == kMarshaller ? kVDGS : kMarshaller);
+    if (selected_stand_ >= 0)
+        stands_[selected_stand_].CycleDgsType();
+    else if (active_stand_)
+        active_stand_->CycleDgsType();
+
+    user_cfg_changed_ = true;
 }
 
 void
@@ -874,6 +949,8 @@ flight_loop_cb(float inElapsedSinceLastCall,
 static int
 CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 {
+    static float dgs_dist_adjust;                   // for moving closer
+
     if (xplm_CommandBegin != phase)
         return 0;
 
@@ -950,6 +1027,9 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
 
     // set plugin's base dir
     base_dir = xp_dir + "Resources/plugins/AutoDGS/";
+    sys_cfg_dir = base_dir + "cfg/";
+    user_cfg_dir = xp_dir + "Output/AutoDGS/";
+    std::filesystem::create_directories(user_cfg_dir);
 
     if (!AptAirport::CollectAirports(xp_dir)) {
         LogMsg("init failure: Can't load airports");

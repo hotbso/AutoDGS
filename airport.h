@@ -24,6 +24,7 @@
 #define _AIRPORT_H_
 
 #include <memory>
+#include <tuple>
 
 // AptStand augmented
 class Stand {
@@ -38,7 +39,7 @@ class Stand {
     int dgs_type_;
     XPLMDrawInfo_t drawinfo_;
     XPLMInstanceRef vdgs_inst_ref_;
-    float dgs_dist_;
+    float dist_adjust_, dgs_dist_;
 
   public:
     Stand(Stand&&) = default;
@@ -48,6 +49,7 @@ class Stand {
     ~Stand();
 
     void SetDgsType(int dgs_type);
+    void CycleDgsType();
     void SetDgsDist(float adjust = 0.0f);
     void SetState(int status, int track, int lr, float azimuth, float distance,
                   bool state_track, float brightness);
@@ -79,6 +81,7 @@ class Airport {
     std::vector<Stand> stands_;
     Stand *active_stand_;
     int selected_stand_;
+    bool user_cfg_changed_;
 
     // values that must survive a single run of the state_machine
     int status_, track_, lr_;
@@ -86,8 +89,7 @@ class Airport {
     float nearest_stand_ts_, update_dgs_log_ts_;
 
     void FindNearestStand();
-
-    friend void UpdateUI(bool only_if_visible); // TODO
+    void FlushUserCfg();
 
   public:
     static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
@@ -96,13 +98,16 @@ class Airport {
     Airport(const AptAirport*);
     ~Airport();
 
-    void ResetState(state_t new_state);
+    int nstands() const { return stands_.size(); }
+    std::tuple<int, const std::string> GetStand(int idx) const;  // dgs_type, name
 
+    void ResetState(state_t new_state);
     void SetSelectedStand(int selected_stand);
 
     // these act onto the selected of active stand
     void SetDgsDistAdjust(float adjust);
     void SetDgsType(int dgs_type);
+    int GetDgsType() const;
     void CycleDgsType();
 
     float StateMachine();

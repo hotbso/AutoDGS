@@ -41,7 +41,7 @@ typedef struct _widget_ctx
 static widget_ctx_t ui_widget_ctx;
 
 static XPWidgetID ui_widget, list_box, selected_stand,
-    dgs_auto_btn, marshaller_btn, vdgs_btn;
+    marshaller_btn, vdgs_btn;
 
 // current status of ui
 static std::string ui_arpt_icao;
@@ -114,42 +114,58 @@ UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t 
         ui_selected_stand--;            // 0 is "Automatic"
 
         char ss_name[100];
-		XPGetWidgetDescriptor(list_box, ss_name, sizeof(ss_name));
-        std::string txt{ss_name};
+        ss_name[99] = '\0';
+		XPGetWidgetDescriptor(list_box, ss_name, sizeof(ss_name) - 1);
+        std::string txt{ss_name + 2};   // skip type, blank
         txt += " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
 		XPSetWidgetDescriptor(selected_stand, txt.c_str());
         LogMsg("selected ramp is '%s'", ss_name);
-        if (arpt)
+        if (arpt) {
             arpt->SetSelectedStand(ui_selected_stand);
+            int dgs_type = arpt->GetDgsType();
+            XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+            XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
+            if (dgs_type == kMarshaller)
+                XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
+            else
+                XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 1);
+        }
+
         return 1;
     }
+
+    if (msg != xpMsg_ButtonStateChanged)
+        return 0;
+
+    // From here on the radio buttons only
 
     // radio buttons get this message only when they are clicked to "selected"
-    if ((widget_id == dgs_auto_btn) && (msg == xpMsg_ButtonStateChanged)) {
-        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+    int dgs_type = -1;
+    if (widget_id == marshaller_btn) {
+        dgs_type = kMarshaller;
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-        if (arpt)
-            arpt->SetDgsType(kAutomatic);
-        return 1;
-    }
-
-    if ((widget_id == marshaller_btn) && (msg == xpMsg_ButtonStateChanged)) {
-        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
-        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-        if (arpt)
-            arpt->SetDgsType(kMarshaller);
-        return 1;
-    }
-
-    if ((widget_id == vdgs_btn) && (msg == xpMsg_ButtonStateChanged)) {
-        XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
+    } else if (widget_id == vdgs_btn) {
+        dgs_type = kVDGS;
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
-        if (arpt)
-            arpt->SetDgsType(kVDGS);
-        return 1;
     }
 
-    return 0;
+    assert(dgs_type != -1);
+
+    if (arpt) {
+        arpt->SetDgsType(dgs_type);
+        int selected_stand = XPGetWidgetProperty(list_box, xpProperty_ListBoxCurrentItem, NULL);
+        selected_stand--;            // 0 is "Automatic"
+        if (selected_stand >= 0) {
+            XPSetWidgetProperty(list_box, xpProperty_ListBoxDeleteItem, 1);
+            auto [dgs_type, name] = arpt->GetStand(selected_stand);
+            char entry[100];
+            snprintf(entry, sizeof(entry), "%c %s", (dgs_type == kMarshaller ? 'M' : 'V'), name.c_str());
+            XPSetWidgetDescriptor(list_box, entry);
+            XPSetWidgetProperty(list_box, xpProperty_ListBoxInsertItem, 1);
+        }
+    }
+
+    return 1;
 }
 
 void
@@ -178,8 +194,12 @@ UpdateUI(bool only_if_visible)
         XPSetWidgetDescriptor(list_box, "Automatic");
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
-        for (auto const & stand : arpt->stands_) {
-            XPSetWidgetDescriptor(list_box, stand.name().c_str());
+        int n = arpt->nstands();
+        for (int i = 0; i < n; i++) {
+            auto [dgs_type, name] = arpt->GetStand(i);
+            char entry[100];
+            snprintf(entry, sizeof(entry), "%c %s", (dgs_type == kMarshaller ? 'M' : 'V'), name.c_str());
+            XPSetWidgetDescriptor(list_box, entry);
             XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItem, 1);
         }
     }
@@ -189,22 +209,17 @@ UpdateUI(bool only_if_visible)
         XPSetWidgetDescriptor(selected_stand, "inactive");
     else {
         if (ui_selected_stand == -1) {
-            XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 1);
-            XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
+            XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
             XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
+            std::string txt = "Automatic @ " + ui_arpt_icao;
+            XPSetWidgetDescriptor(selected_stand, txt.c_str());
         } else {
-            int dgs_type = arpt->stands_[ui_selected_stand].dgs_type();
-            XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 0);
+            auto [dgs_type, name] = arpt->GetStand(ui_selected_stand);
             XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, (dgs_type == kMarshaller ? 1 : 0));
             XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, (dgs_type == kVDGS ? 1 : 0));
+            std::string txt = name + " @ " + ui_arpt_icao;
+            XPSetWidgetDescriptor(selected_stand, txt.c_str());
         }
-        std::string txt;
-        if (ui_selected_stand == -1)
-            txt = "Automatic @ " + ui_arpt_icao;
-        else
-            txt = arpt->stands_[ui_selected_stand].name() + " @ " + ui_arpt_icao;
-
-        XPSetWidgetDescriptor(selected_stand, txt.c_str());
     }
 
     LogMsg("update_ui finished");
@@ -242,22 +257,13 @@ CreateUI()
 
     top -= 20;
     XPCreateWidget(left, top, left + 50, top - 20,
-                                 1, "Automatic", 0, ui_widget, xpWidgetClass_Caption);
-    dgs_auto_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
-                                    1, "", 0, ui_widget, xpWidgetClass_Button);
-    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonType, xpRadioButton);
-    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
-    XPAddWidgetCallback(dgs_auto_btn, UIWidgetCb);
-    XPSetWidgetProperty(dgs_auto_btn, xpProperty_ButtonState, 1);
-
-    top -= 20;
-    XPCreateWidget(left, top, left + 50, top - 20,
                                  1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
     marshaller_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
                                     1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
     XPAddWidgetCallback(marshaller_btn, UIWidgetCb);
+    XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
 
     top -= 20;
     XPCreateWidget(left, top, left + 50, top - 20,

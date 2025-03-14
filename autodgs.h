@@ -78,6 +78,8 @@ class AptAirport {
 
 extern std::string xp_dir;
 extern std::string base_dir; // base directory of AutoDGS
+extern std::string sys_cfg_dir;
+extern std::string user_cfg_dir;
 
 extern XPLMDataRef vr_enabled_dr;
 
