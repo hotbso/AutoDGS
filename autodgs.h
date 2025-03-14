@@ -82,6 +82,7 @@ class Stand {
 
   protected:
     friend class Airport;
+    int idx_;               // index into stands_ vector
 
     double x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
@@ -94,21 +95,23 @@ class Stand {
     Stand(Stand&&) = default;
     Stand& operator=(Stand&&) = delete;
 
-    Stand(const AptStand& as, float elevation);
+    Stand(int idx, const AptStand& as, float elevation);
     ~Stand();
-
-    const std::string& name() const { return as_.name; };
-    const char *cname() const { return as_.name.c_str(); };
-    bool has_jw() const { return as_.has_jw; }
-    float hdgt() const { return as_.hdgt; }
-    double lat() const { return as_.lat; }
-    double lon() const { return as_.lon; }
 
     void SetDgsType(int dgs_type);
     void SetDgsDist(void);
     void SetState(int status, int track, int lr, float azimuth, float distance,
                   bool state_track, float brightness);
     void Deactivate();
+
+    // accessors
+    const std::string& name() const { return as_.name; };
+    const char *cname() const { return as_.name.c_str(); };
+    bool has_jw() const { return as_.has_jw; }
+    float hdgt() const { return as_.hdgt; }
+    double lat() const { return as_.lat; }
+    double lon() const { return as_.lon; }
+    int dgs_type() const { return dgs_type_; }
 };
 
 // AptAirport augmented
@@ -125,6 +128,7 @@ class Airport {
     const AptAirport *apt_airport_;
     std::vector<Stand> stands_;
     Stand *active_stand_;
+    int selected_stand_;
 
     // values that must survive a single run of the state_machine
     int status_, track_, lr_;
@@ -133,21 +137,25 @@ class Airport {
 
     void FindNearestStand();
 
-    friend void update_ui(int only_if_visible); // TODO
+    friend void UpdateUI(bool only_if_visible); // TODO
 
   public:
+    static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
+
     Airport() = delete;
     Airport(const AptAirport*);
     ~Airport();
-    static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
 
-    const std::string& name() const { return apt_airport_->icao_; }
-    state_t state() const { return state_; }
     void ResetState(state_t new_state);
-    void SetDgsPos() { if (active_stand_) active_stand_->SetDgsDist(); } ;
-    void SetDgsType(int dgs_type) {if (active_stand_) active_stand_->SetDgsType(dgs_type); }
+    void SetDgsPos();
+    void SetDgsType(int dgs_type);
+    void SetSelectedStand(int selected_stand);
     void CycleDgsType();
     float StateMachine();
+
+    // accessors
+    const std::string& name() const { return apt_airport_->icao_; }
+    state_t state() const { return state_; }
 };
 
 extern std::string xp_dir;
@@ -155,19 +163,12 @@ extern std::string base_dir; // base directory of AutoDGS
 
 extern std::unique_ptr<Airport> arpt;
 
-extern XPLMCommandRef cycle_dgs_cmdr;
 extern XPLMDataRef vr_enabled_dr;
 
 extern opmode_t operation_mode;
 extern int on_ground;
 
-extern int dgs_type;
-extern bool dgs_type_auto;
-
 extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 extern void create_api_drefs();
-extern void toggle_ui(void);
-extern void update_ui(int only_if_visible);
-
-extern void SetSelectedStand(const std::string& ui_selected_stand);
-extern void SetDgsType(int new_dgs_type);
+extern void ToggleUI(void);
+extern void UpdateUI(bool only_if_visible = true);

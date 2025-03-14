@@ -64,7 +64,7 @@ class Marshaller {
     void SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr, float distance);
 };
 
-// place DGS at this dist from stop position, exported as dataref
+// place DGS at this dist from stop position
 static float marshaller_dist_default = 25.0;
 static float vdgs_dist_default = 25.0;
 static float dgs_stand_dist;
@@ -79,8 +79,8 @@ std::string base_dir; // base directory of AutoDGS
 opmode_t operation_mode = MODE_AUTO;
 static bool error_disabled;
 
-XPLMCommandRef cycle_dgs_cmdr;
-static XPLMCommandRef move_dgs_closer_cmdr, activate_cmdr, toggle_ui_cmdr, toggle_jetway_cmdr;
+static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr,
+    toggle_ui_cmdr, toggle_jetway_cmdr;
 
 // Datarefs
 static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
@@ -91,7 +91,7 @@ static XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr
 XPLMDataRef vr_enabled_dr;
 static XPLMProbeRef probe_ref;
 
-static int icao[4];     // as int for the datatrefs
+static std::string acf_icao;
 
 // Internal state
 static float now;           // current timestamp
@@ -108,10 +108,6 @@ static float pe_y_plane_0;        // pilot eye y to plane's 0 point
 static bool pe_y_plane_0_valid;
 static bool is_helicopter;
 
-static std::string selected_stand;
-
-bool dgs_type_auto = true;
-int dgs_type = 0;
 static XPLMObjectRef dgs_obj[2];
 
 enum _DGS_DREF {
@@ -173,7 +169,7 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
-Stand::Stand(const AptStand& as, float elevation) : as_(as)
+Stand::Stand(int idx, const AptStand& as, float elevation) : as_(as), idx_(idx)
 {
     XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x_, &y_, &z_);
     // TODO: terrain probe
@@ -184,6 +180,7 @@ Stand::Stand(const AptStand& as, float elevation) : as_(as)
     drawinfo_.pitch = drawinfo_.roll = 0.0;
     vdgs_inst_ref_ = nullptr;
     dgs_dist_ = vdgs_dist_default;
+    dgs_type_ = kMarshaller;
     SetDgsType(kAutomatic);
     LogMsg("Stand '%s', type: %d constructed", cname(), dgs_type_);
 }
@@ -235,7 +232,7 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance,
 
     if (state_track)
         for (int i = 0; i < 4; i++)
-            drefs[DGS_DR_ICAO_0 + i] = icao[i];
+            drefs[DGS_DR_ICAO_0 + i] = (int)acf_icao[i];
 
     drefs[DGS_DR_BRIGHTNESS] = brightness;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
@@ -319,11 +316,13 @@ Airport::Airport(const AptAirport* apt_airport)
     apt_airport_ = apt_airport;
     stands_.reserve(apt_airport_->stands_.size());
     float arpt_elevation = XPLMGetDataf(plane_elevation_dr);    // best guess
+    int idx = 0;
     for (auto const & as : apt_airport->stands_)
-        stands_.emplace_back(as, arpt_elevation);
+        stands_.emplace_back(idx++, as, arpt_elevation);
 
     state_ = INACTIVE;
     active_stand_ = nullptr;
+    selected_stand_ = -1;
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
     nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
@@ -345,6 +344,36 @@ Airport::LoadAirport(const std::string& icao)
 }
 
 void
+Airport::SetSelectedStand(int selected_stand)
+{
+    assert(-1 <= selected_stand && selected_stand < (int)stands_.size());
+    if (selected_stand_ == selected_stand)
+        return;
+    selected_stand_ = selected_stand;
+
+    if (arpt->state() > Airport::ACTIVE)
+        arpt->ResetState(Airport::ACTIVE);
+}
+
+void
+Airport::SetDgsPos()
+{
+    if (selected_stand_ >= 0)
+        stands_[selected_stand_].SetDgsDist();
+    else if (active_stand_)
+        active_stand_->SetDgsDist();
+}
+
+void
+Airport::SetDgsType(int dgs_type)
+{
+    if (selected_stand_ >= 0)
+        stands_[selected_stand_].SetDgsType(dgs_type);
+    else if (active_stand_)
+        active_stand_->SetDgsType(dgs_type);
+}
+
+void
 Airport::ResetState(state_t new_state)
 {
     if (state_ != new_state)
@@ -356,11 +385,10 @@ Airport::ResetState(state_t new_state)
     active_stand_ = nullptr;
     marshaller = nullptr;
     if (new_state == INACTIVE)
-        selected_stand.clear();
+        selected_stand_ = -1;
     dgs_stand_dist = marshaller_dist_default;
     dgs_stand_dist_set = false;
-    dgs_type_auto = true;
-    update_ui(1);
+    UpdateUI();
 }
 
 void
@@ -375,7 +403,7 @@ void
 Airport::FindNearestStand()
 {
     // check whether we already have an active  selected stand
-    if (active_stand_ && active_stand_->name() == selected_stand)
+    if (active_stand_ && active_stand_->idx_ == selected_stand_)
         return;
 
     double dist = 1.0E10;
@@ -388,16 +416,19 @@ Airport::FindNearestStand()
 
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
-    for (auto & s : stands_) {
-        // heading in local system
-        float local_hdgt = RA(plane_hdgt - s.hdgt());
+    if (selected_stand_ >= 0) {
+        dist = 0.0;
+        min_stand = &stands_[selected_stand_];
+    } else {
+        for (auto & s : stands_) {
+            // heading in local system
+            float local_hdgt = RA(plane_hdgt - s.hdgt());
 
-        if (fabsf(local_hdgt) > 90.0f)
-            continue;   // not looking to stand
+            if (fabsf(local_hdgt) > 90.0f)
+                continue;   // not looking to stand
 
-        // transform into gate local coordinate system
+            // transform into gate local coordinate system
 
-        if (selected_stand.empty()) {
             // xlate + rotate into stand frame
             float dx = plane_x - s.x_;
             float dz = plane_z - s.z_;
@@ -449,11 +480,6 @@ Airport::FindNearestStand()
                 dist = d;
                 min_stand = &s;
             }
-
-        } else if (s.name() == selected_stand) {
-            dist = 0.0;
-            min_stand = &s;
-            break;
         }
     }
 
@@ -626,7 +652,7 @@ Airport::StateMachine()
                     lr_ = lr_prev;
 
                     // sync transition with Marshaller's arm movement
-                    if (dgs_type == 0 && track_ == 3 && track_prev == 2) {
+                    if (active_stand_->dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
                         track_ = track_prev;
                         distance_ = distance_prev;
                     }
@@ -764,7 +790,7 @@ Activate(void)
         return;
     LogMsg("airport activated: %s, new state: ACTIVE", arpt->name().c_str());
     arpt->ResetState(Airport::ACTIVE);
-    update_ui(1);
+    UpdateUI();
 }
 
 static int
@@ -807,28 +833,6 @@ static float
 getdgsfloat(XPLMDataRef inRefcon)
 {
     return -1.0;
-}
-
-// hooks for the ui
-void
-SetSelectedStand(const std::string& ui_selected_stand)
-{
-    assert(arpt != nullptr);
-    LogMsg("SetSelectedStand to '%s'", ui_selected_stand.c_str());
-    if (ui_selected_stand == "Automatic")
-        selected_stand.clear();
-    else
-        selected_stand = ui_selected_stand;
-
-    if (arpt && arpt->state() > Airport::ACTIVE)
-        arpt->ResetState(Airport::ACTIVE);
-}
-
-void
-SetDgsType(int dgs_type)
-{
-    if (arpt)
-        arpt->SetDgsType(dgs_type);
 }
 
 static float
@@ -877,7 +881,7 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
     if (cmdr == cycle_dgs_cmdr) {
         if (arpt)
             arpt->CycleDgsType();
-        update_ui(1);
+        UpdateUI();
     } else if (cmdr == activate_cmdr) {
         LogMsg("cmd manually_activate");
         Activate();
@@ -888,7 +892,7 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
         //arpt->ActiveStandSetDgsDist();
     } else if (cmdr == toggle_ui_cmdr) {
         LogMsg("cmd toggle_ui");
-        toggle_ui();
+        ToggleUI();
     }
 
     return 0;
@@ -1048,6 +1052,7 @@ XPluginEnable(void)
         return 0;
 
     probe_ref = XPLMCreateProbe(xplm_ProbeY);
+    UpdateUI(false);     // in case we reenable
     return 1;
 }
 
@@ -1067,16 +1072,21 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
 
     // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
-        char acf_icao[41];
-
         arpt = nullptr;
-        memset(acf_icao, 0, sizeof(acf_icao));
-        XPLMGetDatab(acf_icao_dr, acf_icao, 0, 40);
+
+        char buffer[41]{};
+        XPLMGetDatab(acf_icao_dr, buffer, 0, 40);
 
         for (int i=0; i<4; i++)
-            icao[i] = (isupper(acf_icao[i]) || isdigit(acf_icao[i])) ? acf_icao[i] : ' ';
+            buffer[i] = (isupper(buffer[i]) || isdigit(buffer[i])) ? buffer[i] : ' ';
+        buffer[4] = '\0';
+        acf_icao = buffer;
 
-        acf_icao[4] = '\0';
+        // the VDGS object does not like letters in the last position
+        if (acf_icao == "A20N")
+            acf_icao = "A320";
+        else if (acf_icao == "A21N")
+            acf_icao = "A321";
 
         float plane_cg_z = kF2M * XPLMGetDataf(acf_cg_z_dr);
 
@@ -1121,9 +1131,9 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
         use_engine_running = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
         dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
 
-        LogMsg("plane loaded: %c%c%c%c, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
+        LogMsg("plane loaded: %s, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
                "pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f, is_helicopter: %d",
-               icao[0], icao[1], icao[2], icao[3], plane_cg_z, plane_nw_z, plane_mw_z,
+               acf_icao.c_str(), plane_cg_z, plane_nw_z, plane_mw_z,
                pe_y_plane_0_valid, pe_y_plane_0, is_helicopter);
     }
 }
