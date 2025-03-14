@@ -66,9 +66,9 @@ class Marshaller {
 
 // place DGS at this dist from stop position
 static float marshaller_dist_default = 25.0;
+static bool marshaller_dist_default_set;        // according to pilot's eye AGL
 static float vdgs_dist_default = 25.0;
-static float dgs_stand_dist;
-static bool dgs_stand_dist_set;
+static float dgs_dist_adjust;                   // for moving closer
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
@@ -250,16 +250,17 @@ Stand::Deactivate()
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
 
-// move dgs some distance away
+// compute the DGS position
+// adjust may be negative to move it closer
 void
-Stand::SetDgsDist(void)
+Stand::SetDgsDist(float adjust)
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     if (dgs_type_ == kVDGS)
-        dgs_dist_ = vdgs_dist_default;
+        dgs_dist_ = vdgs_dist_default + adjust;
     else {
-        if (!dgs_stand_dist_set) {
+        if (!marshaller_dist_default_set) {
             // determine marshaller_dist_default depending on pilot eye height agl
             if (pe_y_plane_0_valid) {
                 float plane_x = XPLMGetDataf(plane_x_dr);
@@ -281,11 +282,9 @@ Stand::SetDgsDist(void)
                 LogMsg("setting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, marshaller_dist_default);
             }
 
-            dgs_stand_dist = marshaller_dist_default;
-            dgs_stand_dist_set = true;
+            marshaller_dist_default_set = true;
         }
-        dgs_dist_ = marshaller_dist_default;
-
+        dgs_dist_ = marshaller_dist_default + adjust;
     }
 
     // xform (0, -dgs_dist) into global frame
@@ -356,12 +355,12 @@ Airport::SetSelectedStand(int selected_stand)
 }
 
 void
-Airport::SetDgsPos()
+Airport::SetDgsDistAdjust(float adjust)
 {
     if (selected_stand_ >= 0)
-        stands_[selected_stand_].SetDgsDist();
+        stands_[selected_stand_].SetDgsDist(adjust);
     else if (active_stand_)
-        active_stand_->SetDgsDist();
+        active_stand_->SetDgsDist(adjust);
 }
 
 void
@@ -386,8 +385,8 @@ Airport::ResetState(state_t new_state)
     marshaller = nullptr;
     if (new_state == INACTIVE)
         selected_stand_ = -1;
-    dgs_stand_dist = marshaller_dist_default;
-    dgs_stand_dist_set = false;
+
+    marshaller_dist_default_set = false;
     UpdateUI();
 }
 
@@ -885,11 +884,14 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
     } else if (cmdr == activate_cmdr) {
         LogMsg("cmd manually_activate");
         Activate();
-    } else if (cmdr == move_dgs_closer_cmdr
-               && arpt && arpt->state() >= Airport::ENGAGED && dgs_stand_dist > 12.0) {
-        dgs_stand_dist -= 2.0;
-        LogMsg("dgs_stand_dist reduced to %0.1f", dgs_stand_dist);
-        //arpt->ActiveStandSetDgsDist();
+    } else if (cmdr == move_dgs_closer_cmdr) {
+        dgs_dist_adjust -= 2.0f;
+        if (dgs_dist_adjust <= -13.0)
+            dgs_dist_adjust = 0.0f;
+
+        LogMsg("dgs_dist_adjust set to %0.1f", dgs_dist_adjust);
+        if (arpt)
+            arpt->SetDgsDistAdjust(dgs_dist_adjust);
     } else if (cmdr == toggle_ui_cmdr) {
         LogMsg("cmd toggle_ui");
         ToggleUI();

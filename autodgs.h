@@ -99,7 +99,7 @@ class Stand {
     ~Stand();
 
     void SetDgsType(int dgs_type);
-    void SetDgsDist(void);
+    void SetDgsDist(float adjust = 0.0f);
     void SetState(int status, int track, int lr, float azimuth, float distance,
                   bool state_track, float brightness);
     void Deactivate();
@@ -147,10 +147,14 @@ class Airport {
     ~Airport();
 
     void ResetState(state_t new_state);
-    void SetDgsPos();
-    void SetDgsType(int dgs_type);
+
     void SetSelectedStand(int selected_stand);
+
+    // these act onto the selected of active stand
+    void SetDgsDistAdjust(float adjust);
+    void SetDgsType(int dgs_type);
     void CycleDgsType();
+
     float StateMachine();
 
     // accessors
