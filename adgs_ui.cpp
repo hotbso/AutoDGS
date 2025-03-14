@@ -24,6 +24,7 @@
 #include <cassert>
 
 #include "autodgs.h"
+#include "airport.h"
 
 #include "XPWidgets.h"
 #include "XPStandardWidgets.h"

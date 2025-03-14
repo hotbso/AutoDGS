@@ -20,8 +20,7 @@
 //    USA
 //
 
-// This code is still mostly plain C.
-// Refactored or new code loosely follows
+// This code loosely follows
 // Google's style guide: https://google.github.io/styleguide/cppguide.html
 
 #include <cstdlib>
@@ -33,6 +32,7 @@
 #include <algorithm>
 
 #include "autodgs.h"
+#include "airport.h"
 #include "flat_earth_math.h"
 
 #include "XPLMPlugin.h"
