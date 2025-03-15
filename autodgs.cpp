@@ -116,16 +116,16 @@ enum _DGS_DREF {
 
 // keep exactly the same order as list above
 static const char *dgs_dlist_dr[] = {
-    "hotbso/dgs/status",
-    "hotbso/dgs/lr",
-    "hotbso/dgs/track",
-    "hotbso/dgs/azimuth",
-    "hotbso/dgs/distance",
-    "hotbso/dgs/icao_0",
-    "hotbso/dgs/icao_1",
-    "hotbso/dgs/icao_2",
-    "hotbso/dgs/icao_3",
-    "hotbso/dgs/vdgs_brightness",
+    "AutoDGS/dgs/status",
+    "AutoDGS/dgs/lr",
+    "AutoDGS/dgs/track",
+    "AutoDGS/dgs/azimuth",
+    "AutoDGS/dgs/distance",
+    "AutoDGS/dgs/icao_0",
+    "AutoDGS/dgs/icao_1",
+    "AutoDGS/dgs/icao_2",
+    "AutoDGS/dgs/icao_3",
+    "AutoDGS/dgs/vdgs_brightness",
     NULL
 };
 
