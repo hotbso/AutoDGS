@@ -26,6 +26,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <unordered_map>
+#include <algorithm>
 
 #include "autodgs.h"
 #include "flat_earth_math.h"
@@ -91,6 +92,12 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
     sc_paths.shrink_to_fit();
 }
 
+static bool
+operator<(const AptStand& a, const AptStand& b)
+{
+    return a.name < b.name;
+}
+
 void
 AptAirport::dump() const
 {
@@ -136,6 +143,7 @@ ParseAptDat(const std::string& fn, bool ignore)
 
             n_stands += arpt->stands_.size();
             arpt->stands_.shrink_to_fit();
+            std::sort(arpt->stands_.begin(), arpt->stands_.end());
             airports[arpt->icao_] = arpt;
             jetways.resize(0);
         } else {
@@ -287,7 +295,7 @@ AptAirport::LookupAirport(const std::string& airport_id)
 }
 
 #ifdef TEST_AIRPORTS
-// g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O airport.cpp log_msg.cpp
+// g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O apt_airport.cpp log_msg.cpp
 
 const AptAirport *arpt;
 
@@ -320,6 +328,6 @@ int main()
     find_and_dump("EKBIx");
     find_and_dump("EDDV");
     find_and_dump("EDDF");
-
+    find_and_dump("EHAM");
 }
 #endif
