@@ -172,7 +172,7 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
-Stand::Stand(int idx, const AptStand& as, float elevation) : as_(as), idx_(idx)
+Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dist_adjust) : as_(as), idx_(idx)
 {
     XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x_, &y_, &z_);
     // TODO: terrain probe
@@ -183,10 +183,10 @@ Stand::Stand(int idx, const AptStand& as, float elevation) : as_(as), idx_(idx)
     drawinfo_.pitch = drawinfo_.roll = 0.0f;
     vdgs_inst_ref_ = nullptr;
     dgs_dist_ = vdgs_dist_default;
-    dist_adjust_ = 0.0f;
+    dist_adjust_ = dist_adjust;
     dgs_type_ = kMarshaller;
-    SetDgsType(kAutomatic);
-    LogMsg("Stand '%s', type: %d constructed", cname(), dgs_type_);
+    SetDgsType(dgs_type);
+    LogMsg("Stand '%s', type: %d, dist_adjust: %0.1f constructed", cname(), dgs_type_, dist_adjust_);
 }
 
 Stand::~Stand()
@@ -322,14 +322,33 @@ const char * const Airport::state_str[] = {
 };
 
 
+void LoadCfg(const std::string& pathname,
+             std::unordered_map<std::string, std::tuple<int, float>>& cfg);
+
 Airport::Airport(const AptAirport* apt_airport)
 {
     apt_airport_ = apt_airport;
     stands_.reserve(apt_airport_->stands_.size());
     float arpt_elevation = XPLMGetDataf(plane_elevation_dr);    // best guess
+
+    std::unordered_map<std::string, std::tuple<int, float>> cfg;
+    LoadCfg(user_cfg_dir + name() + ".cfg", cfg);
+    if (cfg.empty())
+        LoadCfg(sys_cfg_dir + name() + ".cfg", cfg);
+
     int idx = 0;
-    for (auto const & as : apt_airport->stands_)
-        stands_.emplace_back(idx++, as, arpt_elevation);
+    for (auto const & as : apt_airport->stands_) {
+        int dgs_type = kAutomatic;
+        float dist_adjust = 0.0f;
+        try {
+            std::tie<int, float>(dgs_type, dist_adjust) = cfg.at(as.name);
+            LogMsg("found '%s', %d, %0.1f", as.name.c_str(), dgs_type, dist_adjust);
+        } catch (const std::out_of_range& ex) {
+            // nothing
+        }
+
+        stands_.emplace_back(idx++, as, arpt_elevation, dgs_type, dist_adjust);
+    }
 
     state_ = INACTIVE;
     active_stand_ = nullptr;
@@ -347,6 +366,38 @@ Airport::~Airport()
 }
 
 void
+LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<int, float>>& cfg)
+{
+    std::ifstream f(pathname);
+    if (f.is_open()) {
+        LogMsg("Loading config from '%s'", pathname.c_str());
+
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.size() == 0 || line[0] == '#')
+                continue;
+
+            if (line.back() == '\r')
+                line.pop_back();
+
+            int ofs;
+            float dist_adjust;
+            char type;
+            int n = sscanf(line.c_str(), "%c,%f, %n", &type, &dist_adjust, &ofs);
+            if (n != 2 || ofs >= (int)line.size()       // distrust user input
+                || !(type == 'V' || type == 'M')
+                || dist_adjust < -20.0f || dist_adjust > 10.0f) {
+                LogMsg("invalid line: '%s' %d", line.c_str(), n);
+                continue;
+            }
+
+            cfg[line.substr(ofs)]
+                = std::make_tuple((type == 'M' ? kMarshaller : kVDGS), dist_adjust);
+        }
+    }
+}
+
+void
 Airport::FlushUserCfg()
 {
     if (!user_cfg_changed_)
@@ -359,7 +410,7 @@ Airport::FlushUserCfg()
         return;
     }
 
-    // The apt.dat spec claims that the stand names must be unique but they are not.
+    // The apt.dat spec demands that the stand names must be unique but usually they are not.
     // Hence we build an ordered map first and write that out.
     // Last entry wins.
     std::map<std::string, std::string> cfg;
@@ -369,6 +420,9 @@ Airport::FlushUserCfg()
                  s.dist_adjust_, s.name().c_str());
         cfg[s.name()] = line;
     }
+
+    f << "# type, dist_adjust, stand_name\n";
+    f << "# type = M or V, dist_adjust = delta to default position, negative = closer to stand\n";
 
     for (auto const & kv : cfg)
         f << kv.second;

@@ -45,7 +45,7 @@ class Stand {
     Stand(Stand&&) = default;
     Stand& operator=(Stand&&) = delete;
 
-    Stand(int idx, const AptStand& as, float elevation);
+    Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dist_adjust);
     ~Stand();
 
     void SetDgsType(int dgs_type);
