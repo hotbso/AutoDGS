@@ -35,13 +35,13 @@
 
 #include "autodgs.h"
 #include "airport.h"
+#include "plane.h"
 #include "flat_earth_math.h"
 
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
 #include "XPLMMenus.h"
 #include "XPLMNavigation.h"
-#include "XPLMPlanes.h"
 #include "XPLMGraphics.h"
 
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
@@ -85,31 +85,18 @@ static bool error_disabled;
 static XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr,
     toggle_ui_cmdr, toggle_jetway_cmdr;
 
-// Datarefs
-static XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
-static XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
-static XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
-static XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
-static XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
+XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
+XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
+XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
+XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
+XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 XPLMDataRef vr_enabled_dr;
-static XPLMProbeRef probe_ref;
+XPLMProbeRef probe_ref;
 
-static std::string acf_icao;
-
-// Internal state
-static float now;           // current timestamp
-static int beacon_state, beacon_last_pos;   // beacon state, last switch_pos, ts of last switch actions
-static float beacon_off_ts, beacon_on_ts;
-static bool use_engine_running;              // instead of beacon, e.g. MD11
-static bool dont_connect_jetway;             // e.g. for ZIBO with own ground service
+float now;           // current timestamp
+int on_ground = 1;
 
 std::unique_ptr<Airport> arpt;
-
-int on_ground = 1;
-static float plane_nw_z, plane_mw_z;   // z value of plane's 0 to fw, mw
-static float pe_y_plane_0;        // pilot eye y to plane's 0 point
-static bool pe_y_plane_0_valid;
-static bool is_helicopter;
 
 static XPLMObjectRef dgs_obj[2];
 
@@ -146,7 +133,6 @@ static const char *dgs_dlist_dr[] = {
 static std::unique_ptr<Marshaller> marshaller;
 
 #define SQR(x) ((x) * (x))
-static int CheckBeacon(void);
 
 //------------------------------------------------------------------------------------
 Marshaller::Marshaller()
@@ -243,7 +229,7 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance,
 
     if (state_track)
         for (int i = 0; i < 4; i++)
-            drefs[DGS_DR_ICAO_0 + i] = (int)acf_icao[i];
+            drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
     drefs[DGS_DR_BRIGHTNESS] = brightness;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
@@ -274,7 +260,7 @@ Stand::SetDgsDist(float adjust)
     else {
         if (!marshaller_dist_default_set) {
             // determine marshaller_dist_default depending on pilot eye height agl
-            if (pe_y_plane_0_valid) {
+            if (plane.pe_y_0_valid) {
                 float plane_x = XPLMGetDataf(plane_x_dr);
                 float plane_y = XPLMGetDataf(plane_y_dr);
                 float plane_z = XPLMGetDataf(plane_z_dr);
@@ -287,7 +273,7 @@ Stand::SetDgsDist(float adjust)
                 }
 
                 // pilot eye above agl
-                float pe_agl = plane_y - probeinfo.locationY + pe_y_plane_0;
+                float pe_agl = plane_y - probeinfo.locationY + plane.pe_y_0;
 
                 // 4.3 ~ 1 / tan(13°) -> 13° down look
                 marshaller_dist_default = std::max(8.0, std::min(4.3 * pe_agl, 30.0));
@@ -565,8 +551,8 @@ Airport::FindNearestStand()
             float local_z = -s.sin_hdgt_ * dx + s.cos_hdgt_ * dz;
 
             // nose wheel
-            float nw_z = local_z - plane_nw_z;
-            float nw_x = local_x + plane_nw_z * sinf(kD2R * local_hdgt);
+            float nw_z = local_z - plane.nw_z;
+            float nw_x = local_x + plane.nw_z * sinf(kD2R * local_hdgt);
 
             float d = sqrt(SQR(nw_x) + SQR(nw_z));
             if (d > CAP_Z + 50) // fast exit
@@ -674,17 +660,17 @@ Airport::StateMachine()
     float local_hdgt = RA(XPLMGetDataf(plane_true_psi_dr) - active_stand_->hdgt());
 
     // nose wheel
-    float nw_z = local_z - plane_nw_z;
-    float nw_x = local_x + plane_nw_z * sinf(kD2R * local_hdgt);
+    float nw_z = local_z - plane.nw_z;
+    float nw_x = local_x + plane.nw_z * sinf(kD2R * local_hdgt);
 
     // main wheel pos on logitudinal axis
-    float mw_z = local_z - plane_mw_z;
-    float mw_x = local_x + plane_mw_z * sinf(kD2R * local_hdgt);
+    float mw_z = local_z - plane.mw_z;
+    float mw_x = local_x + plane.mw_z * sinf(kD2R * local_hdgt);
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should be nw if dist is below 6 m
     float a = std::clamp((nw_z - 6.0) / 20.0, 0.0, 1.0);
-    float plane_z_dr = (1.0 - a) * plane_nw_z + a * plane_mw_z;
+    float plane_z_dr = (1.0 - a) * plane.nw_z + a * plane.mw_z;
     float z_dr = local_z - plane_z_dr;
     float x_dr = local_x + plane_z_dr * sinf(kD2R * local_hdgt);
 
@@ -701,7 +687,7 @@ Airport::StateMachine()
         azimuth_nw = 0.0;
 
     int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
-    int beacon_on = CheckBeacon();
+    int beacon_on = plane.BeaconState();
 
     status_ = lr_ = track_ = 0;
     distance_ = nw_z - GOOD_Z;
@@ -822,7 +808,7 @@ Airport::StateMachine()
             // wait for beacon off
             if (! beacon_on) {
                 new_state = DONE;
-                if (operation_mode == MODE_AUTO && ! dont_connect_jetway)
+                if (operation_mode == MODE_AUTO && ! plane.dont_connect_jetway)
                     XPLMCommandOnce(toggle_jetway_cmdr);
             }
             break;
@@ -892,8 +878,7 @@ Activate(void)
     if (arpt && arpt->state() > Airport::INACTIVE)
         return;
 
-    beacon_state = beacon_last_pos = XPLMGetDatai(beacon_dr);
-    beacon_on_ts = beacon_off_ts = -10.0;
+    plane.ResetBeacon();
 
     float lat = XPLMGetDataf(plane_lat_dr);
     float lon = XPLMGetDataf(plane_lon_dr);
@@ -921,41 +906,6 @@ Activate(void)
     UpdateUI();
 }
 
-static int
-CheckBeacon(void)
-{
-    if (use_engine_running) {
-        int er[8];
-        int n = XPLMGetDatavi(eng_running_dr, er, 0, 8);
-        for (int i = 0; i < n; i++)
-            if (er[i])
-                return 1;
-
-        return 0;
-    }
-
-    // when checking the beacon guard against power transitions when switching
-    // to the APU generator (e.g. for the ToLiss fleet).
-    // Report only state transitions when the new state persisted for 3 seconds
-
-    int beacon = XPLMGetDatai(beacon_dr);
-    if (beacon) {
-        if (! beacon_last_pos) {
-            beacon_on_ts = now;
-            beacon_last_pos = 1;
-        } else if (now > beacon_on_ts + 3.0)
-            beacon_state = 1;
-    } else {
-        if (beacon_last_pos) {
-            beacon_off_ts = now;
-            beacon_last_pos = 0;
-        } else if (now > beacon_off_ts + 3.0)
-            beacon_state = 0;
-   }
-
-   return beacon_state;
-}
-
 // dummy accessor routine
 static float
 getdgsfloat(XPLMDataRef inRefcon)
@@ -974,7 +924,7 @@ flight_loop_cb(float inElapsedSinceLastCall,
 
     now = XPLMGetDataf(total_running_time_sec_dr);
     int og;
-    if (is_helicopter)
+    if (plane.is_helicopter)
         og = (XPLMGetDataf(y_agl_dr) < 10.0);
     else
         og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
@@ -1036,30 +986,6 @@ static void
 menu_cb([[maybe_unused]] void *menu_ref, void *item_ref)
 {
     XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
-}
-
-static bool
-FindIcaoInFile(const std::string& acf_icao, const std::string& fn)
-{
-    std::ifstream f(fn);
-    if (!f.is_open()) {
-        LogMsg("Can't open '%s'", fn.c_str());
-        return false;
-    }
-
-    LogMsg("check whether acf '%s' is in exception file %s", acf_icao.c_str(), fn.c_str());
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.size() > 0 && line.back() == '\r') // just in case
-            line.pop_back();
-
-        if (line == acf_icao) {
-            LogMsg("found acf %s in %s", acf_icao.c_str(), fn.c_str());
-            return true;
-        }
-    }
-
-    return false;
 }
 
 // =========================== plugin entry points ===============================================
@@ -1209,67 +1135,6 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
     // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         arpt = nullptr;
-
-        char buffer[41]{};
-        XPLMGetDatab(acf_icao_dr, buffer, 0, 40);
-
-        for (int i=0; i<4; i++)
-            buffer[i] = (isupper(buffer[i]) || isdigit(buffer[i])) ? buffer[i] : ' ';
-        buffer[4] = '\0';
-        acf_icao = buffer;
-
-        // the VDGS object does not like letters in the last position
-        if (acf_icao == "A20N")
-            acf_icao = "A320";
-        else if (acf_icao == "A21N")
-            acf_icao = "A321";
-
-        float plane_cg_z = kF2M * XPLMGetDataf(acf_cg_z_dr);
-
-        float gear_z[2];
-        if (2 == XPLMGetDatavf(gear_z_dr, gear_z, 0, 2)) {      // nose + main wheel
-            plane_nw_z = -gear_z[0];
-            plane_mw_z = -gear_z[1];
-        } else
-            plane_nw_z = plane_mw_z = plane_cg_z;         // fall back to CG
-
-        is_helicopter = XPLMGetDatai(is_helicopter_dr);
-
-        pe_y_plane_0_valid = false;
-        pe_y_plane_0 = 0.0;
-
-        if (! is_helicopter) {
-            // unfortunately the *default* pilot eye y coordinate is not published in
-            // a dataref, only the dynamic values.
-            // Therefore we pull it from the acf file.
-
-            char acf_path[512], acf_file[256];
-            XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
-            LogMsg("acf_path: '%s'", acf_path);
-
-            std::ifstream acf(acf_path);
-            if (acf.is_open()) {
-                std::string line;
-                while (std::getline(acf, line)) {
-                    if (line.starts_with("P acf/_pe_xyz/1 ")) {
-                        if (1 == sscanf(line.c_str() + 16, "%f", &pe_y_plane_0)) {
-                            pe_y_plane_0 -= XPLMGetDataf(acf_cg_y_dr);
-                            pe_y_plane_0 *= kF2M;
-                            pe_y_plane_0_valid = true;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        // check whether acf is listed in exception files
-        use_engine_running = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
-        dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
-
-        LogMsg("plane loaded: %s, plane_cg_z: %1.2f, plane_nw_z: %1.2f, plane_mw_z: %1.2f, "
-               "pe_y_plane_0_valid: %d, pe_y_plane_0: %0.2f, is_helicopter: %d",
-               acf_icao.c_str(), plane_cg_z, plane_nw_z, plane_mw_z,
-               pe_y_plane_0_valid, pe_y_plane_0, is_helicopter);
+        plane.PlaneLoadedCb();
     }
 }

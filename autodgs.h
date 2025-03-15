@@ -81,9 +81,16 @@ extern std::string base_dir; // base directory of AutoDGS
 extern std::string sys_cfg_dir;
 extern std::string user_cfg_dir;
 
+extern XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
+extern XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
+extern XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
+extern XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
+extern XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 extern XPLMDataRef vr_enabled_dr;
+extern XPLMProbeRef probe_ref;
 
 extern opmode_t operation_mode;
+extern float now;           // current timestamp
 extern int on_ground;
 
 extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
