@@ -38,8 +38,9 @@
 
 static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
-static constexpr float kJw2Stand = 18.0;            // m, max dist jw to stand
+static constexpr float kJw2Stand = 25.0;            // m, max dist jw to stand
 
+// DGS types per stand
 static constexpr int kMarshaller = 0;
 static constexpr int kVDGS = 1;
 static constexpr int kAutomatic = 2;
@@ -51,6 +52,22 @@ typedef enum
 } opmode_t;
 
 extern const char * const opmode_str[];
+
+enum _DGS_DREF {
+    DGS_DR_STATUS,
+    DGS_DR_LR,
+    DGS_DR_TRACK,
+    DGS_DR_AZIMUTH,
+    DGS_DR_DISTANCE,
+    DGS_DR_ICAO_0,
+    DGS_DR_ICAO_1,
+    DGS_DR_ICAO_2,
+    DGS_DR_ICAO_3,
+    DGS_DR_BRIGHTNESS,
+    DGS_DR_NUM             // # of drefs
+};
+
+extern const char *dgs_dlist_dr[];
 
 // The airport database as loaded at plugin start and then stays unmodified.
 // Pointers to AptStand and AptAirport therefore never become dangling.
@@ -74,7 +91,9 @@ class AptAirport {
     std::vector<AptStand> stands_;
     AptAirport(const std::string& name) : icao_(name) {}
     void dump() const;
-  };
+};
+
+extern bool error_disabled;
 
 extern std::string xp_dir;
 extern std::string base_dir; // base directory of AutoDGS
@@ -87,7 +106,10 @@ extern XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 extern XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
 extern XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 extern XPLMDataRef vr_enabled_dr;
+extern XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr,
+    toggle_ui_cmdr, toggle_jetway_cmdr;
 extern XPLMProbeRef probe_ref;
+extern XPLMObjectRef dgs_obj[2];
 
 extern opmode_t operation_mode;
 extern float now;           // current timestamp
