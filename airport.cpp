@@ -24,7 +24,6 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
-#include <filesystem>
 
 #include "autodgs.h"
 #include "airport.h"
@@ -495,7 +494,7 @@ Airport::FindNearestStand()
         min_stand = selected_stand_;
     } else {
         for (int i = 0; i < (int)stands_.size(); i++) {
-            Stand& s = stands_[i];
+            const Stand& s = stands_[i];
             if (s.is_wet_)
                 continue;
 

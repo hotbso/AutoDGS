@@ -135,7 +135,7 @@ getdgsfloat(XPLMDataRef inRefcon)
 }
 
 static float
-flight_loop_cb(float inElapsedSinceLastCall,
+FlightLoopCb(float inElapsedSinceLastCall,
                float inElapsedTimeSinceLastFlightLoop, int inCounter,
                void *inRefcon)
 {
@@ -203,7 +203,7 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 
 // call back for menu
 static void
-menu_cb([[maybe_unused]] void *menu_ref, void *item_ref)
+MenuCb([[maybe_unused]] void *menu_ref, void *item_ref)
 {
     XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
 }
@@ -304,7 +304,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     // menu
     XPLMMenuID menu = XPLMFindPluginsMenu();
     int sub_menu = XPLMAppendMenuItem(menu, "AutoDGS", NULL, 1);
-    XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, menu_cb, NULL);
+    XPLMMenuID adgs_menu = XPLMCreateMenu("AutoDGS", menu, sub_menu, MenuCb, NULL);
 
     XPLMAppendMenuItem(adgs_menu, "Manually activate", &activate_cmdr, 0);
     XPLMAppendMenuItem(adgs_menu, "Cycle DGS", &cycle_dgs_cmdr, 0);
@@ -314,14 +314,14 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     // foreign commands
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
 
-    XPLMRegisterFlightLoopCallback(flight_loop_cb, 2.0, NULL);
+    XPLMRegisterFlightLoopCallback(FlightLoopCb, 2.0, NULL);
     return 1;
 }
 
 PLUGIN_API void
 XPluginStop(void)
 {
-    XPLMUnregisterFlightLoopCallback(flight_loop_cb, NULL);
+    XPLMUnregisterFlightLoopCallback(FlightLoopCb, NULL);
     for (int i = 0; i < 2; i++)
         if (dgs_obj[i])
             XPLMUnloadObject(dgs_obj[i]);
