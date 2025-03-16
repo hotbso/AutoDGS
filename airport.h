@@ -32,11 +32,11 @@ class Stand {
 
   protected:
     friend class Airport;
-    int idx_;               // index into stands_ vector
 
     float x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
     int dgs_type_;
+    bool is_wet_;
     XPLMDrawInfo_t drawinfo_;
     XPLMInstanceRef vdgs_inst_ref_;
     float dgs_dist_;            // distance to dgs
@@ -47,7 +47,7 @@ class Stand {
     Stand(Stand&&) = default;
     Stand& operator=(Stand&&) = delete;
 
-    Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dist_adjust);
+    Stand(const AptStand& as, float elevation, int dgs_type, float dist_adjust);
     ~Stand();
 
     void SetDgsType(int dgs_type);
@@ -78,11 +78,13 @@ class Airport {
     static const char * const state_str[];
 
   private:
+    std::string name_;
     state_t state_;
-    const AptAirport *apt_airport_;
+
     std::vector<Stand> stands_;
-    Stand *active_stand_;
+    int active_stand_;      // -1 or index into stands_
     int selected_stand_;
+
     bool user_cfg_changed_;
 
     // values that must survive a single run of the state_machine
@@ -97,7 +99,7 @@ class Airport {
     static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
 
     Airport() = delete;
-    Airport(const AptAirport*);
+    Airport(const AptAirport&);
     ~Airport();
 
     int nstands() const { return stands_.size(); }
@@ -115,7 +117,7 @@ class Airport {
     float StateMachine();
 
     // accessors
-    const std::string& name() const { return apt_airport_->icao_; }
+    const std::string& name() const { return name_; }
     state_t state() const { return state_; }
 };
 

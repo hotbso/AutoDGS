@@ -97,7 +97,7 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
-Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as), idx_(idx)
+Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as)
 {
     double x, y, z;
     XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x, &y, &z);
@@ -106,6 +106,7 @@ Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float d
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
         std::runtime_error("XPLMProbeTerrainXYZ failed");
 
+    is_wet_ = probeinfo.is_wet;
     x_ = probeinfo.locationX;
     y_ = probeinfo.locationY;
     z_ = probeinfo.locationZ;
@@ -122,7 +123,7 @@ Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float d
     dgs_dist_ = dgs_dist;
     dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
-    LogMsg("Stand '%s', type: %d, dgs_dist: %0.1f constructed", cname(), dgs_type_, dgs_dist_);
+    LogMsg("Stand '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), is_wet_, dgs_type_, dgs_dist_);
 }
 
 Stand::~Stand()
@@ -266,10 +267,10 @@ const char * const Airport::state_str[] = {
 void LoadCfg(const std::string& pathname,
              std::unordered_map<std::string, std::tuple<int, float>>& cfg);
 
-Airport::Airport(const AptAirport* apt_airport)
+Airport::Airport(const AptAirport& apt_airport)
 {
-    apt_airport_ = apt_airport;
-    stands_.reserve(apt_airport_->stands_.size());
+    name_ = apt_airport.icao_;
+    stands_.reserve(apt_airport.stands_.size());
     float arpt_elevation = XPLMGetDataf(plane_elevation_dr);    // best guess
 
     std::unordered_map<std::string, std::tuple<int, float>> cfg;
@@ -277,8 +278,7 @@ Airport::Airport(const AptAirport* apt_airport)
     if (cfg.empty())
         LoadCfg(sys_cfg_dir + name() + ".cfg", cfg);
 
-    int idx = 0;
-    for (auto const & as : apt_airport->stands_) {
+    for (auto const & as : apt_airport.stands_) {
         int dgs_type = kAutomatic;
         float dgs_dist;
         if (as.has_jw)
@@ -293,12 +293,11 @@ Airport::Airport(const AptAirport* apt_airport)
             // nothing
         }
 
-        stands_.emplace_back(idx++, as, arpt_elevation, dgs_type, dgs_dist);
+        stands_.emplace_back(as, arpt_elevation, dgs_type, dgs_dist);
     }
 
     state_ = INACTIVE;
-    active_stand_ = nullptr;
-    selected_stand_ = -1;
+    active_stand_ = selected_stand_ = -1;
     user_cfg_changed_ = false;
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
@@ -384,7 +383,7 @@ Airport::LoadAirport(const std::string& icao)
     if (arpt == nullptr)
         return nullptr;
 
-    return std::make_unique<Airport>(arpt);
+    return std::make_unique<Airport>(*arpt);
 }
 
 std::tuple<int, const std::string>
@@ -415,8 +414,8 @@ Airport::DgsMoveCloser()
 {
     if (selected_stand_ >= 0)
         stands_[selected_stand_].DgsMoveCloser();
-    else if (active_stand_)
-        active_stand_->DgsMoveCloser();
+    else if (active_stand_ >= 0)
+        stands_[active_stand_].DgsMoveCloser();
 
     user_cfg_changed_ = true;
 }
@@ -426,8 +425,8 @@ Airport::SetDgsType(int dgs_type)
 {
     if (selected_stand_ >= 0)
         stands_[selected_stand_].SetDgsType(dgs_type);
-    else if (active_stand_)
-        active_stand_->SetDgsType(dgs_type);
+    else if (active_stand_ >= 0)
+        stands_[active_stand_].SetDgsType(dgs_type);
 
     user_cfg_changed_ = true;
 }
@@ -437,8 +436,8 @@ Airport::GetDgsType() const
 {
     if (selected_stand_ >= 0)
         return stands_[selected_stand_].dgs_type_;
-    else if (active_stand_)
-        return active_stand_->dgs_type_;
+    else if (active_stand_ >= 0)
+        return stands_[active_stand_].dgs_type_;
 
     return kMarshaller;
 }
@@ -450,9 +449,10 @@ Airport::ResetState(state_t new_state)
         LogMsg("setting state to %s", state_str[new_state]);
 
     state_ = new_state;
-    if (active_stand_)
-        active_stand_->Deactivate();
-    active_stand_ = nullptr;
+    if (active_stand_ >= 0)
+        stands_[active_stand_].Deactivate();
+    active_stand_ = -1;
+
     marshaller = nullptr;
     if (new_state == INACTIVE) {
         selected_stand_ = -1;
@@ -469,8 +469,8 @@ Airport::CycleDgsType()
 {
     if (selected_stand_ >= 0)
         stands_[selected_stand_].CycleDgsType();
-    else if (active_stand_)
-        active_stand_->CycleDgsType();
+    else if (active_stand_ >= 0)
+        stands_[active_stand_].CycleDgsType();
 
     user_cfg_changed_ = true;
 }
@@ -479,24 +479,26 @@ void
 Airport::FindNearestStand()
 {
     // check whether we already have an active  selected stand
-    if (active_stand_ && active_stand_->idx_ == selected_stand_)
+    if (active_stand_ >= 0 && active_stand_ == selected_stand_)
         return;
 
     double dist = 1.0E10;
-    Stand *min_stand = nullptr;
+    int min_stand = -1;
 
     float plane_x = XPLMGetDataf(plane_x_dr);
     float plane_z = XPLMGetDataf(plane_z_dr);
 
     float plane_hdgt = XPLMGetDataf(plane_true_psi_dr);
 
-    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
-
     if (selected_stand_ >= 0) {
         dist = 0.0;
-        min_stand = &stands_[selected_stand_];
+        min_stand = selected_stand_;
     } else {
-        for (auto & s : stands_) {
+        for (int i = 0; i < (int)stands_.size(); i++) {
+            Stand& s = stands_[i];
+            if (s.is_wet_)
+                continue;
+
             // heading in local system
             float local_hdgt = RA(plane_hdgt - s.hdgt());
 
@@ -554,33 +556,20 @@ Airport::FindNearestStand()
             if (d < dist) {
                 //LogMsg("new min: %s, z: %2.1f, x: %2.1f", s.cname(), nw_z, nw_x);
                 dist = d;
-                min_stand = &s;
+                min_stand = i;
             }
         }
     }
 
-    if (min_stand != NULL && min_stand != active_stand_) {
-        if (xplm_ProbeHitTerrain
-            != XPLMProbeTerrainXYZ(probe_ref, min_stand->x_, min_stand->y_, min_stand->z_, &probeinfo)) {
-            LogMsg("XPLMProbeTerrainXYZ failed");
-            ResetState(ACTIVE);
-            return;
-        }
+    if (min_stand >= 0 && min_stand != active_stand_) {
+        Stand& ms = stands_[min_stand];
+        LogMsg("stand: %s, %f, %f, %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
 
-        LogMsg("stand: %s, %f, %f, %f, dist: %f, is_wet: %d", min_stand->cname(), min_stand->lat(), min_stand->lon(),
-               min_stand->hdgt(), dist, probeinfo.is_wet);
+        if (active_stand_ >= 0)
+            stands_[active_stand_].Deactivate();
 
-        if (probeinfo.is_wet) {
-            ResetState(ACTIVE);
-            return;
-        }
-
-        min_stand->y_ = probeinfo.locationY;
-        if (active_stand_)
-            active_stand_->Deactivate();
-
+        ms.SetDgsDist();
         active_stand_ = min_stand;
-        active_stand_->SetDgsDist();
         state_ = ENGAGED;
     }
 }
@@ -600,7 +589,7 @@ Airport::StateMachine()
         nearest_stand_ts_ = now;
     }
 
-    if (active_stand_ == nullptr) {
+    if (active_stand_ < 0) {
         state_ = ACTIVE;
         return 2.0;
     }
@@ -612,14 +601,16 @@ Airport::StateMachine()
     float loop_delay = 0.2;
     state_t new_state = state_;
 
+    Stand& as = stands_[active_stand_];
+
     // xform plane pos into stand local coordinate system
-    float dx = XPLMGetDataf(plane_x_dr) - active_stand_->x_;
-    float dz = XPLMGetDataf(plane_z_dr) - active_stand_->z_;
-    float local_x =  active_stand_->cos_hdgt_ * dx + active_stand_->sin_hdgt_ * dz;
-    float local_z = -active_stand_->sin_hdgt_ * dx + active_stand_->cos_hdgt_ * dz;
+    float dx = XPLMGetDataf(plane_x_dr) - as.x_;
+    float dz = XPLMGetDataf(plane_z_dr) - as.z_;
+    float local_x =  as.cos_hdgt_ * dx + as.sin_hdgt_ * dz;
+    float local_z = -as.sin_hdgt_ * dx + as.cos_hdgt_ * dz;
 
     // relative reading to stand +/- 180
-    float local_hdgt = RA(XPLMGetDataf(plane_true_psi_dr) - active_stand_->hdgt());
+    float local_hdgt = RA(XPLMGetDataf(plane_true_psi_dr) - as.hdgt());
 
     // nose wheel
     float nw_z = local_z - plane.nw_z;
@@ -638,13 +629,13 @@ Airport::StateMachine()
 
     float azimuth;
     if (fabs(x_dr) > 0.5 && z_dr > 0)
-        azimuth = atanf(x_dr / (z_dr + 0.5 * active_stand_->dgs_dist_)) / kD2R;
+        azimuth = atanf(x_dr / (z_dr + 0.5 * as.dgs_dist_)) / kD2R;
     else
         azimuth = 0.0;
 
     float azimuth_nw;
     if (nw_z > 0)
-        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * active_stand_->dgs_dist_)) / kD2R;
+        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * as.dgs_dist_)) / kD2R;
     else
         azimuth_nw = 0.0;
 
@@ -728,7 +719,7 @@ Airport::StateMachine()
                     lr_ = lr_prev;
 
                     // sync transition with Marshaller's arm movement
-                    if (active_stand_->dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
+                    if (as.dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
                         track_ = track_prev;
                         distance_ = distance_prev;
                     }
@@ -809,17 +800,17 @@ Airport::StateMachine()
         if (now > update_dgs_log_ts_ + 2.0) {
             update_dgs_log_ts_ = now;
             LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   active_stand_->name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
+                   as.name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
         }
 
-        if (active_stand_->dgs_type_ == kMarshaller) {
+        if (as.dgs_type_ == kMarshaller) {
             if (marshaller == nullptr)
                 marshaller = std::make_unique<Marshaller>();
-            marshaller->SetPos(&active_stand_->drawinfo_, status_, track_, lr_, distance_);
+            marshaller->SetPos(&as.drawinfo_, status_, track_, lr_, distance_);
         } else {
             static const float min_brightness = 0.025;   // relativ to 1
             float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
-            active_stand_->SetState(status_, track_, lr_, azimuth, distance_, (state_ == TRACK), brightness);
+            as.SetState(status_, track_, lr_, azimuth, distance_, (state_ == TRACK), brightness);
         }
     }
 
