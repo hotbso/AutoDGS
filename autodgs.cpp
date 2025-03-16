@@ -66,7 +66,7 @@ XPLMProbeRef probe_ref;
 XPLMObjectRef dgs_obj[2];
 
 float now;           // current timestamp
-int on_ground = 1;
+int on_ground;
 
 std::unique_ptr<Airport> arpt;
 
@@ -123,7 +123,7 @@ Activate(void)
     if (arpt == nullptr)
         return;
     LogMsg("airport activated: %s, new state: ACTIVE", arpt->name().c_str());
-    arpt->ResetState(Airport::ACTIVE);
+    arpt->ResetState(plane.BeaconState() ? Airport::ACTIVE : Airport::INACTIVE);
     UpdateUI();
 }
 
@@ -141,41 +141,45 @@ flight_loop_cb(float inElapsedSinceLastCall,
 {
     static float on_ground_ts;  // debounce ground contact
 
-    float loop_delay = 2.0;
+    try {
+        float loop_delay = 2.0;
 
-    now = XPLMGetDataf(total_running_time_sec_dr);
-    int og;
-    if (plane.is_helicopter)
-        og = (XPLMGetDataf(y_agl_dr) < 10.0);
-    else
-        og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
+        now = XPLMGetDataf(total_running_time_sec_dr);
+        int og;
+        if (plane.is_helicopter)
+            og = (XPLMGetDataf(y_agl_dr) < 10.0);
+        else
+            og = (XPLMGetDataf(gear_fnrml_dr) != 0.0);
 
-    if (og != on_ground && now > on_ground_ts + 10.0) {
-        on_ground = og;
-        on_ground_ts = now;
-        LogMsg("transition to on_ground: %d", on_ground);
+        if (og != on_ground && now > on_ground_ts + 10.0) {
+            on_ground = og;
+            on_ground_ts = now;
+            LogMsg("transition to on_ground: %d", on_ground);
 
-        if (on_ground) {
-            if (operation_mode == MODE_AUTO)
-                Activate();
-        } else {
-            // transition to airborne
-            arpt = nullptr;
+            if (on_ground) {
+                if (operation_mode == MODE_AUTO)
+                    Activate();
+            } else {
+                // transition to airborne
+                arpt = nullptr;
+            }
         }
+
+        if (arpt && arpt->state() >= Airport::ACTIVE)
+            loop_delay = arpt->StateMachine();
+
+        return loop_delay;
+    } catch (const std::exception& ex) {
+        LogMsg("fatal error: '%s'", ex.what());  // hopefully LogMsg is still alive
+        error_disabled = true;
+        return 0;
     }
-
-    if (arpt && arpt->state() >= Airport::ACTIVE)
-        loop_delay = arpt->StateMachine();
-
-    return loop_delay;
 }
 
 // call backs for commands
 static int
 CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 {
-    static float dgs_dist_adjust;                   // for moving closer
-
     if (xplm_CommandBegin != phase)
         return 0;
 
@@ -187,13 +191,8 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
         LogMsg("cmd manually_activate");
         Activate();
     } else if (cmdr == move_dgs_closer_cmdr) {
-        dgs_dist_adjust -= 2.0f;
-        if (dgs_dist_adjust <= -13.0)
-            dgs_dist_adjust = 0.0f;
-
-        LogMsg("dgs_dist_adjust set to %0.1f", dgs_dist_adjust);
         if (arpt)
-            arpt->SetDgsDistAdjust(dgs_dist_adjust);
+            arpt->DgsMoveCloser();
     } else if (cmdr == toggle_ui_cmdr) {
         LogMsg("cmd toggle_ui");
         ToggleUI();

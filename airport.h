@@ -34,12 +34,14 @@ class Stand {
     friend class Airport;
     int idx_;               // index into stands_ vector
 
-    double x_, y_, z_;
+    float x_, y_, z_;
     float sin_hdgt_, cos_hdgt_;
     int dgs_type_;
     XPLMDrawInfo_t drawinfo_;
     XPLMInstanceRef vdgs_inst_ref_;
-    float dist_adjust_, dgs_dist_;
+    float dgs_dist_;            // distance to dgs
+    float marshaller_max_dist_; // max distance, actual can be lower according to PE
+    void SetDgsDist();
 
   public:
     Stand(Stand&&) = default;
@@ -50,7 +52,7 @@ class Stand {
 
     void SetDgsType(int dgs_type);
     void CycleDgsType();
-    void SetDgsDist(float adjust = 0.0f);
+    void DgsMoveCloser();           // with wrap around
     void SetState(int status, int track, int lr, float azimuth, float distance,
                   bool state_track, float brightness);
     void Deactivate();
@@ -105,7 +107,7 @@ class Airport {
     void SetSelectedStand(int selected_stand);
 
     // these act onto the selected of active stand
-    void SetDgsDistAdjust(float adjust);
+    void DgsMoveCloser();
     void SetDgsType(int dgs_type);
     int GetDgsType() const;
     void CycleDgsType();

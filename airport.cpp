@@ -46,10 +46,16 @@ static constexpr float GOOD_X = 2.0;    // for mw
 
 static constexpr float REM_Z = 12;	    // Distance remaining from here on
 
-// place DGS at this dist from stop position
-static float marshaller_dist_default = 25.0;
-static bool marshaller_dist_default_set;        // according to pilot's eye AGL
-static float vdgs_dist_default = 25.0;
+static constexpr float kVdgsDefaultDist = 15.0;         // m
+static constexpr float kMarshallerDefaultDist = 25.0;
+
+static constexpr float kDgsMinDist = 8.0;
+static constexpr float kDgsMaxDist = 30.0;
+static constexpr float kDgsMoveDeltaMin = 1.0;  // min/max for 'move closer' cmd
+static constexpr float kDgsMoveDeltaMax = 3.0;
+
+static bool marshaller_pe_dist_updated;        // according to pilot's eye AGL
+static float marshaller_pe_dist = kMarshallerDefaultDist;
 
 class Marshaller;
 
@@ -91,21 +97,32 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
-Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dist_adjust) : as_(as), idx_(idx)
+Stand::Stand(int idx, const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as), idx_(idx)
 {
-    XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x_, &y_, &z_);
-    // TODO: terrain probe
+    double x, y, z;
+    XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x, &y, &z);
+
+    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
+    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
+        std::runtime_error("XPLMProbeTerrainXYZ failed");
+
+    x_ = probeinfo.locationX;
+    y_ = probeinfo.locationY;
+    z_ = probeinfo.locationZ;
+
     sin_hdgt_ = sinf(kD2R * as_.hdgt);
     cos_hdgt_ = cosf(kD2R * as_.hdgt);
     drawinfo_.structSize = sizeof(drawinfo_);
     drawinfo_.heading = as_.hdgt;
     drawinfo_.pitch = drawinfo_.roll = 0.0f;
     vdgs_inst_ref_ = nullptr;
-    dgs_dist_ = vdgs_dist_default;
-    dist_adjust_ = dist_adjust;
-    dgs_type_ = kMarshaller;
+
+    marshaller_max_dist_ = kDgsMaxDist;;
+
+    dgs_dist_ = dgs_dist;
+    dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
-    LogMsg("Stand '%s', type: %d, dist_adjust: %0.1f constructed", cname(), dgs_type_, dist_adjust_);
+    LogMsg("Stand '%s', type: %d, dgs_dist: %0.1f constructed", cname(), dgs_type_, dgs_dist_);
 }
 
 Stand::~Stand()
@@ -181,17 +198,13 @@ Stand::Deactivate()
 }
 
 // compute the DGS position
-// adjust may be negative to move it closer
 void
-Stand::SetDgsDist(float adjust)
+Stand::SetDgsDist()
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
-    dist_adjust_ = adjust;
 
-    if (dgs_type_ == kVDGS)
-        dgs_dist_ = vdgs_dist_default + adjust;
-    else {
-        if (!marshaller_dist_default_set) {
+    if (dgs_type_ == kMarshaller) {
+        if (!marshaller_pe_dist_updated) {
             // determine marshaller_dist_default depending on pilot eye height agl
             if (plane.pe_y_0_valid) {
                 float plane_x = XPLMGetDataf(plane_x_dr);
@@ -200,38 +213,47 @@ Stand::SetDgsDist(float adjust)
 
                 // get terrain y below plane y
 
-                if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo)) {
-                    LogMsg("XPLMProbeTerrainXYZ failed");
-                    return;
-                }
+                if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo))
+                    std::runtime_error("XPLMProbeTerrainXYZ failed");
 
                 // pilot eye above agl
                 float pe_agl = plane_y - probeinfo.locationY + plane.pe_y_0;
 
                 // 4.3 ~ 1 / tan(13°) -> 13° down look
-                marshaller_dist_default = std::max(8.0, std::min(4.3 * pe_agl, 30.0));
-                LogMsg("setting DGS default distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, marshaller_dist_default);
+                marshaller_pe_dist = std::max(kDgsMinDist, std::min(4.3f * pe_agl, kDgsMaxDist));
+                marshaller_pe_dist_updated = true;
+                LogMsg("setting Marshaller PE distance, pe_agl: %0.2f, dist: %0.1f",
+                        pe_agl, marshaller_pe_dist);
             }
-
-            marshaller_dist_default_set = true;
         }
-        dgs_dist_ = marshaller_dist_default + adjust;
+
+        dgs_dist_ = std::min(marshaller_pe_dist, dgs_dist_);
     }
 
-    // xform (0, -dgs_dist) into global frame
-    drawinfo_.x = x_ + -sin_hdgt_ * (-dgs_dist_);
-    drawinfo_.z = z_ +  cos_hdgt_ * (-dgs_dist_);
 
-    if (xplm_ProbeHitTerrain
-        != XPLMProbeTerrainXYZ(probe_ref, drawinfo_.x, y_, drawinfo_.z, &probeinfo)) {
-        LogMsg("XPLMProbeTerrainXYZ failed");
-        arpt->ResetState(Airport::ACTIVE);
-        return;
-    }
+    // xform vector (0, -dgs_dist) into global frame
+    float x = x_ + -sin_hdgt_ * (-dgs_dist_);
+    float z = z_ +  cos_hdgt_ * (-dgs_dist_);
+
+    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y_, z, &probeinfo))
+        std::runtime_error("XPLMProbeTerrainXYZ failed");
 
     drawinfo_.x = probeinfo.locationX;
     drawinfo_.y = probeinfo.locationY;
     drawinfo_.z = probeinfo.locationZ;
+}
+
+// adjust may be negative to move it closer
+void
+Stand::DgsMoveCloser()
+{
+    float delta = std::clamp(0.1f * dgs_dist_, kDgsMoveDeltaMin, kDgsMoveDeltaMax);
+    dgs_dist_ -= delta;
+    if (dgs_dist_ < kDgsMinDist)        // wrap around
+        dgs_dist_ = kDgsMaxDist;
+    marshaller_max_dist_ = dgs_dist_;
+    SetDgsDist();
+    LogMsg("stand' '%s', new dgs_dist: %0.1f", cname(), dgs_dist_);
 }
 
 //------------------------------------------------------------------------------------
@@ -258,15 +280,20 @@ Airport::Airport(const AptAirport* apt_airport)
     int idx = 0;
     for (auto const & as : apt_airport->stands_) {
         int dgs_type = kAutomatic;
-        float dist_adjust = 0.0f;
+        float dgs_dist;
+        if (as.has_jw)
+            dgs_dist = kVdgsDefaultDist;
+        else
+            dgs_dist = kMarshallerDefaultDist;
+
         try {
-            std::tie<int, float>(dgs_type, dist_adjust) = cfg.at(as.name);
-            LogMsg("found '%s', %d, %0.1f", as.name.c_str(), dgs_type, dist_adjust);
+            std::tie<int, float>(dgs_type, dgs_dist) = cfg.at(as.name);
+            LogMsg("found in config '%s', %d, %0.1f", as.name.c_str(), dgs_type, dgs_dist);
         } catch (const std::out_of_range& ex) {
             // nothing
         }
 
-        stands_.emplace_back(idx++, as, arpt_elevation, dgs_type, dist_adjust);
+        stands_.emplace_back(idx++, as, arpt_elevation, dgs_type, dgs_dist);
     }
 
     state_ = INACTIVE;
@@ -300,18 +327,18 @@ LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<
                 line.pop_back();
 
             int ofs;
-            float dist_adjust;
+            float dgs_dist;
             char type;
-            int n = sscanf(line.c_str(), "%c,%f, %n", &type, &dist_adjust, &ofs);
+            int n = sscanf(line.c_str(), "%c,%f, %n", &type, &dgs_dist, &ofs);
             if (n != 2 || ofs >= (int)line.size()       // distrust user input
                 || !(type == 'V' || type == 'M')
-                || dist_adjust < -20.0f || dist_adjust > 10.0f) {
+                || dgs_dist < kDgsMinDist || dgs_dist > kDgsMaxDist) {
                 LogMsg("invalid line: '%s' %d", line.c_str(), n);
                 continue;
             }
 
             cfg[line.substr(ofs)]
-                = std::make_tuple((type == 'M' ? kMarshaller : kVDGS), dist_adjust);
+                = std::make_tuple((type == 'M' ? kMarshaller : kVDGS), dgs_dist);
         }
     }
 }
@@ -335,13 +362,14 @@ Airport::FlushUserCfg()
     std::map<std::string, std::string> cfg;
     for (auto const & s : stands_) {
         char line[200];
+        float dist = s.dgs_type_ == kMarshaller ? s.marshaller_max_dist_ : s.dgs_dist_;
         snprintf(line, sizeof(line), "%c, %5.1f, %s\n", (s.dgs_type_ == kMarshaller ? 'M' : 'V'),
-                 s.dist_adjust_, s.name().c_str());
+                 dist, s.name().c_str());
         cfg[s.name()] = line;
     }
 
-    f << "# type, dist_adjust, stand_name\n";
-    f << "# type = M or V, dist_adjust = delta to default position, negative = closer to stand\n";
+    f << "# type, dgs_dist, stand_name\n";
+    f << "# type = M or V, dgs_dist = dist from parking pos in m\n";
 
     for (auto const & kv : cfg)
         f << kv.second;
@@ -383,12 +411,12 @@ Airport::SetSelectedStand(int selected_stand)
 }
 
 void
-Airport::SetDgsDistAdjust(float adjust)
+Airport::DgsMoveCloser()
 {
     if (selected_stand_ >= 0)
-        stands_[selected_stand_].SetDgsDist(adjust);
+        stands_[selected_stand_].DgsMoveCloser();
     else if (active_stand_)
-        active_stand_->SetDgsDist(adjust);
+        active_stand_->DgsMoveCloser();
 
     user_cfg_changed_ = true;
 }
@@ -431,7 +459,8 @@ Airport::ResetState(state_t new_state)
         FlushUserCfg();
     }
 
-    marshaller_dist_default_set = false;
+    marshaller_pe_dist_updated = false;
+    marshaller_pe_dist = kMarshallerDefaultDist;
     UpdateUI();
 }
 
