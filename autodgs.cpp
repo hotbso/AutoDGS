@@ -122,8 +122,9 @@ Activate(void)
 
     if (arpt == nullptr)
         return;
-    LogMsg("airport activated: %s, new state: ACTIVE", arpt->name().c_str());
+
     arpt->ResetState(plane.BeaconState() ? Airport::ACTIVE : Airport::INACTIVE);
+    LogMsg("airport loaded: '%s', new state: %s", arpt->name().c_str(), Airport::state_str[arpt->state()]);
     UpdateUI();
 }
 

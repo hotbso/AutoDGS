@@ -41,14 +41,40 @@ typedef struct _widget_ctx
 static widget_ctx_t ui_widget_ctx;
 
 static XPWidgetID ui_widget, list_box, selected_stand,
-    marshaller_btn, vdgs_btn;
+    marshaller_label, vdgs_label, marshaller_btn, vdgs_btn;
 
 // current status of ui
 static std::string ui_arpt_icao;
 static int ui_selected_stand;
 
+static inline bool
+IsActive()
+{
+    return (arpt && arpt->state() >= Airport::ACTIVE);
+}
+
 static void
-show_widget(widget_ctx_t *ctx)
+ShowTypeButtons()
+{
+    XPShowWidget(vdgs_label);
+    XPShowWidget(marshaller_label);
+
+    XPShowWidget(vdgs_btn);
+    XPShowWidget(marshaller_btn);
+}
+
+static void
+HideTypeButtons()
+{
+    XPHideWidget(vdgs_label);
+    XPHideWidget(marshaller_label);
+
+    XPHideWidget(vdgs_btn);
+    XPHideWidget(marshaller_btn);
+}
+
+static void
+ShowWidget(widget_ctx_t *ctx)
 {
     if (XPIsWidgetVisible(ctx->widget))
         return;
@@ -68,7 +94,7 @@ show_widget(widget_ctx_t *ctx)
     ctx->t = (ctx->t - ctx->h > yl) ? ctx->t : (yr - ctx->h - 50);
     ctx->t = (ctx->t >= ctx->h) ? ctx->t : (yr / 2);
 
-    LogMsg("show_widget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
+    LogMsg("ShowWidget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
            xl, yl, xr, yr, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
 
     XPSetWidgetGeometry(ctx->widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
@@ -113,14 +139,23 @@ UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t 
         assert(ui_selected_stand >= 0); // be paranoid
         ui_selected_stand--;            // 0 is "Automatic"
 
+        if (ui_selected_stand < 0) {
+            HideTypeButtons();
+            std::string txt = "Automatic @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
+            XPSetWidgetDescriptor(selected_stand, txt.c_str());
+            return 1;
+        }
+
         char ss_name[100];
         ss_name[99] = '\0';
 		XPGetWidgetDescriptor(list_box, ss_name, sizeof(ss_name) - 1);
         std::string txt{ss_name + 2};   // skip type, blank
+        LogMsg("selected ramp is '%s'", txt.c_str());
         txt += " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
 		XPSetWidgetDescriptor(selected_stand, txt.c_str());
-        LogMsg("selected ramp is '%s'", ss_name);
-        if (arpt) {
+
+        ShowTypeButtons();
+        if (IsActive()) {       // be paranoid, otherwise we should never be here
             arpt->SetSelectedStand(ui_selected_stand);
             int dgs_type = arpt->GetDgsType();
             XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
@@ -151,15 +186,16 @@ UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t 
 
     assert(dgs_type != -1);
 
-    if (arpt) {
+    if (IsActive()) {
         arpt->SetDgsType(dgs_type);
         int selected_stand = XPGetWidgetProperty(list_box, xpProperty_ListBoxCurrentItem, NULL);
         selected_stand--;            // 0 is "Automatic"
         if (selected_stand >= 0) {
-            XPSetWidgetProperty(list_box, xpProperty_ListBoxDeleteItem, 1);
             auto [dgs_type, name] = arpt->GetStand(selected_stand);
             char entry[100];
             snprintf(entry, sizeof(entry), "%c %s", (dgs_type == kMarshaller ? 'M' : 'V'), name.c_str());
+            // currently there is no replace op
+            XPSetWidgetProperty(list_box, xpProperty_ListBoxDeleteItem, 1);
             XPSetWidgetDescriptor(list_box, entry);
             XPSetWidgetProperty(list_box, xpProperty_ListBoxInsertItem, 1);
         }
@@ -178,14 +214,17 @@ UpdateUI(bool only_if_visible)
 
     LogMsg("update_ui started");
 
-    if (arpt == nullptr) {
-        if (!ui_arpt_icao.empty()) {
-            ui_selected_stand = -1;
-            XPSetWidgetDescriptor(list_box, "Automatic");
-            XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
-            ui_arpt_icao.clear();
-        }
-    } else if (arpt->name() != ui_arpt_icao) {
+    if (!IsActive()) {
+        ui_selected_stand = -1;
+        XPSetWidgetProperty(list_box, xpProperty_ListBoxClear, 1);
+        XPSetWidgetDescriptor(selected_stand, "Inactive");
+        ui_arpt_icao.clear();
+        HideTypeButtons();
+        return;
+    }
+
+    // active and newly loaded
+    if (arpt->name() != ui_arpt_icao) {
         LogMsg("airport changed to %s", arpt->name().c_str());
         ui_arpt_icao = arpt->name();
 
@@ -194,8 +233,7 @@ UpdateUI(bool only_if_visible)
         XPSetWidgetDescriptor(list_box, "Automatic");
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
-        int n = arpt->nstands();
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < arpt->nstands(); i++) {
             auto [dgs_type, name] = arpt->GetStand(i);
             char entry[100];
             snprintf(entry, sizeof(entry), "%c %s", (dgs_type == kMarshaller ? 'M' : 'V'), name.c_str());
@@ -205,24 +243,18 @@ UpdateUI(bool only_if_visible)
     }
 
     // that's cheap so we do it always
-    if (arpt == nullptr)
-        XPSetWidgetDescriptor(selected_stand, "inactive");
-    else {
-        if (ui_selected_stand == -1) {
-            XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
-            XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, 0);
-            std::string txt = "Automatic @ " + ui_arpt_icao;
-            XPSetWidgetDescriptor(selected_stand, txt.c_str());
-        } else {
-            auto [dgs_type, name] = arpt->GetStand(ui_selected_stand);
-            XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, (dgs_type == kMarshaller ? 1 : 0));
-            XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, (dgs_type == kVDGS ? 1 : 0));
-            std::string txt = name + " @ " + ui_arpt_icao;
-            XPSetWidgetDescriptor(selected_stand, txt.c_str());
-        }
+    if (ui_selected_stand == -1) {
+        HideTypeButtons();
+        std::string txt = "Automatic @ " + ui_arpt_icao;
+        XPSetWidgetDescriptor(selected_stand, txt.c_str());
+    } else if (IsActive()) {
+        ShowTypeButtons();
+        auto [dgs_type, name] = arpt->GetStand(ui_selected_stand);
+        XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, (dgs_type == kMarshaller ? 1 : 0));
+        XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, (dgs_type == kVDGS ? 1 : 0));
+        std::string txt = name + " @ " + ui_arpt_icao;
+        XPSetWidgetDescriptor(selected_stand, txt.c_str());
     }
-
-    LogMsg("update_ui finished");
 }
 
 static void
@@ -256,8 +288,8 @@ CreateUI()
     left1 = left + 60;
 
     top -= 20;
-    XPCreateWidget(left, top, left + 50, top - 20,
-                                 1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
+    marshaller_label = XPCreateWidget(left, top, left + 50, top - 20,
+                                      1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
     marshaller_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
                                     1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonType, xpRadioButton);
@@ -266,8 +298,8 @@ CreateUI()
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
 
     top -= 20;
-    XPCreateWidget(left, top, left + 50, top - 20,
-                                 1, "VDGS", 0, ui_widget, xpWidgetClass_Caption);
+    vdgs_label = XPCreateWidget(left, top, left + 50, top - 20,
+                                1, "VDGS", 0, ui_widget, xpWidgetClass_Caption);
     vdgs_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
                               1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonType, xpRadioButton);
@@ -296,5 +328,5 @@ ToggleUI(void) {
     }
 
     UpdateUI(false);
-    show_widget(&ui_widget_ctx);
+    ShowWidget(&ui_widget_ctx);
 }

@@ -405,37 +405,30 @@ Airport::SetSelectedStand(int selected_stand)
 
     if (arpt->state() > Airport::ACTIVE)
         arpt->ResetState(Airport::ACTIVE);
-    user_cfg_changed_ = true;
 }
 
 void
 Airport::DgsMoveCloser()
 {
-    if (selected_stand_ >= 0)
-        stands_[selected_stand_].DgsMoveCloser();
-    else if (active_stand_ >= 0)
+    if (active_stand_ >= 0) {
         stands_[active_stand_].DgsMoveCloser();
-
-    user_cfg_changed_ = true;
+        user_cfg_changed_ = true;
+    }
 }
 
 void
 Airport::SetDgsType(int dgs_type)
 {
-    if (selected_stand_ >= 0)
-        stands_[selected_stand_].SetDgsType(dgs_type);
-    else if (active_stand_ >= 0)
+    if (active_stand_ >= 0) {
         stands_[active_stand_].SetDgsType(dgs_type);
-
-    user_cfg_changed_ = true;
+        user_cfg_changed_ = true;
+    }
 }
 
 int
 Airport::GetDgsType() const
 {
-    if (selected_stand_ >= 0)
-        return stands_[selected_stand_].dgs_type_;
-    else if (active_stand_ >= 0)
+    if (active_stand_ >= 0)
         return stands_[active_stand_].dgs_type_;
 
     return kMarshaller;
@@ -466,12 +459,10 @@ Airport::ResetState(state_t new_state)
 void
 Airport::CycleDgsType()
 {
-    if (selected_stand_ >= 0)
-        stands_[selected_stand_].CycleDgsType();
-    else if (active_stand_ >= 0)
+    if (active_stand_ >= 0) {
         stands_[active_stand_].CycleDgsType();
-
-    user_cfg_changed_ = true;
+        user_cfg_changed_ = true;
+    }
 }
 
 void
