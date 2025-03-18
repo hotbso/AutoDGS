@@ -54,7 +54,7 @@ class Stand {
     void CycleDgsType();
     void DgsMoveCloser();           // with wrap around
     void SetState(int status, int track, int lr, float azimuth, float distance,
-                  bool state_track, float brightness);
+                  bool state_track);
     void Deactivate();
 
     // accessors

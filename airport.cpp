@@ -34,11 +34,11 @@
 
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
 static constexpr float CAP_A = 15;      // Capture
-static constexpr float CAP_Z = 100;	    // (50-80 in Safedock2 flier)
+static constexpr float CAP_Z = 105;	    // (50-80 in Safedock2 flier)
 
 static constexpr float AZI_A = 15;	    // provide azimuth guidance
 static constexpr float AZI_DISP_A = 10; // max value for display
-static constexpr float AZI_Z = 90;
+static constexpr float AZI_Z = 85;
 
 static constexpr float GOOD_Z= 0.5;     // stop position for nw
 static constexpr float GOOD_X = 2.0;    // for mw
@@ -166,7 +166,7 @@ Stand::CycleDgsType()
 
 void
 Stand::SetState(int status, int track, int lr, float azimuth, float distance,
-                bool state_track, float brightness)
+                bool state_track)
 {
     assert(dgs_type_ == kVDGS);
 
@@ -180,6 +180,9 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance,
     if (state_track)
         for (int i = 0; i < 4; i++)
             drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
+
+    static const float min_brightness = 0.025;   // relativ to 1
+    float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
 
     drefs[DGS_DR_BRIGHTNESS] = brightness;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
@@ -803,9 +806,11 @@ Airport::StateMachine()
                 marshaller = std::make_unique<Marshaller>();
             marshaller->SetPos(&as.drawinfo_, status_, track_, lr_, distance_);
         } else {
-            static const float min_brightness = 0.025;   // relativ to 1
-            float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
-            as.SetState(status_, track_, lr_, azimuth, distance_, (state_ == TRACK), brightness);
+            // always light up a selected VDGS
+            if (state_ == ENGAGED && active_stand_ == selected_stand_)
+                as.SetState(1, 1, 0, 0, 0, true);
+            else
+                as.SetState(status_, track_, lr_, azimuth, distance_, (state_ == TRACK));
         }
     }
 
