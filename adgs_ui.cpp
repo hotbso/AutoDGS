@@ -160,6 +160,8 @@ WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t pa
             HideTypeButtons();
             std::string txt = "Automatic @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
             XPSetWidgetDescriptor(status_line, txt.c_str());
+            if (IsActive())
+                arpt->SetSelectedStand(-1); // unselect
             return 1;
         }
 
