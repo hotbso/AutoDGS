@@ -48,16 +48,16 @@ Plane::BeaconState(void)
         return 0;
     }
 
-    // when checking the beacon guard against power transitions when switching
+    // when checking the beacon guard against power transients when switching
     // to the APU generator (e.g. for the ToLiss fleet).
-    // Report only state transitions when the new state persisted for 3 seconds
+    // Report only state transitions if the new (off) state persisted for 3 seconds
 
     int beacon = XPLMGetDatai(beacon_dr);
     if (beacon) {
         if (! beacon_last_pos_) {
             beacon_on_ts_ = now;
             beacon_last_pos_ = 1;
-        } else if (now > beacon_on_ts_ + 3.0)
+        } else if (now > beacon_on_ts_ + 0.5)
             beacon_state_ = 1;
     } else {
         if (beacon_last_pos_) {

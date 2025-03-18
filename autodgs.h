@@ -119,3 +119,4 @@ extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)))
 extern void create_api_drefs();
 extern void ToggleUI(void);
 extern void UpdateUI(bool only_if_visible = true);
+extern void Activate(void);

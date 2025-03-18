@@ -88,7 +88,7 @@ const char *dgs_dlist_dr[] = {
 //------------------------------------------------------------------------------------
 
 // set mode to arrival
-static void
+void
 Activate(void)
 {
     if (! on_ground) {

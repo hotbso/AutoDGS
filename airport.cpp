@@ -428,6 +428,9 @@ Airport::SetDgsType(int dgs_type)
 int
 Airport::GetDgsType() const
 {
+    // called by the ui and the selected_stand may not already be the active stand
+    if (selected_stand_ >= 0)
+        return stands_[selected_stand_].dgs_type_;
     if (active_stand_ >= 0)
         return stands_[active_stand_].dgs_type_;
 
@@ -573,8 +576,10 @@ Airport::StateMachine()
     if (state_ == INACTIVE)
         return 2.0f;
 
-    // throttle costly search
-    if (now > nearest_stand_ts_ + 2.0) {
+    // throttle costly search...
+    // ... but if have a new selected stand activate it immediately
+    if (now > nearest_stand_ts_ + 2.0
+        || (selected_stand_ >= 0 && selected_stand_ != active_stand_)) {
         FindNearestStand();
         nearest_stand_ts_ = now;
     }

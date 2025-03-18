@@ -25,6 +25,7 @@
 
 #include "autodgs.h"
 #include "airport.h"
+#include "plane.h"
 
 #include "XPWidgets.h"
 #include "XPStandardWidgets.h"
@@ -40,8 +41,9 @@ typedef struct _widget_ctx
 
 static widget_ctx_t ui_widget_ctx;
 
-static XPWidgetID ui_widget, list_box, selected_stand,
-    marshaller_label, vdgs_label, marshaller_btn, vdgs_btn;
+static XPWidgetID ui_widget, list_box, status_line,
+    marshaller_label, vdgs_label, marshaller_btn, vdgs_btn,
+    activate_btn, move_btn;
 
 // current status of ui
 static std::string ui_arpt_icao;
@@ -58,9 +60,11 @@ ShowTypeButtons()
 {
     XPShowWidget(vdgs_label);
     XPShowWidget(marshaller_label);
-
     XPShowWidget(vdgs_btn);
     XPShowWidget(marshaller_btn);
+
+    XPShowWidget(move_btn);
+    XPHideWidget(activate_btn);
 }
 
 static void
@@ -68,9 +72,10 @@ HideTypeButtons()
 {
     XPHideWidget(vdgs_label);
     XPHideWidget(marshaller_label);
-
     XPHideWidget(vdgs_btn);
     XPHideWidget(marshaller_btn);
+
+    XPHideWidget(move_btn);
 }
 
 static void
@@ -127,10 +132,22 @@ CloseUI()
 }
 
 static int
-UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
+WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
     if (msg == xpMessage_CloseButtonPushed) {
         CloseUI();
+        return 1;
+    }
+
+    if (msg == xpMsg_PushButtonPressed) {
+        if (widget_id == activate_btn) {
+            if (!(plane.BeaconState() && on_ground))
+                XPSetWidgetDescriptor(status_line, "Beacon off or not on ground");
+            else
+                Activate();
+        } else if (widget_id == move_btn && IsActive())
+            arpt->DgsMoveCloser();
+
         return 1;
     }
 
@@ -142,7 +159,7 @@ UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t 
         if (ui_selected_stand < 0) {
             HideTypeButtons();
             std::string txt = "Automatic @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
-            XPSetWidgetDescriptor(selected_stand, txt.c_str());
+            XPSetWidgetDescriptor(status_line, txt.c_str());
             return 1;
         }
 
@@ -152,7 +169,7 @@ UIWidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t 
         std::string txt{ss_name + 2};   // skip type, blank
         LogMsg("selected ramp is '%s'", txt.c_str());
         txt += " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
-		XPSetWidgetDescriptor(selected_stand, txt.c_str());
+		XPSetWidgetDescriptor(status_line, txt.c_str());
 
         ShowTypeButtons();
         if (IsActive()) {       // be paranoid, otherwise we should never be here
@@ -217,9 +234,10 @@ UpdateUI(bool only_if_visible)
     if (!IsActive()) {
         ui_selected_stand = -1;
         XPSetWidgetProperty(list_box, xpProperty_ListBoxClear, 1);
-        XPSetWidgetDescriptor(selected_stand, "Inactive");
         ui_arpt_icao.clear();
         HideTypeButtons();
+        XPShowWidget(activate_btn);
+        XPSetWidgetDescriptor(status_line, "");
         return;
     }
 
@@ -227,7 +245,7 @@ UpdateUI(bool only_if_visible)
     if (arpt->name() != ui_arpt_icao) {
         LogMsg("airport changed to %s", arpt->name().c_str());
         ui_arpt_icao = arpt->name();
-
+        XPHideWidget(activate_btn);
         LogMsg("load ramps");
         ui_selected_stand = -1;
         XPSetWidgetDescriptor(list_box, "Automatic");
@@ -244,16 +262,17 @@ UpdateUI(bool only_if_visible)
 
     // that's cheap so we do it always
     if (ui_selected_stand == -1) {
+        XPHideWidget(activate_btn);
         HideTypeButtons();
         std::string txt = "Automatic @ " + ui_arpt_icao;
-        XPSetWidgetDescriptor(selected_stand, txt.c_str());
+        XPSetWidgetDescriptor(status_line, txt.c_str());
     } else if (IsActive()) {
         ShowTypeButtons();
         auto [dgs_type, name] = arpt->GetStand(ui_selected_stand);
         XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, (dgs_type == kMarshaller ? 1 : 0));
         XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonState, (dgs_type == kVDGS ? 1 : 0));
         std::string txt = name + " @ " + ui_arpt_icao;
-        XPSetWidgetDescriptor(selected_stand, txt.c_str());
+        XPSetWidgetDescriptor(status_line, txt.c_str());
     }
 }
 
@@ -271,7 +290,6 @@ CreateUI()
     int width = 250;
     int height = 450;
     int lb_height = 350;
-    int left1;
 
     ui_widget_ctx.l = left;
     ui_widget_ctx.t = top;
@@ -283,18 +301,36 @@ CreateUI()
     ui_widget_ctx.widget = ui_widget;
 
     XPSetWidgetProperty(ui_widget, xpProperty_MainWindowHasCloseBoxes, 1);
-    XPAddWidgetCallback(ui_widget, UIWidgetCb);
+    XPAddWidgetCallback(ui_widget, WidgetCb);
     left += 5;
-    left1 = left + 60;
+    int left1 = left + 60;
 
     top -= 20;
+    int top_btn = top - 20;
+    int left_btn = left + (width - 60) / 2;
+    // "Activate" button
+    activate_btn = XPCreateWidget(left_btn, top_btn, left_btn + 60, top_btn - 20,
+                                    1, "Activate", 0, ui_widget, xpWidgetClass_Button);
+    XPSetWidgetProperty(activate_btn, xpProperty_ButtonType, xpPushButton);
+    XPSetWidgetProperty(activate_btn, xpProperty_ButtonBehavior, xpButtonBehaviorPushButton);
+    XPAddWidgetCallback(activate_btn, WidgetCb);
+
+    // "Move closer" button
+    left_btn = left1 + 60;
+    move_btn = XPCreateWidget(left_btn, top_btn, left_btn + 80, top_btn - 20,
+                              1, "Move closer", 0, ui_widget, xpWidgetClass_Button);
+    XPSetWidgetProperty(move_btn, xpProperty_ButtonType, xpPushButton);
+    XPSetWidgetProperty(move_btn, xpProperty_ButtonBehavior, xpButtonBehaviorPushButton);
+    XPAddWidgetCallback(move_btn, WidgetCb);
+
+    // Type radio buttons
     marshaller_label = XPCreateWidget(left, top, left + 50, top - 20,
                                       1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
     marshaller_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
                                     1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
-    XPAddWidgetCallback(marshaller_btn, UIWidgetCb);
+    XPAddWidgetCallback(marshaller_btn, WidgetCb);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
 
     top -= 20;
@@ -304,10 +340,10 @@ CreateUI()
                               1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
-    XPAddWidgetCallback(vdgs_btn, UIWidgetCb);
+    XPAddWidgetCallback(vdgs_btn, WidgetCb);
 
     top -= 20;
-    selected_stand = XPCreateWidget(left, top, left + width - 30, top - 20,
+    status_line = XPCreateWidget(left, top, left + width - 30, top - 20,
                                     1, "", 0, ui_widget, xpWidgetClass_Caption);
 
     top -= 30;
