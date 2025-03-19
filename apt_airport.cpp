@@ -124,7 +124,6 @@ ParseAptDat(const std::string& fn, bool ignore)
         return false;
 
     LogMsg("Processing '%s'", fn.c_str());
-
     std::string line;
     line.reserve(2000);          // can be quite long
 
@@ -133,7 +132,11 @@ ParseAptDat(const std::string& fn, bool ignore)
 
     // save arpt if it has a tower frequency and stands
     auto save_arpt = [&] () {
-        if (arpt && arpt->has_twr_ && arpt->stands_.size() > 0) {
+        if (arpt == nullptr)
+            return;
+
+        // LogMsg("Save ---> '%s', %d, %d", arpt->icao_.c_str(), arpt->has_twr_, (int)arpt->stands_.size());
+        if (arpt->has_twr_ && arpt->stands_.size() > 0) {
             for (auto & s : arpt->stands_)
                 for (auto & jw : jetways)
                     if (len(jw.cabin - LLPos(s.lon, s.lat)) < kJw2Stand) {
@@ -145,15 +148,22 @@ ParseAptDat(const std::string& fn, bool ignore)
             arpt->stands_.shrink_to_fit();
             std::sort(arpt->stands_.begin(), arpt->stands_.end());
             airports[arpt->icao_] = arpt;
-            jetways.resize(0);
-        } else {
+            jetways.clear();
+        } else
             delete(arpt);
-            arpt = nullptr;
-        }
+
+        arpt = nullptr;
     };
 
     while (std::getline(apt, line)) {
-		//1    681 0 0 ENGM Oslo Gardermoen
+        // ignore helipads + seaplane bases
+        //17      0 0 0 EKAR [H] South Arne Helideck
+        if (line.starts_with("17 ") || line.starts_with("16 ")) {
+            save_arpt();
+            continue;
+        }
+
+        //1    681 0 0 ENGM Oslo Gardermoen
         if (line.starts_with("1 ")) {
 			//LogMsg("%s", line.c_str());
             save_arpt();
@@ -178,6 +188,7 @@ ParseAptDat(const std::string& fn, bool ignore)
                     // does not yet exist
                     arpt = new AptAirport(name);
                     if (ignore) {
+                        // LogMsg("Saving '%s' with ignore", arpt->icao_.c_str());
                         arpt->ignore_ = true;
                         airports[arpt->icao_] = arpt;
                         arpt = nullptr;
@@ -282,20 +293,23 @@ AptAirport::CollectAirports(const std::string& xp_dir)
 const AptAirport *
 AptAirport::LookupAirport(const std::string& airport_id)
 {
+    const AptAirport *arpt = nullptr;
     try {
-        const AptAirport *arpt = airports.at(airport_id);
+        arpt = airports.at(airport_id);
         if (arpt->ignore_)
-            return nullptr;
-        return arpt;
+            arpt = nullptr;
     } catch(const std::out_of_range& ex) {
-        LogMsg("sorry, '%s' is not an AutoDGS airport", airport_id.c_str());
-   }
+        // nothing
+    }
 
-   return nullptr;
+    if (arpt == nullptr)
+        LogMsg("sorry, '%s' is not an AutoDGS airport", airport_id.c_str());
+
+   return arpt;
 }
 
 #ifdef TEST_AIRPORTS
-// g++ --std=c++20 -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O apt_airport.cpp log_msg.cpp
+// g++ --std=c++20 -Wall -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O apt_airport.cpp log_msg.cpp
 
 const AptAirport *arpt;
 
@@ -305,13 +319,11 @@ void find_and_dump(const std::string& name)
     arpt = AptAirport::LookupAirport(name);
     if (arpt)
         arpt->dump();
-    else
-        LogMsg("sorry, '%s' is not an AutoDGS airport", name.c_str());
 }
 
 int main()
 {
-	bool res = AptAirport::CollectAirports("e:/X-Plane-12-test/");
+	AptAirport::CollectAirports("e:/X-Plane-12-test/");
 
     for (auto & a : airports) {
         auto const arpt = a.second;
@@ -324,10 +336,9 @@ int main()
         //arpt->dump();
     }
 
+    find_and_dump("EDDB");
     find_and_dump("EKBI");
     find_and_dump("EKBIx");
     find_and_dump("EDDV");
-    find_and_dump("EDDF");
-    find_and_dump("EHAM");
 }
 #endif
