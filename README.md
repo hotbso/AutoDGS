@@ -1,7 +1,8 @@
 # AutoDGS
 Automatically provide DGS service (Marshaller or VDGS) for X Plane's Global Scenery airports.
 
-Well, not every airport. As you don't want to have Marshallers and Safedock VDGS' at your rural landing strip the airport must have at least one instrument approach resulting in 6000+ airports.
+Well, not every airport. As you don't want to have Marshallers and Safedock VDGS' at your rural landing strip the airport
+must have at least have a tower and some stands resulting in 5000+ airports.
 It works for XP11 and XP12.
 
 Download link: https://github.com/hotbso/AutoDGS/releases
@@ -11,27 +12,35 @@ Just drop the plugin in the plugins folder and you are in automatic set-and-forg
 Support Discord: https://discord.gg/7GNmbFkyXt
 
 ## Automatic Mode
-After you LAND (= some air time!) on an airport the plugin activates and searches actively for suitable ramps in the direction that you are taxiing.
+After you LAND (= some air time!) on an airport the plugin activates and populates all stands with jetways with a VDGS.\
+It then searches actively for suitable stands in the direction that you are taxiing.
 Note that you MUST have your beacon on (a no-brainer with engine on, right?).
 
-The plugin automatically detects which stands have a jetway and selects a VDGS for these and the Marshaller for others.
-
-When close enough to a stand the selected DGS appears and gives appropriate guidance information. The distance to the DGS is automatically adjusted according to the pilot's eye height AGL.
-With the command "Cycle DGS" bound to a key or button or through the menu you can cycle between Marshaller or VDGS as you like.
-Should the DGS be hidden by wall or run over by ground traffic you can pull it forward in 2m increments with the command or menu entry "Move DGS closer by 2m".
-Once parked and the beacon is off the plugin removes the DGS, docks a jetway (XP12 only!) if there is one and deactivates.
+When close enough to a stand the selected DGS activates and gives appropriate guidance information.
+The distance to a Marshaller is automatically adjusted according to the pilot's eye height AGL.\
+With the command "Cycle DGS" bound to a key or button or through the menu you can cycle between Marshaller or VDGS as you like.\
+Should the DGS be hidden by wall or run over by ground traffic you can pull it forward in 2m increments
+with the command or menu entry "Move DGS closer by 2m".\
+Once parked and the beacon is off the plugin docks a jetway (XP12 only!) if there is one and deactivates.
 
 See the plugin in action in a short video (of a prerelease version) -> https://www.youtube.com/watch?v=lzujmsCWF6w .
 
 If you don't like automatic activation or automatic docking of the jetway see the FAQ.
 
 ## Preselect Mode
-When on ground you can preselect a stand in the GUI (e.g. after you get a stand assigned on VATSIM).
+When on ground you can preselect a stand in the GUI (e.g. after you get a stand assigned on VATSIM).\
+Depending on the selected stand a Marshaller appears or the VDGS lights up in "lead in" mode.
 
 ## Helicopter support
 For helicopters the plugin activates when you are below 10m AGL for at least 10 seconds. Note that guidance signals are the same as for fixed wing aircrafts.
 
 ![Image](images/AutoDGS-Marshaller.jpg) ![Image](images/AutoDGS-Menu.jpg)
+
+## Customization of a Scenery
+Per default all stands with jetways get a VDGS and all others get a Marshaller. This can easily bechanged with the UI.
+First ensure that the plugin is activated then select the stand and change the setting accordingly. \
+See a video here -> https://www.youtube.com/watch?v=EAuWxt0DB-8 \
+The configuration is saved in "<xp_dir>/Output/AutoDGS/<airport_icao>.cfg" and loaded automatically on your next visit of the airport.
 
 ## FAQ
 
@@ -40,7 +49,6 @@ Possible reasons are:
 
 Your beacon is off. So the plugin deactivates immediately.
 You did not arrive with a flight. In this case you must activate the plugin with command/menu "Manually activate".
-You use XRAAS with the XP12 work around. This makes the copied Global Airports a "Custom Scenery". See below.
 You are on a Custom Scenery. See "How do I enable a Custom Scenery?".
 
 ### Does it coexist with SAM or AutoGate?
