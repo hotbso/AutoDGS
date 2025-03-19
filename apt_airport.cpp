@@ -139,7 +139,7 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (arpt->has_twr_ && arpt->stands_.size() > 0) {
             for (auto & s : arpt->stands_)
                 for (auto & jw : jetways)
-                    if (len(jw.cabin - LLPos(s.lon, s.lat)) < kJw2Stand) {
+                    if (len(jw.cabin - LLPos{s.lon, s.lat}) < kJw2Stand) {
                         s.has_jw = true;
                         break;
                     }
