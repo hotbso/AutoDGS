@@ -26,18 +26,18 @@ Once parked and the beacon is off the plugin docks a jetway (XP12 only!) if ther
 See the plugin in action in a short video (of a prerelease version) -> https://www.youtube.com/watch?v=lzujmsCWF6w .
 
 If you don't like automatic activation or automatic docking of the jetway see the FAQ.
-
+![Image](images/AutoDGS-VDGS.jpg)
 ## Preselect Mode
 When on ground you can preselect a stand in the GUI (e.g. after you get a stand assigned on VATSIM).\
 Depending on the selected stand a Marshaller appears or the VDGS lights up in "lead in" mode.
 
 ## Helicopter support
 For helicopters the plugin activates when you are below 10m AGL for at least 10 seconds. Note that guidance signals are the same as for fixed wing aircrafts.
-
-![Image](images/AutoDGS-Marshaller.jpg) ![Image](images/AutoDGS-Menu.jpg)
+![Image](images/AutoDGS-Helicopter.jpg)
 
 ## Customization of a Scenery
-Per default all stands with jetways get a VDGS and all others get a Marshaller. This can easily bechanged with the UI.
+![Image](images/EGKK-default-VDGS.jpg)
+Per default all stands with jetways get a VDGS and all others get a Marshaller. This can easily be changed with the UI.
 First ensure that the plugin is activated then select the stand and change the setting accordingly. \
 See a video here -> https://www.youtube.com/watch?v=EAuWxt0DB-8 \
 The configuration is saved in "<xp_dir>/Output/AutoDGS/<airport_icao>.cfg" and loaded automatically on your next visit of the airport.
