@@ -62,6 +62,7 @@ XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
 XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 XPLMDataRef vr_enabled_dr;
+static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
 XPLMObjectRef dgs_obj[2];
 
@@ -128,11 +129,27 @@ Activate(void)
     UpdateUI();
 }
 
-// dummy accessor routine
+// Dataref accessor, only called for the _utc_ datarefs
 static float
-getdgsfloat(XPLMDataRef inRefcon)
+getdgsfloat(void *ref)
 {
-    return -1.0;
+    int  i = (uint64_t)ref;
+    if (i < 1 || i > 4)
+        return -1.0;
+
+    int zm = XPLMGetDatai(zulu_time_minutes_dr);
+    int zh = XPLMGetDatai(zulu_time_hours_dr);
+    switch (i) {
+        case 1:
+            return zm % 10;
+        case 2:
+            return zm / 10;
+        case 3:
+            return zh % 10;
+        case 4:
+            return zh / 10;
+    }
+    return -1.0;   // should not be reached
 }
 
 static float
@@ -260,11 +277,21 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
     sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
     vr_enabled_dr     = XPLMFindDataRef("sim/graphics/VR/enabled");
+    zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
+    zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
 
-    // Published scalar datarefs, as we draw with the instancing API the accessors will never be called
     for (int i = 0; i < DGS_DR_NUM; i++)
         XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
-                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)0, 0);
+
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_m0", xplmType_Float, 0, NULL, NULL, getdgsfloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)1, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_m1", xplmType_Float, 0, NULL, NULL, getdgsfloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)2, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_h0", xplmType_Float, 0, NULL, NULL, getdgsfloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)3, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_h1", xplmType_Float, 0, NULL, NULL, getdgsfloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)4, 0);
 
     create_api_drefs();
     int is_XP11 = (XPLMGetDatai(xp_version_dr) < 120000);
@@ -273,10 +300,10 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     if (is_XP11) {
         LogMsg("XP11 detected");
         obj_name[0] = "Marshaller_XP11.obj";
-        obj_name[1] = "SafedockT2-6m-pole_XP11.obj";
+        obj_name[1] = "Safedock-T2-24-6m-pole_XP11.obj";
     } else {
         obj_name[0] = "Marshaller.obj";
-        obj_name[1] = "SafedockT2-6m-pole.obj";
+        obj_name[1] = "Safedock-T2-24-6m-pole.obj";
     }
 
     for (int i = 0; i < 2; i++) {

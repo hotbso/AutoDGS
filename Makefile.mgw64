@@ -41,7 +41,7 @@ $(OBJDIR)/%.o: %.cpp $(DEPDIR)/%.d version.mak | $(DEPDIR)
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
-XPL_DIR=/e/X-Plane-12-test
+XPL_DIR=/F/X-Plane-12-vanilla
 PLUGDIR:=$(XPL_DIR)/Resources/plugins/AutoDGS/win_x64
 
 $(TARGET): $(OBJECTS)
