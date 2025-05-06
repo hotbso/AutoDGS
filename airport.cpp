@@ -174,6 +174,13 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance,
     drefs[DGS_DR_STATUS] = status;
     drefs[DGS_DR_TRACK] = track;
     drefs[DGS_DR_DISTANCE] = distance;
+    if (0.0f <= distance && distance < 10.0f) {
+        int d_full = distance;
+        drefs[DGS_DR_DISTANCE_0] = d_full;
+        drefs[DGS_DR_DISTANCE_01] = (int)((distance - d_full) * 10.0f);
+        LogMsg("d_0: %0.2f, d_01: %0.2f", drefs[DGS_DR_DISTANCE_0], drefs[DGS_DR_DISTANCE_01]);
+    }
+
     drefs[DGS_DR_AZIMUTH] = azimuth;
     drefs[DGS_DR_LR] = lr;
 
