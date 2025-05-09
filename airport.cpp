@@ -184,10 +184,6 @@ Stand::SetState(int status, int track, int lr, float azimuth,
         for (int i = 0; i < 4; i++)
             drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
-    static const float min_brightness = 0.025;   // relativ to 1
-    float brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
-
-    drefs[DGS_DR_BRIGHTNESS] = brightness;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
 

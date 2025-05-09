@@ -65,7 +65,6 @@ enum _DGS_DREF {
     DGS_DR_ICAO_1,
     DGS_DR_ICAO_2,
     DGS_DR_ICAO_3,
-    DGS_DR_BRIGHTNESS,
     DGS_DR_NUM             // # of drefs
 };
 

@@ -84,9 +84,10 @@ const char *dgs_dlist_dr[] = {
     "AutoDGS/dgs/icao_1",
     "AutoDGS/dgs/icao_2",
     "AutoDGS/dgs/icao_3",
-    "AutoDGS/dgs/vdgs_brightness",
     NULL
 };
+
+static float time_utc_m0, time_utc_m1, time_utc_h0, time_utc_h1, vdgs_brightness;
 
 //------------------------------------------------------------------------------------
 
@@ -133,25 +134,12 @@ Activate(void)
 
 // Dataref accessor, only called for the _utc_ datarefs
 static float
-getdgsfloat(void *ref)
+GetDgsFloat(void *ref)
 {
-    int  i = (uint64_t)ref;
-    if (i < 1 || i > 4)
-        return -1.0;
+    if (ref == nullptr)
+        return -1.0f;
 
-    int zm = XPLMGetDatai(zulu_time_minutes_dr);
-    int zh = XPLMGetDatai(zulu_time_hours_dr);
-    switch (i) {
-        case 1:
-            return zm % 10;
-        case 2:
-            return zm / 10;
-        case 3:
-            return zh % 10;
-        case 4:
-            return zh / 10;
-    }
-    return -1.0;   // should not be reached
+    return *(float *)ref;
 }
 
 static float
@@ -187,6 +175,16 @@ FlightLoopCb(float inElapsedSinceLastCall,
 
         if (arpt && arpt->state() >= Airport::ACTIVE)
             loop_delay = arpt->StateMachine();
+
+        // update global dataref values
+        static constexpr float min_brightness = 0.025;   // relativ to 1
+        vdgs_brightness = min_brightness + (1 - min_brightness) * powf(1 - XPLMGetDataf(percent_lights_dr), 1.5);
+        int zm = XPLMGetDatai(zulu_time_minutes_dr);
+        int zh = XPLMGetDatai(zulu_time_hours_dr);
+        time_utc_m0 = zm % 10;
+        time_utc_m1 = zm / 10;
+        time_utc_h0 = zh % 10;
+        time_utc_h1 = zh / 10;
 
         return loop_delay;
     } catch (const std::exception& ex) {
@@ -282,18 +280,22 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
 
+    // // these are served via instancing
     for (int i = 0; i < DGS_DR_NUM; i++)
-        XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, getdgsfloat,
+        XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)0, 0);
 
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_m0", xplmType_Float, 0, NULL, NULL, getdgsfloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)1, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_m1", xplmType_Float, 0, NULL, NULL, getdgsfloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)2, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_h0", xplmType_Float, 0, NULL, NULL, getdgsfloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)3, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_h1", xplmType_Float, 0, NULL, NULL, getdgsfloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)4, 0);
+    // these are served globally
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_m0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m0, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_m1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m1, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_h0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h0, 0);
+    XPLMRegisterDataAccessor("AutoDGS/time_utc_h1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h1, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/vdgs_brightness", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &vdgs_brightness, 0);
 
     create_api_drefs();
     int is_XP11 = (XPLMGetDatai(xp_version_dr) < 120000);
