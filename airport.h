@@ -53,7 +53,8 @@ class Stand {
     void SetDgsType(int dgs_type);
     void CycleDgsType();
     void DgsMoveCloser();           // with wrap around
-    void SetState(int status, int track, int lr, float azimuth, float distance,
+    void SetState(int status, int track, int lr, float azimuth,
+                  float distance, float distance_0, float distance_01,
                   bool state_track);
     void Deactivate();
 
