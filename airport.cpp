@@ -261,7 +261,7 @@ Stand::DgsMoveCloser()
 //------------------------------------------------------------------------------------
 const char * const Airport::state_str[] = {
     "INACTIVE", "ACTIVE", "ENGAGED",
-    "TRACK", "GOOD", "BAD", "PARKED", "DONE"
+    "TRACK", "GOOD", "BAD", "PARKED", "CHOCKS", "DONE"
 };
 
 
@@ -758,9 +758,23 @@ Airport::StateMachine()
             // wait for beacon off
             if (! beacon_on) {
                 new_state = DONE;
-                if (operation_mode == MODE_AUTO && ! plane.dont_connect_jetway)
+                if (operation_mode == MODE_AUTO && ! plane.dont_connect_jetway) {
                     XPLMCommandOnce(toggle_jetway_cmdr);
+                    // check whether it's a ToLiss, then set chocks
+                    XPLMDataRef tls_chocks = XPLMFindDataRef("AirbusFBW/Chocks");
+                    if (tls_chocks) {
+                        XPLMSetDatai(tls_chocks, 1);
+                        if (as.dgs_type() == kVDGS)
+                            new_state = CHOCKS;
+                    }
+                }
             }
+            break;
+
+        case CHOCKS:
+            status_ = 6;
+            if (now > timestamp_ + 7.0)
+                new_state = DONE;
             break;
 
         case DONE:

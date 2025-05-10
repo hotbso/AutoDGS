@@ -92,6 +92,7 @@ stop_txq = TexQuad(char_tex, 652, 350, 172, 56)
 too_txq = TexQuad(char_tex, 652, 450, 128, 56)
 far_txq = TexQuad(char_tex, 784, 450, 128, 56)
 ok_txq = TexQuad(char_tex, 917, 450, 84, 56)
+chocks_txq = TexQuad(char_tex, 652, 525, 262, 56)
 
 # augment the .obj
 xpo.line("ATTR_light_level 0.0 1.0 AutoDGS/dgs/vdgs_brightness	7000")
@@ -100,7 +101,7 @@ xpo.line("# ---- status == 0, display UTC time")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 0)
     y = LED(4, 2)
-    x = LED(1)
+    x = LED(0, 10)
     dx = 12
     xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_h1", last = 3, ascii = False)
     x = x + dx
@@ -173,7 +174,7 @@ with AnimBlock(xpo):
 
         # field "9.9m"
         y = LED(4, 1)
-        x = LED(1, 4)
+        x = LED(1, 2)
         xpo.char_stack(char_txq, x, y, distance_0_dr, last = 9, ascii = False)
         x = x + dx
         xpo.quad(decimal_txq, x, y)
@@ -236,5 +237,10 @@ with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 4)
     xpo.quad(too_txq, LED(1, 8), LED(5))
     xpo.quad(far_txq, LED(1, 8), LED(4))
+
+xpo.line("#---- status = 6 -> CHOCKS")
+with AnimBlock(xpo):
+    xpo.show_if_eq(status_dr, 4)
+    xpo.quad(chocks_txq, LED(1), LED(4), h2w = 2.0)
 
 xpo.dump()
