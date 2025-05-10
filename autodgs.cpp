@@ -304,10 +304,10 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     if (is_XP11) {
         LogMsg("XP11 detected");
         obj_name[0] = "Marshaller_XP11.obj";
-        obj_name[1] = "Safedock-T2-24-6m-pole_XP11.obj";
+        obj_name[1] = "Safedock-T2-24-5m-pole_XP11.obj";
     } else {
         obj_name[0] = "Marshaller.obj";
-        obj_name[1] = "Safedock-T2-24-6m-pole.obj";
+        obj_name[1] = "Safedock-T2-24-5m-pole.obj";
     }
 
     for (int i = 0; i < 2; i++) {
