@@ -5,3 +5,6 @@ build
 *.dep
 *.pdb
 *.xpl
+*.blend1
+*.log
+*.pyc

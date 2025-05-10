@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <meta content="Animated boarding bridge and docking guidance system for X-Plane scenery package developers">
+  <meta content="X-Plane, simulator, scenery" name="keywords">
+  <title>Custom Docking Guidance Systems</title>
+  <meta content="Jonathan Harris, Holger Teutsch" name="author">
+  <style type="text/css">
+.banner { font-family: Arial,Helvetica,sans-serif; background-color: lightskyblue; text-align: left; height: 32px; }
+.dnl { font-family: Arial,Helvetica,sans-serif; font-size: small; background-color: lightskyblue; }
+samp { font-family: Arial,Helvetica,sans-serif; }
+h2 { font-family: Arial,Helvetica,sans-serif; }
+h3 { font-family: Arial,Helvetica,sans-serif; }
+h4 { font-family: Arial,Helvetica,sans-serif; }
+h5 { font-family: Arial,Helvetica,sans-serif; }
+ul { margin: 0; }
+kbd {font-family: sans-serif; color: black; background-color: white; border: 1px solid black; -webkit-border-radius:5px; -moz-border-radius:5px; border-radius: 5px; padding: 1px 1px 0px; }
+  </style>
+</head>
+<body>
+<table style="width: 100%;" border="0" cellpadding="2">
+  <tbody>
+    <tr>
+      <td class="banner">AutoDGS</td>
+    </tr>
+  </tbody>
+</table>
+<hr>
+
+<h2>Custom Docking Guidance Systems</h4>
+<p>The plugin publishes the following datarefs that you can use to construct your own DGS.</p>
+<dl>
+  <dt><code>AutoDGS/dgs/status</code></dt>
+  <dd>0 - "Idle". All other published datarefs will also have value 0.</dd>
+  <dd>1 - "Active". A plane is approaching the gate and the plane's doorway location is known.</dd>
+  <dd>2 - "Stop". The plane is at the stopping point.</dd>
+  <dd>3 - "Stopped". The plane has stopped engines at the stopping point.</dd>
+  <dd>4 - "Too far". The plane is beyond the stopping point.</dd>
+  <dd>5 - "ID fail". The plane approaching the gate does not have a valid doorway location.</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/track</code></dt>
+  <dd>0 - "Idle/Stop/Too far". Either no plane is approaching the gate or the plane is at or beyond the stopping point (<code>status</code>=0, 2, 3 or 4).</dd>
+  <dd>1 - "Active". A plane is approaching the gate and the plane's doorway location is known (<code>status</code>=1).</dd>
+  <dd>2 - "Tracking". The plane is &gt;6m and &lt;&asymp;60m from the stopping point (<code>status</code>=1).</dd>
+  <dd>3 - "Tracking 6m". The plane is <6m from the stopping point (<code>status</code>=1).</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/lr</code></dt>
+  <dd>0 - "Idle/Active" (<code>status</code>=0 or <code>track</code>=1).</dd>
+  <dd>0 - "Tracking on target" (<code>track</code>=2 or 3).</dd>
+  <dd>1 - "Tracking left". The plane is to the left of the stopping point (<code>track</code>=2 or 3).</dd>
+  <dd>2 - "Tracking right". The plane is to the right of the stopping point (<code>track</code>=2 or 3).</dd>
+  <dd>3 - "Stop/Too far/ID fail". The plane is at or beyond the stopping point (<code>track</code>=0).</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/azimuth</code></dt>
+  <dd>0 if <code>track</code>=0 or 1.</dd>
+  <dd>Distance (in increments of 0.5m) that the plane is to the right of the stopping point if <code>track</code>=2 or 3. Negative when the plane is to the left of the stopping point. Has value -4 or +4 if the plane is >4m to the left or right of the stopping point.</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/distance</code></dt>
+  <dd>0 if <code>track</code>=0 or 1.</dd>
+  <dd>Distance (in increments of 0.5m) of the plane from the stopping point if <code>track</code>=2 or 3. Has value 12 if the plane is >12m from the stopping point.</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/distance2</code></dt>
+  <dd>0 if <code>track</code>=0 or 1.</dd>
+  <dd>Distance-6m (in increments of 0.5m) of the plane from the stopping point if <code>track</code>=2. Has value 6 if the plane is >12m from the stopping point.</dd>
+  <dd>Distance (in increments of 0.5m) of the plane from the stopping point if <code>track</code>=3.</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/icao</code></dt>
+  <dd>Array of 4 integers spelling out the ASCII code of the plane's ICAO model designation:</dd>
+  <dd>0 if <code>status</code>&ne;1</dd>
+  <dd>space, &lsquo;0&rsquo;-&lsquo;9&rsquo; or &lsquo;A&rsquo;-&lsquo;Z&rsquo; if <code>status</code>=1</dd>
+</dl>
+
+<hr>
+<table style="width: 100%;" border="0" cellpadding="2">
+  <tbody>
+    <tr>
+      <td class="banner">Version 2.0 &copy; 2006-2014 Jonathan Harris, 2025 Holger Teutsch</a>
+      <a rel="license" href="http://creativecommons.org/licenses/by/3.0/"><img style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" alt="Creative Commons License" src="http://i.creativecommons.org/l/by/3.0/88x31.png"></a></td>    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>
