@@ -174,7 +174,7 @@ with AnimBlock(xpo):
 
         # field "9.9m"
         y = LED(4, 1)
-        x = LED(1, 2)
+        x = LED(1, 4)
         xpo.char_stack(char_txq, x, y, distance_0_dr, last = 9, ascii = False)
         x = x + dx
         xpo.quad(decimal_txq, x, y)
@@ -240,7 +240,7 @@ with AnimBlock(xpo):
 
 xpo.line("#---- status = 6 -> CHOCKS")
 with AnimBlock(xpo):
-    xpo.show_if_eq(status_dr, 4)
+    xpo.show_if_eq(status_dr, 6)
     xpo.quad(chocks_txq, LED(1), LED(4), h2w = 2.0)
 
 xpo.dump()
