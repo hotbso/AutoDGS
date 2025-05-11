@@ -218,13 +218,27 @@ class XPObj:
             for idx in self.idx_table[i:]:
                 f.write(f"IDX {idx}\n")
 
+            # place display at the end of first LOD section or the very end
             f.write("\n# base obj\n")
+            n_LOD = 0
+            display_added = False
             for l in self.bo_body:
+                if "LOD" in l:
+                    n_LOD += 1
+                    if n_LOD == 2:
+                        display_added = True
+                        f.write("\n# display\n")
+                        for ld in self.line_table:
+                            f.write(ld + "\n")
+                        f.write("\n# continue base obj\n")
+
                 f.write(l)
 
-            f.write("\n# display\n")
-            for l in self.line_table:
-                f.write(l + "\n")
+            if not display_added:
+                f.write("\n# display\n")
+                for ld in self.line_table:
+                    f.write(ld + "\n")
+                f.write("\n# continue base obj\n")
 
         print(f"obj written to '{self.new_obj_fn}'")
 
