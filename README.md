@@ -86,4 +86,5 @@ The plugin code in the src directory is licensed under the GNU LGPL v2.1 license
 The rest of the kit is licensed under the Creative Commons Attribution license. In short, you can use any part of this kit (including the 3D objects and their textures) in original or modified form in a free or commerical scenery package, but you must give the author credit.
 
 ### Contributions by hotbso:
-This is in parts a derived work from libacfutils and Autogate so the above mentioned licenses apply accordingly to the components of this project.
+This is in parts a derived work from Autogate so the above mentioned licenses apply accordingly to the components of this project.\
+The VDGS "Safedock-T2-24" is original work created by hotbso and licensed under "CC BY-NC-SA" (https://creativecommons.org/licenses/by-nc-sa/4.0/).
