@@ -128,6 +128,7 @@ jobs:
             mkdir -p "${RELEASE_FOLDER}/mac_x64"
             mkdir -p "${RELEASE_FOLDER}/resources"
             mkdir -p "${RELEASE_FOLDER}/lua_sample"
+            cp -p README.html "${RELEASE_FOLDER}/."
             cp -p ./download/*/win.xpl "${RELEASE_FOLDER}/win_x64/AutoDGS.xpl"
             cp -p ./download/*/lin.xpl "${RELEASE_FOLDER}/lin_x64/AutoDGS.xpl"
             cp -p ./download/*/mac.xpl "${RELEASE_FOLDER}/mac_x64/AutoDGS.xpl"
