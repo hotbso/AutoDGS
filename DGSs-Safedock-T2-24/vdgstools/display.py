@@ -21,7 +21,7 @@
 
 class XPObj:
 
-    def __init__(self, base_obj_fn, new_obj_fn, b_x, b_y, b_z, w, h):
+    def __init__(self, base_obj_fn, b_x, b_y, b_z, w, h):
         """
             b_(x,y,z) blender coordinates of lower left corner of display
             w, h width and height of display (all in m)
@@ -31,7 +31,7 @@ class XPObj:
         self.y0 = b_z
         self.z0 = -b_y + 0.003   # in front of the display
 
-        self.new_obj_fn = new_obj_fn
+        self.new_obj_fn = base_obj_fn.replace(".obj-base", ".obj")
         self.vt_table = []
         self.idx_table = []
         self.line_table = []
@@ -91,8 +91,6 @@ class XPObj:
                 self.bo_n_idx += 10
             else:
                 self.bo_n_idx += 1
-
-        self.new_obj_fn = new_obj_fn
 
         self.bo_body = bo_lines[i:]
         # print(f"base_obj VT: {self.bo_n_vt}, IDX: {self.bo_n_idx}")

@@ -8,3 +8,4 @@ build
 *.blend1
 *.log
 *.pyc
+*.obj-base

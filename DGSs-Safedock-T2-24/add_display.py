@@ -18,12 +18,14 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
     USA
 """
-
+import sys
 from vdgstools.display import *
 
 #################
-xpo = XPObj("Safedock-T2-24-5m-base.obj", "Safedock-T2-24-5m-pole.obj",
-            -0.4, -0.26, 5.51, 0.8, 0.9)
+if len(sys.argv) < 2:
+    sys.exit("no base obj given")
+
+xpo = XPObj(sys.argv[1], -0.4, -0.26, 5.51, 0.8, 0.9)
 
 # LED tile is 16x16 leds 0.16m x 0.16m
 xpo.set_scale(0.01) # we use LED coordinates, 1 LED cell is 0.01m
