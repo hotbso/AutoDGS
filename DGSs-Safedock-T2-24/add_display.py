@@ -75,26 +75,27 @@ c_colon = 38
 decimal_txq = char_txq[39]
 
 # symbols
-hbar_txq = TexQuad(tex, 184, 312, 384, 24)
-vbar_txq = TexQuad(tex, 584, 312, 24, 2 * 8)
+hbar_txq = TexQuad(tex, 184, 312, 384, 4 * 8)
+vbar_txq = TexQuad(tex, 184, 312, 6 * 8 , 2 * 8)
 
-azimuth_led_w = 13
-azimuth_led_h = 7
-azimuth_txq = TexQuad(tex, 288, 360, 8 * azimuth_led_w, 8 * azimuth_led_h) # the up arrow
+azimuth_led_w = 16
+azimuth_led_h = 12
+azimuth_txq = TexQuad(tex, 192, 592, 8 * azimuth_led_w, 8 * azimuth_led_h) # the up arrow
 
 red_block_led_w = 16
 red_block_led_h = 16
 red_block_txq = TexQuad(tex, 184, 440, 8 * red_block_led_w, 8 * red_block_led_h) # the red block
 
-lr_right_txq = TexQuad(tex, 424, 352, 48, 72)
-lr_left_txq = TexQuad(tex, 424, 352, 48, 72, mirror_x = True)
-lead_in_txq = TexQuad(tex, 368, 440, 120, 96)
+lr_right_txq = TexQuad(tex, 344, 440, 64, 128)
+lr_left_txq = TexQuad(tex, 344, 440, 64, 128, mirror_x = True)
+lead_in_txq = TexQuad(tex, 368, 592, 120, 96)
 
 stop_txq = TexQuad(char_tex, 652, 350, 172, 56)
 too_txq = TexQuad(char_tex, 652, 450, 128, 56)
 far_txq = TexQuad(char_tex, 784, 450, 128, 56)
 ok_txq = TexQuad(char_tex, 917, 450, 84, 56)
-chocks_txq = TexQuad(char_tex, 652, 525, 262, 56)
+chock_txq = TexQuad(char_tex, 652, 525, 216, 56)
+on_txq = TexQuad(char_tex, 874, 525, 82, 56)
 
 # augment the .obj
 xpo.line("ATTR_light_level 0.0 1.0 AutoDGS/dgs/vdgs_brightness	7000")
@@ -103,7 +104,7 @@ xpo.line("# ---- status == 0, display UTC time")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 0)
     y = LED(4, 2)
-    x = LED(0, 10)
+    x = LED(0, 12)
     dx = 12
     xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_h1", last = 3, ascii = False)
     x = x + dx
@@ -176,7 +177,7 @@ with AnimBlock(xpo):
 
         # field "9.9m"
         y = LED(4, 1)
-        x = LED(1, 4)
+        x = LED(1, 8)
         xpo.char_stack(char_txq, x, y, distance_0_dr, last = 9, ascii = False)
         x = x + dx
         xpo.quad(decimal_txq, x, y)
@@ -186,11 +187,11 @@ with AnimBlock(xpo):
         xpo.quad(char_txq[c_m], x, y)
 
     xpo.line("# show hbar")
-    xpo.quad(hbar_txq, LED(1), LED(3, 13))
+    xpo.quad(hbar_txq, LED(1), LED(3, 12))
 
     xpo.line("# show vbar + azimuth marker")
-    x = LED(2.5) -1
-    vbar_top = LED(3, 11)
+    x = LED(2, 5)
+    vbar_top = LED(3, 12)
 
     for i in range(0, 24):  # 12m in 0.5 increments
         with AnimBlock(xpo):
@@ -213,14 +214,14 @@ with AnimBlock(xpo):
         xpo.show_if_eq(lr_dr, 2)
         xpo.hide_if_in_range(sine_wave_dr, -0.91, -0.37)
         xpo.hide_if_in_range(sine_wave_dr, 0.37, 0.91)
-        xpo.quad(lr_right_txq, LED(4, 5), LED(3, 5))
+        xpo.quad(lr_right_txq, LED(4, 8), LED(3))
 
     xpo.line("# LR arrow left side")
     with AnimBlock(xpo):
         xpo.show_if_eq(lr_dr, 1)
         xpo.hide_if_in_range(sine_wave_dr, -0.75, -0.25)
         xpo.hide_if_in_range(sine_wave_dr, 0.25, 0.75)
-        xpo.quad(lr_left_txq, 0, LED(3, 5))
+        xpo.quad(lr_left_txq, 0, LED(3))
 
 xpo.line("#---- status = 2 -> red blocks + STOP")
 with AnimBlock(xpo):
@@ -240,9 +241,10 @@ with AnimBlock(xpo):
     xpo.quad(too_txq, LED(1, 8), LED(5))
     xpo.quad(far_txq, LED(1, 8), LED(4))
 
-xpo.line("#---- status = 6 -> CHOCKS")
+xpo.line("#---- status = 6 -> CHOCK ON")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 6)
-    xpo.quad(chocks_txq, LED(1), LED(4), h2w = 2.0)
+    xpo.quad(chock_txq, LED(1, 2), LED(5))
+    xpo.quad(on_txq, LED(1, 14), LED(4))
 
 xpo.dump()
