@@ -2908,247 +2908,247 @@ ATTR_light_level 0.0 1.0 AutoDGS/dgs/vdgs_brightness	7000
 ANIM_begin
     ANIM_hide -10000.0000 -0.0010 AutoDGS/dgs/status
     ANIM_hide 0.0010 10000.0000 AutoDGS/dgs/status
-        # char stack AutoDGS/time_utc_h1 @(12, 66)
+        # char stack AutoDGS/dgs/time_utc_h1 @(12, 66)
         
 
         # char 0
         ANIM_begin
-            ANIM_hide -2 -1 AutoDGS/time_utc_h1
-            ANIM_hide 1 1000 AutoDGS/time_utc_h1
+            ANIM_hide -2 -1 AutoDGS/dgs/time_utc_h1
+            ANIM_hide 1 1000 AutoDGS/dgs/time_utc_h1
             TRIS 618 6
         ANIM_end
 
         # char 1
         ANIM_begin
-            ANIM_hide -2 0 AutoDGS/time_utc_h1
-            ANIM_hide 2 1000 AutoDGS/time_utc_h1
+            ANIM_hide -2 0 AutoDGS/dgs/time_utc_h1
+            ANIM_hide 2 1000 AutoDGS/dgs/time_utc_h1
             TRIS 624 6
         ANIM_end
 
         # char 2
         ANIM_begin
-            ANIM_hide -2 1 AutoDGS/time_utc_h1
-            ANIM_hide 3 1000 AutoDGS/time_utc_h1
+            ANIM_hide -2 1 AutoDGS/dgs/time_utc_h1
+            ANIM_hide 3 1000 AutoDGS/dgs/time_utc_h1
             TRIS 630 6
         ANIM_end
 
         # char 3
         ANIM_begin
-            ANIM_hide -2 2 AutoDGS/time_utc_h1
-            ANIM_hide 4 1000 AutoDGS/time_utc_h1
+            ANIM_hide -2 2 AutoDGS/dgs/time_utc_h1
+            ANIM_hide 4 1000 AutoDGS/dgs/time_utc_h1
             TRIS 636 6
         ANIM_end
 
-        # char stack AutoDGS/time_utc_h0 @(24, 66)
+        # char stack AutoDGS/dgs/time_utc_h0 @(24, 66)
         
 
         # char 0
         ANIM_begin
-            ANIM_hide -2 -1 AutoDGS/time_utc_h0
-            ANIM_hide 1 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 -1 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 1 1000 AutoDGS/dgs/time_utc_h0
             TRIS 642 6
         ANIM_end
 
         # char 1
         ANIM_begin
-            ANIM_hide -2 0 AutoDGS/time_utc_h0
-            ANIM_hide 2 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 0 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 2 1000 AutoDGS/dgs/time_utc_h0
             TRIS 648 6
         ANIM_end
 
         # char 2
         ANIM_begin
-            ANIM_hide -2 1 AutoDGS/time_utc_h0
-            ANIM_hide 3 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 1 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 3 1000 AutoDGS/dgs/time_utc_h0
             TRIS 654 6
         ANIM_end
 
         # char 3
         ANIM_begin
-            ANIM_hide -2 2 AutoDGS/time_utc_h0
-            ANIM_hide 4 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 2 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 4 1000 AutoDGS/dgs/time_utc_h0
             TRIS 660 6
         ANIM_end
 
         # char 4
         ANIM_begin
-            ANIM_hide -2 3 AutoDGS/time_utc_h0
-            ANIM_hide 5 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 3 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 5 1000 AutoDGS/dgs/time_utc_h0
             TRIS 666 6
         ANIM_end
 
         # char 5
         ANIM_begin
-            ANIM_hide -2 4 AutoDGS/time_utc_h0
-            ANIM_hide 6 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 4 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 6 1000 AutoDGS/dgs/time_utc_h0
             TRIS 672 6
         ANIM_end
 
         # char 6
         ANIM_begin
-            ANIM_hide -2 5 AutoDGS/time_utc_h0
-            ANIM_hide 7 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 5 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 7 1000 AutoDGS/dgs/time_utc_h0
             TRIS 678 6
         ANIM_end
 
         # char 7
         ANIM_begin
-            ANIM_hide -2 6 AutoDGS/time_utc_h0
-            ANIM_hide 8 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 6 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 8 1000 AutoDGS/dgs/time_utc_h0
             TRIS 684 6
         ANIM_end
 
         # char 8
         ANIM_begin
-            ANIM_hide -2 7 AutoDGS/time_utc_h0
-            ANIM_hide 9 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 7 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 9 1000 AutoDGS/dgs/time_utc_h0
             TRIS 690 6
         ANIM_end
 
         # char 9
         ANIM_begin
-            ANIM_hide -2 8 AutoDGS/time_utc_h0
-            ANIM_hide 10 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 8 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 10 1000 AutoDGS/dgs/time_utc_h0
             TRIS 696 6
         ANIM_end
 
         # char 10
         ANIM_begin
-            ANIM_hide -2 9 AutoDGS/time_utc_h0
-            ANIM_hide 11 1000 AutoDGS/time_utc_h0
+            ANIM_hide -2 9 AutoDGS/dgs/time_utc_h0
+            ANIM_hide 11 1000 AutoDGS/dgs/time_utc_h0
             TRIS 702 6
         ANIM_end
 
     TRIS 708 6
-        # char stack AutoDGS/time_utc_m1 @(45.6, 66)
+        # char stack AutoDGS/dgs/time_utc_m1 @(45.6, 66)
         
 
         # char 0
         ANIM_begin
-            ANIM_hide -2 -1 AutoDGS/time_utc_m1
-            ANIM_hide 1 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 -1 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 1 1000 AutoDGS/dgs/time_utc_m1
             TRIS 714 6
         ANIM_end
 
         # char 1
         ANIM_begin
-            ANIM_hide -2 0 AutoDGS/time_utc_m1
-            ANIM_hide 2 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 0 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 2 1000 AutoDGS/dgs/time_utc_m1
             TRIS 720 6
         ANIM_end
 
         # char 2
         ANIM_begin
-            ANIM_hide -2 1 AutoDGS/time_utc_m1
-            ANIM_hide 3 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 1 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 3 1000 AutoDGS/dgs/time_utc_m1
             TRIS 726 6
         ANIM_end
 
         # char 3
         ANIM_begin
-            ANIM_hide -2 2 AutoDGS/time_utc_m1
-            ANIM_hide 4 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 2 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 4 1000 AutoDGS/dgs/time_utc_m1
             TRIS 732 6
         ANIM_end
 
         # char 4
         ANIM_begin
-            ANIM_hide -2 3 AutoDGS/time_utc_m1
-            ANIM_hide 5 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 3 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 5 1000 AutoDGS/dgs/time_utc_m1
             TRIS 738 6
         ANIM_end
 
         # char 5
         ANIM_begin
-            ANIM_hide -2 4 AutoDGS/time_utc_m1
-            ANIM_hide 6 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 4 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 6 1000 AutoDGS/dgs/time_utc_m1
             TRIS 744 6
         ANIM_end
 
         # char 6
         ANIM_begin
-            ANIM_hide -2 5 AutoDGS/time_utc_m1
-            ANIM_hide 7 1000 AutoDGS/time_utc_m1
+            ANIM_hide -2 5 AutoDGS/dgs/time_utc_m1
+            ANIM_hide 7 1000 AutoDGS/dgs/time_utc_m1
             TRIS 750 6
         ANIM_end
 
-        # char stack AutoDGS/time_utc_m0 @(57.6, 66)
+        # char stack AutoDGS/dgs/time_utc_m0 @(57.6, 66)
         
 
         # char 0
         ANIM_begin
-            ANIM_hide -2 -1 AutoDGS/time_utc_m0
-            ANIM_hide 1 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 -1 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 1 1000 AutoDGS/dgs/time_utc_m0
             TRIS 756 6
         ANIM_end
 
         # char 1
         ANIM_begin
-            ANIM_hide -2 0 AutoDGS/time_utc_m0
-            ANIM_hide 2 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 0 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 2 1000 AutoDGS/dgs/time_utc_m0
             TRIS 762 6
         ANIM_end
 
         # char 2
         ANIM_begin
-            ANIM_hide -2 1 AutoDGS/time_utc_m0
-            ANIM_hide 3 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 1 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 3 1000 AutoDGS/dgs/time_utc_m0
             TRIS 768 6
         ANIM_end
 
         # char 3
         ANIM_begin
-            ANIM_hide -2 2 AutoDGS/time_utc_m0
-            ANIM_hide 4 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 2 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 4 1000 AutoDGS/dgs/time_utc_m0
             TRIS 774 6
         ANIM_end
 
         # char 4
         ANIM_begin
-            ANIM_hide -2 3 AutoDGS/time_utc_m0
-            ANIM_hide 5 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 3 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 5 1000 AutoDGS/dgs/time_utc_m0
             TRIS 780 6
         ANIM_end
 
         # char 5
         ANIM_begin
-            ANIM_hide -2 4 AutoDGS/time_utc_m0
-            ANIM_hide 6 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 4 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 6 1000 AutoDGS/dgs/time_utc_m0
             TRIS 786 6
         ANIM_end
 
         # char 6
         ANIM_begin
-            ANIM_hide -2 5 AutoDGS/time_utc_m0
-            ANIM_hide 7 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 5 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 7 1000 AutoDGS/dgs/time_utc_m0
             TRIS 792 6
         ANIM_end
 
         # char 7
         ANIM_begin
-            ANIM_hide -2 6 AutoDGS/time_utc_m0
-            ANIM_hide 8 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 6 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 8 1000 AutoDGS/dgs/time_utc_m0
             TRIS 798 6
         ANIM_end
 
         # char 8
         ANIM_begin
-            ANIM_hide -2 7 AutoDGS/time_utc_m0
-            ANIM_hide 9 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 7 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 9 1000 AutoDGS/dgs/time_utc_m0
             TRIS 804 6
         ANIM_end
 
         # char 9
         ANIM_begin
-            ANIM_hide -2 8 AutoDGS/time_utc_m0
-            ANIM_hide 10 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 8 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 10 1000 AutoDGS/dgs/time_utc_m0
             TRIS 810 6
         ANIM_end
 
         # char 10
         ANIM_begin
-            ANIM_hide -2 9 AutoDGS/time_utc_m0
-            ANIM_hide 11 1000 AutoDGS/time_utc_m0
+            ANIM_hide -2 9 AutoDGS/dgs/time_utc_m0
+            ANIM_hide 11 1000 AutoDGS/dgs/time_utc_m0
             TRIS 816 6
         ANIM_end
 

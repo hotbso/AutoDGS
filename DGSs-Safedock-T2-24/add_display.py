@@ -106,15 +106,15 @@ with AnimBlock(xpo):
     y = LED(4, 2)
     x = LED(0, 12)
     dx = 12
-    xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_h1", last = 3, ascii = False)
+    xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_h1", last = 3, ascii = False)
     x = x + dx
-    xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_h0", last = 10, ascii = False)
+    xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_h0", last = 10, ascii = False)
     x = x + dx
     xpo.quad(char_txq[c_colon], x, y)
     x = x + dx * 0.8
-    xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_m1", last = 6, ascii = False)
+    xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_m1", last = 6, ascii = False)
     x = x + dx
-    xpo.char_stack(char_txq, x, y, "AutoDGS/time_utc_m0", last = 10, ascii = False)
+    xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_m0", last = 10, ascii = False)
 
 
 def icao_large():

@@ -286,13 +286,13 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)0, 0);
 
     // these are served globally
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_m0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m0, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_m1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m1, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_h0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h0, 0);
-    XPLMRegisterDataAccessor("AutoDGS/time_utc_h1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h1, 0);
     XPLMRegisterDataAccessor("AutoDGS/dgs/vdgs_brightness", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &vdgs_brightness, 0);
