@@ -166,8 +166,7 @@ Stand::CycleDgsType()
 
 void
 Stand::SetState(int status, int track, int lr, float azimuth,
-                float distance, float distance_0, float distance_01,
-                bool state_track)
+                float distance, float distance_0, float distance_01)
 {
     assert(dgs_type_ == kVDGS);
 
@@ -180,9 +179,8 @@ Stand::SetState(int status, int track, int lr, float azimuth,
     drefs[DGS_DR_AZIMUTH] = azimuth;
     drefs[DGS_DR_LR] = lr;
 
-    if (state_track)
-        for (int i = 0; i < 4; i++)
-            drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
+    for (int i = 0; i < 4; i++)
+        drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
@@ -826,9 +824,9 @@ Airport::StateMachine()
         } else {
             // always light up a selected VDGS
             if (state_ == ENGAGED && active_stand_ == selected_stand_)
-                as.SetState(1, 1, 0, 0, 0, 0, 0, true);
+                as.SetState(1, 1, 0, 0, 0, 0, 0);
             else
-                as.SetState(status_, track_, lr_, azimuth, distance_, d_0, d_01, (state_ == TRACK));
+                as.SetState(status_, track_, lr_, azimuth, distance_, d_0, d_01);
         }
     }
 
