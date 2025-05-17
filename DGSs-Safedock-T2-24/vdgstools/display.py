@@ -136,7 +136,7 @@ class XPObj:
         self.line(f"# char stack {dref} @{x, y}")
         self.line("\n")
 
-        n = min(last + 1, len(char_txq) + 1)
+        n = min(last + 1, len(char_txq))
         for i in range(first, n):
             v = i
             if ascii:
