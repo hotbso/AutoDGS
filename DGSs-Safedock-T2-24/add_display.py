@@ -60,7 +60,7 @@ w = 5 * 8
 x = 8
 y = 146
 dx = 44.25
-for i in range(0, 21):
+for i in range(0, 20):
     char_txq.append(TexQuad(char_tex, x, y, w, h))
     x += dx
 
@@ -70,9 +70,9 @@ for i in range(0, 19):
     char_txq.append(TexQuad(char_tex, x, y, w, h))
     x += dx
 
-c_m = 37
-c_colon = 38
-decimal_txq = char_txq[39]
+c_m = 36
+c_colon = 37
+decimal_txq = char_txq[38]
 
 # symbols
 hbar_txq = TexQuad(tex, 184, 312, 384, 4 * 8)
@@ -100,9 +100,19 @@ on_txq = TexQuad(char_tex, 874, 525, 82, 56)
 # augment the .obj
 xpo.line("ATTR_light_level 0.0 1.0 AutoDGS/dgs/vdgs_brightness	7000")
 
-xpo.line("# ---- status == 0, display UTC time")
+xpo.line("# ---- status == 0, display stand + display UTC time")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 0)
+
+    xpo.line("# NO-openSAM_begin")
+    y = LED(5, 2)
+    x = LED(0, 3)
+    dx = 12
+    for i in range(0, 6):
+        xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
+        x += dx
+    xpo.line("# NO-openSAM_end")
+
     y = LED(4, 2)
     x = LED(0, 12)
     dx = 12
