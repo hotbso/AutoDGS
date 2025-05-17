@@ -25,7 +25,7 @@ from vdgstools.display import *
 if len(sys.argv) < 2:
     sys.exit("no base obj given")
 
-xpo = XPObj(sys.argv[1], -0.4, -0.26, 5.51, 0.8, 0.9)
+xpo = XPObj(sys.argv[1], -0.4, -0.26, 0.51, 0.8, 0.9)
 
 # LED tile is 16x16 leds 0.16m x 0.16m
 xpo.set_scale(0.01) # we use LED coordinates, 1 LED cell is 0.01m

@@ -29,6 +29,7 @@
 // AptStand augmented
 class Stand {
 	const AptStand& as_;
+    std::string display_name_;   // for use in the VDGS
 
   protected:
     friend class Airport;

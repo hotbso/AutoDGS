@@ -47,6 +47,7 @@ static constexpr float REM_Z = 12;	    // Distance remaining from here on
 
 static constexpr float kVdgsDefaultDist = 15.0;         // m
 static constexpr float kMarshallerDefaultDist = 25.0;
+static constexpr float kVdgsDefaultHeight = 5.0;        // m AGL
 
 static constexpr float kDgsMinDist = 8.0;
 static constexpr float kDgsMaxDist = 30.0;
@@ -122,7 +123,11 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     dgs_dist_ = dgs_dist;
     dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
-    LogMsg("Stand '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), is_wet_, dgs_type_, dgs_dist_);
+    if (as_.name.length() <= 6)
+        display_name_ = as_.name;
+
+    LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), display_name_.c_str(),
+           is_wet_, dgs_type_, dgs_dist_);
 }
 
 Stand::~Stand()
@@ -241,6 +246,8 @@ Stand::SetDgsDist()
     drawinfo_.x = probeinfo.locationX;
     drawinfo_.y = probeinfo.locationY;
     drawinfo_.z = probeinfo.locationZ;
+    if (dgs_type_ == kVDGS)
+        drawinfo_.y += kVdgsDefaultHeight;
 }
 
 // adjust may be negative to move it closer
