@@ -56,7 +56,7 @@ class Stand {
     void DgsMoveCloser();           // with wrap around
     void SetState(int status, int track, int lr, float azimuth,
                   float distance, float distance_0, float distance_01);
-    void Deactivate();
+    void SetIdle();
 
     // accessors
     const std::string& name() const { return as_.name; };

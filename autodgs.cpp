@@ -84,6 +84,12 @@ const char *dgs_dlist_dr[] = {
     "AutoDGS/dgs/icao_1",
     "AutoDGS/dgs/icao_2",
     "AutoDGS/dgs/icao_3",
+    "AutoDGS/dgs/r1c0",
+    "AutoDGS/dgs/r1c1",
+    "AutoDGS/dgs/r1c2",
+    "AutoDGS/dgs/r1c3",
+    "AutoDGS/dgs/r1c4",
+    "AutoDGS/dgs/r1c5",
     NULL
 };
 

@@ -106,7 +106,7 @@ with AnimBlock(xpo):
 
     xpo.line("# NO-openSAM_begin")
     y = LED(5, 2)
-    x = LED(0, 3)
+    x = LED(0, 4)
     dx = 12
     for i in range(0, 6):
         xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")

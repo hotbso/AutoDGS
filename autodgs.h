@@ -65,8 +65,16 @@ enum _DGS_DREF {
     DGS_DR_ICAO_1,
     DGS_DR_ICAO_2,
     DGS_DR_ICAO_3,
-    DGS_DR_NUM             // # of drefs
+    DGS_DR_R1C0,            // top row (=1), char #
+    DGS_DR_R1C1,
+    DGS_DR_R1C2,
+    DGS_DR_R1C3,
+    DGS_DR_R1C4,
+    DGS_DR_R1C5,
+    DGS_DR_NUM              // # of drefs
 };
+
+static constexpr int kR1Nchar = 6;
 
 extern const char *dgs_dlist_dr[];
 

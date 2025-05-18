@@ -99,6 +99,15 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 //------------------------------------------------------------------------------------
 Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as)
 {
+    // create display name
+    int n = as_.name.length();
+    if (n <= kR1Nchar) {
+        display_name_ = as_.name;
+        int pad = (kR1Nchar - n) / 2;
+        if (pad > 0)
+            display_name_.insert(0, pad, ' ');
+    }
+
     double x, y, z;
     XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x, &y, &z);
 
@@ -123,8 +132,6 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     dgs_dist_ = dgs_dist;
     dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
-    if (as_.name.length() <= 6)
-        display_name_ = as_.name;
 
     LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), display_name_.c_str(),
            is_wet_, dgs_type_, dgs_dist_);
@@ -158,7 +165,7 @@ Stand::SetDgsType(int dgs_type)
         marshaller = nullptr;
         SetDgsDist();
         vdgs_inst_ref_ = XPLMCreateInstance(dgs_obj[kVDGS], dgs_dlist_dr);
-        Deactivate();
+        SetIdle();
     }
 }
 
@@ -191,14 +198,19 @@ Stand::SetState(int status, int track, int lr, float azimuth,
 }
 
 void
-Stand::Deactivate()
+Stand::SetIdle()
 {
     if (vdgs_inst_ref_ == nullptr)
         return;
 
-    LogMsg("Deactivate stand: '%s'", cname());
+    LogMsg("SetIdle stand: '%s'", cname());
 
     float drefs[DGS_DR_NUM]{};
+
+    int n = std::min(6, (int)display_name_.length());
+    for (int i = 0; i < n; i++)
+        drefs[DGS_DR_R1C0 + i] = display_name_[i];
+
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
 
@@ -452,7 +464,7 @@ Airport::ResetState(state_t new_state)
 
     state_ = new_state;
     if (active_stand_ >= 0)
-        stands_[active_stand_].Deactivate();
+        stands_[active_stand_].SetIdle();
     active_stand_ = -1;
 
     marshaller = nullptr;
@@ -566,7 +578,7 @@ Airport::FindNearestStand()
         LogMsg("stand: %s, %f, %f, %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
 
         if (active_stand_ >= 0)
-            stands_[active_stand_].Deactivate();
+            stands_[active_stand_].SetIdle();
 
         ms.SetDgsDist();
         active_stand_ = min_stand;
