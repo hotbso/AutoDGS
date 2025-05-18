@@ -147,15 +147,20 @@ with AnimBlock(xpo):
     xpo.show_if_eq(track_dr, 1)
     icao_large()
 
-    x = LED(2, 4)
+    x = LED(2)
     dy = 10
     y = 2
-    for i in range(0, 4):
+    degrees = 180 / 5
+    for i in range(5):
         with AnimBlock(xpo):
-            xpo.show_if_in_range(beacon_dr, i * 45 + 1, (i + 1) * 45)   # double freq
+            xpo.show_if_in_range(beacon_dr, i * degrees, (i + 1) * degrees - 0.1)
             xpo.quad(lead_in_txq, x, y)
+        y += dy
+
+    y = 2
+    for i in range(5, 10):
         with AnimBlock(xpo):
-            xpo.show_if_in_range(beacon_dr, 180 + i * 45 + 1, 180 + (i + 1) * 45)
+            xpo.show_if_in_range(beacon_dr, i * degrees, (i + 1) * degrees - 0.1)
             xpo.quad(lead_in_txq, x, y)
         y += dy
 
