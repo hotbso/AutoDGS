@@ -137,7 +137,7 @@ jobs:
                 if [[ $f == *-base.obj ]]; then continue; fi
                 if [[ $f == *.obj || $f == *.png || $f == *.dds ]]; then cp -p "$f" "${RELEASE_FOLDER}/resources/."; fi
             done
-            grep -v ATTR_light_level "${RELEASE_FOLDER}/resources/Safedock-T2-24-5m-pole.obj" > "${RELEASE_FOLDER}/resources/Safedock-T2-24-5m-pole_XP11.obj"
+            grep -v ATTR_light_level "${RELEASE_FOLDER}/resources/Safedock-T2-24-pole.obj" > "${RELEASE_FOLDER}/resources/Safedock-T2-24-pole_XP11.obj"
             cp -p *.lua "${RELEASE_FOLDER}/lua_sample/."
             cp -p acf_use_engine_running.txt "${RELEASE_FOLDER}/."
             cp -p acf_dont_connect_jetway.txt "${RELEASE_FOLDER}/."
