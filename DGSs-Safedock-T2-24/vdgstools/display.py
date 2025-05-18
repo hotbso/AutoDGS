@@ -20,6 +20,16 @@
 """
 
 class XPObj:
+    class VT:
+        def __init__(self, x, y, z, s, t):
+            self.x = x
+            self.y = y
+            self.z = z
+            self.s = s
+            self.t = t
+
+        def __str__(self):
+            return f"VT {self.x:8.5f} {self.y:8.5f} {self.z:8.5f} 0 0 1 {self.s:6.5f} {self.t:6.5f}\n"
 
     def __init__(self, base_obj_fn, b_x, b_y, b_z, w, h):
         """
@@ -47,6 +57,9 @@ class XPObj:
         # indentation control
         self.indent = 0
         self.indent_str = ""
+
+        # statistics
+        self.optim_vt = 0
 
         bo_lines = open(base_obj_fn, "r").readlines()
 
@@ -105,8 +118,18 @@ class XPObj:
         self.indent_str = ' ' * self.indent
 
     def _add_vt(self, x, y, s, t) -> int:
+        x = x + self.x0
+        y = y + self.y0
+        z = self.z0
+        i = 0
+        for v in self.vt_table:
+            if v.x == x and v.y == y and v.z == z and v.s == s and v.t == t:
+                self.optim_vt += 1
+                return self.bo_n_vt + i
+            i += 1
+
         idx = self.bo_n_vt + len(self.vt_table)
-        self.vt_table.append(f"VT {x + self.x0:8.5f} {y + self.y0:8.5f} {self.z0:8.5f} 0 0 1 {s:6.5f} {t:6.5f}")
+        self.vt_table.append(self.VT(x, y, z, s, t))
         return idx
 
     def set_scale(self, scale):
@@ -195,8 +218,8 @@ class XPObj:
                 f.write(l + "\n")
 
             f.write("\n# display\n")
-            for l in self.vt_table:
-                f.write(l + "\n")
+            for v in self.vt_table:
+                f.write(str(v))
 
             f.write("\n# base obj\n")
             for l in self.bo_idx_lines:
@@ -239,6 +262,7 @@ class XPObj:
                 f.write("\n# continue base obj\n")
 
         print(f"obj written to '{self.new_obj_fn}'")
+        print(f"VTs optimized: {self.optim_vt}")
 
 class Texture:
     def __init__(self, xpo, w, h, pix2m):
