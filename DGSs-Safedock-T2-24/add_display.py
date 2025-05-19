@@ -106,7 +106,7 @@ with AnimBlock(xpo):
 
     xpo.line("# NO-openSAM_begin")
     y = LED(5, 2)
-    x = LED(0, 4)
+    x = LED(0, 5)
     dx = 12
     for i in range(0, 6):
         xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
@@ -179,8 +179,8 @@ with AnimBlock(xpo):
         xpo.show_if_in_range(distance_dr, -100, 9.99)
 
         # ICAO normal font
-        y = LED(5, 1)
-        x = LED(1, 4)
+        y = LED(5, 2)
+        x = LED(1, 1)
         dx = 12
         xpo.char_stack(char_txq, x, y, icao_0_dr, first = 10, last = 36)
         x = x + dx

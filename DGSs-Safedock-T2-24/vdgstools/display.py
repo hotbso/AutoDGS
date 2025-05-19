@@ -59,7 +59,10 @@ class XPObj:
         self.indent_str = ""
 
         # statistics
-        self.optim_vt = 0
+        self.optim_vts = 0
+        self.optim_tris = 0
+        self.anim_blocks = 0
+        self.hides = 0
 
         bo_lines = open(base_obj_fn, "r").readlines()
 
@@ -124,7 +127,7 @@ class XPObj:
         i = 0
         for v in self.vt_table:
             if v.x == x and v.y == y and v.z == z and v.s == s and v.t == t:
-                self.optim_vt += 1
+                self.optim_vts += 1
                 return self.bo_n_vt + i
             i += 1
 
@@ -144,14 +147,23 @@ class XPObj:
         y = y * self.scale
         w = txq.w * txq.tex.pix2m
         h = txq.h * txq.tex.pix2m * h2w
-        idx = self.bo_n_idx + len(self.idx_table)
+
         vt0 = self._add_vt(x, y, txq.s1, txq.t1)
         vt1 = self._add_vt(x, y + h, txq.s1, txq.t2)
         vt2 = self._add_vt(x + w, y, txq.s2, txq.t1)
         vt3 = self._add_vt(x + w, y + h, txq.s2, txq.t2)
 
         # tris are clockwise
-        self.idx_table.extend([vt0, vt1, vt2, vt1, vt3, vt2])
+        vts = [vt0, vt1, vt2, vt1, vt3, vt2]
+        for i in range(0, len(self.idx_table), 6):
+            if vts == self.idx_table[i : i + 6]:
+                idx = i + self.bo_n_idx
+                self.line(f"TRIS {idx} 6")
+                self.optim_tris += 1
+                return
+
+        idx = self.bo_n_idx + len(self.idx_table)
+        self.idx_table.extend(vts)
         self.line(f"TRIS {idx} 6")
 
     def char_stack(self, char_txq, x, y, dref, first = 0, last = 999, ascii = True, h2w = 1.0):
@@ -178,16 +190,20 @@ class XPObj:
             self.quad(tx, x, y, h2w = h2w)
             self._indent_dec()
             self.line("ANIM_end\n")
+            self.anim_blocks += 1
+            self.hides += 2
             i += 1
 
         self._indent_dec()
 
     def hide_if_in_range(self, dref, low, high):
         self.line(f"ANIM_hide {low:0.4f} {high:0.4f} {dref}")
+        self.hides += 1
 
     def show_if_in_range(self, dref, low, high):
         self.hide_if_in_range(dref, - 10000, low - 0.001)
         self.hide_if_in_range(dref, high + 0.001, 10000)
+        self.hides += 2
 
     def show_if_eq(self, dref, val):
         self.show_if_in_range(dref, val, val)
@@ -261,8 +277,13 @@ class XPObj:
                     f.write(ld + "\n")
                 f.write("\n# continue base obj\n")
 
-        print(f"obj written to '{self.new_obj_fn}'")
-        print(f"VTs optimized: {self.optim_vt}")
+        print(f"obj written to '{self.new_obj_fn}'\n")
+        print(f"VTs  created:        {len(self.vt_table):4}")
+        print(f"TRIs created:        {int(len(self.idx_table)/3):4}")
+        print(f"VTs  optimized:      {self.optim_vts:4}")
+        print(f"TRIs optimized:      {self.optim_tris:4}")
+        print(f"Anim blocks created: {self.anim_blocks:4}")
+        print(f"ANIM_hide   created: {self.hides:4}")
 
 class Texture:
     def __init__(self, xpo, w, h, pix2m):
@@ -295,6 +316,7 @@ class AnimBlock:
         self.xpo = xpo
 
     def __enter__(self):
+        self.xpo.anim_blocks += 1
         self.xpo.line("ANIM_begin")
         self.xpo._indent_inc()
 
