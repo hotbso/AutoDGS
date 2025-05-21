@@ -9,7 +9,7 @@ Download link: https://github.com/hotbso/AutoDGS/releases
 
 Just drop the plugin in the plugins folder and you are in automatic set-and-forget mode.
 
-Support Discord: https://discord.gg/7GNmbFkyXt
+Support Discord: https://discord.gg/qhACbvWKvb
 
 ## Automatic Mode
 After you LAND (= some air time!) on an airport the plugin activates and populates all stands with jetways with a VDGS.\
