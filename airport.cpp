@@ -177,17 +177,25 @@ Stand::CycleDgsType()
 }
 
 void
-Stand::SetState(int status, int track, int lr, float azimuth,
-                float distance, float distance_0, float distance_01)
+Stand::SetState(int status, int track, int lr, float azimuth, float distance)
 {
     assert(dgs_type_ == kVDGS);
+
+    float d_0 = 0.0f;
+    float d_01 = 0.0f;
+    if (0.0f <= distance && distance < 10.0f) {
+        d_0 = (float)(int)distance;
+        d_01 = (int)((distance - d_0) * 10.0f);
+    }
+
+    distance =((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
 
     float drefs[DGS_DR_NUM]{};
     drefs[DGS_DR_STATUS] = status;
     drefs[DGS_DR_TRACK] = track;
     drefs[DGS_DR_DISTANCE] = distance;
-    drefs[DGS_DR_DISTANCE_0] = distance_0;
-    drefs[DGS_DR_DISTANCE_01] = distance_01;
+    drefs[DGS_DR_DISTANCE_0] = d_0;
+    drefs[DGS_DR_DISTANCE_01] = d_01;
     drefs[DGS_DR_AZIMUTH] = azimuth;
     drefs[DGS_DR_LR] = lr;
 
@@ -820,14 +828,6 @@ Airport::StateMachine()
         }
 
         distance_ = std::clamp(distance_, -GOOD_Z, REM_Z);
-        float d_0 = 0.0f;
-        float d_01 = 0.0f;
-        if (0.0f <= distance_ && distance_ < 10.0f) {
-            d_0 = (float)(int)distance_;
-            d_01 = (int)((distance_ - d_0) * 10.0f);
-        }
-
-        distance_=((float)((int)((distance_)*2))) / 2;    // multiple of 0.5m
 
         // don't flood the log
         if (now > update_dgs_log_ts_ + 2.0) {
@@ -843,9 +843,9 @@ Airport::StateMachine()
         } else {
             // always light up a selected VDGS
             if (state_ == ENGAGED && active_stand_ == selected_stand_)
-                as.SetState(1, 1, 0, 0, 0, 0, 0);
+                as.SetState(1, 1, 0, 0, 0);
             else
-                as.SetState(status_, track_, lr_, azimuth, distance_, d_0, d_01);
+                as.SetState(status_, track_, lr_, azimuth, distance_);
         }
     }
 
