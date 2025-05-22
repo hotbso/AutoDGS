@@ -285,7 +285,7 @@ Stand::DgsMoveCloser()
 
 //------------------------------------------------------------------------------------
 const char * const Airport::state_str[] = {
-    "INACTIVE", "ACTIVE", "ENGAGED",
+    "INACTIVE", "ARRIVAL", "ENGAGED",
     "TRACK", "GOOD", "BAD", "PARKED", "CHOCKS", "DONE"
 };
 
@@ -430,8 +430,8 @@ Airport::SetSelectedStand(int selected_stand)
         return;
     selected_stand_ = selected_stand;
 
-    if (arpt->state() > Airport::ACTIVE)
-        arpt->ResetState(Airport::ACTIVE);
+    if (arpt->state() > Airport::ARRIVAL)
+        arpt->ResetState(Airport::ARRIVAL);
 }
 
 void
@@ -612,7 +612,7 @@ Airport::StateMachine()
     }
 
     if (active_stand_ < 0) {
-        state_ = ACTIVE;
+        state_ = ARRIVAL;
         return 2.0;
     }
 
@@ -662,7 +662,7 @@ Airport::StateMachine()
         azimuth_nw = 0.0;
 
     int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
-    int beacon_on = plane.BeaconState();
+    int beacon_on = plane.BeaconOn();
 
     status_ = lr_ = track_ = 0;
     distance_ = nw_z - GOOD_Z;
@@ -820,7 +820,7 @@ Airport::StateMachine()
         return -1;  // see you on next frame
     }
 
-    if (state_ > ACTIVE) {
+    if (state_ > ARRIVAL) {
         // xform drefs into required constraints for the OBJs
         if (track_ == 0 || track_ == 1) {
             distance_ = 0;

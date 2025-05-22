@@ -28,6 +28,19 @@
 
 Plane plane;
 
+bool
+Plane::EnginesOn()
+{
+    int er[8];
+    int n = XPLMGetDatavi(eng_running_dr, er, 0, 8);
+    for (int i = 0; i < n; i++)
+        if (er[i])
+            return true;
+
+    return false;
+
+}
+
 void
 Plane::ResetBeacon()
 {
@@ -36,17 +49,10 @@ Plane::ResetBeacon()
 }
 
 bool
-Plane::BeaconState(void)
+Plane::BeaconOn(void)
 {
-    if (use_engine_running) {
-        int er[8];
-        int n = XPLMGetDatavi(eng_running_dr, er, 0, 8);
-        for (int i = 0; i < n; i++)
-            if (er[i])
-                return 1;
-
-        return 0;
-    }
+    if (use_engine_running)
+        return EnginesOn();
 
     // when checking the beacon guard against power transients when switching
     // to the APU generator (e.g. for the ToLiss fleet).

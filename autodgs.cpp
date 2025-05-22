@@ -95,6 +95,20 @@ const char *dgs_dlist_dr[] = {
 
 static float time_utc_m0, time_utc_m1, time_utc_h0, time_utc_h1, vdgs_brightness;
 
+static float FlightLoopCb(float inElapsedSinceLastCall,
+               float inElapsedTimeSinceLastFlightLoop, int inCounter,
+               void *inRefcon);
+
+static XPLMCreateFlightLoop_t flight_loop_ctx = {
+    sizeof(XPLMCreateFlightLoop_t),
+    xplm_FlightLoop_Phase_BeforeFlightModel,
+    FlightLoopCb,
+    nullptr
+};
+
+static XPLMFlightLoopID flight_loop_id;
+static bool pending_plane_loaded_cb = false;    // delayed init
+
 //------------------------------------------------------------------------------------
 
 // set mode to arrival
@@ -133,7 +147,7 @@ Activate(void)
     if (arpt == nullptr)
         return;
 
-    arpt->ResetState(plane.BeaconState() ? Airport::ACTIVE : Airport::INACTIVE);
+    arpt->ResetState(plane.BeaconOn() ? Airport::ARRIVAL : Airport::INACTIVE);
     LogMsg("airport loaded: '%s', new state: %s", arpt->name().c_str(), Airport::state_str[arpt->state()]);
     UpdateUI();
 }
@@ -156,6 +170,11 @@ FlightLoopCb(float inElapsedSinceLastCall,
     static float on_ground_ts;  // debounce ground contact
 
     try {
+        if (pending_plane_loaded_cb) {
+            plane.PlaneLoadedCb();
+            pending_plane_loaded_cb = false;
+        }
+
         float loop_delay = 2.0;
 
         now = XPLMGetDataf(total_running_time_sec_dr);
@@ -179,7 +198,7 @@ FlightLoopCb(float inElapsedSinceLastCall,
             }
         }
 
-        if (arpt && arpt->state() >= Airport::ACTIVE)
+        if (arpt && arpt->state() >= Airport::ARRIVAL)
             loop_delay = arpt->StateMachine();
 
         // update global dataref values
@@ -352,7 +371,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     // foreign commands
     toggle_jetway_cmdr = XPLMFindCommand("sim/ground_ops/jetway");
 
-    XPLMRegisterFlightLoopCallback(FlightLoopCb, 2.0, NULL);
+    flight_loop_id = XPLMCreateFlightLoop(&flight_loop_ctx);
     return 1;
 }
 
@@ -393,6 +412,8 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
     // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         arpt = nullptr;
-        plane.PlaneLoadedCb();
+        XPLMScheduleFlightLoop(flight_loop_id, 0, 0);
+        pending_plane_loaded_cb = true;
+        XPLMScheduleFlightLoop(flight_loop_id, 5.0, 1);
     }
 }

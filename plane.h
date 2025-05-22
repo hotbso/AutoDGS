@@ -24,7 +24,7 @@
 #define _PLANE_H_
 
 // a container of flags
-// and a BeaconState debounced of power transitions
+// and a BeaconOn debounced of power transitions
 
 class Plane {
     int beacon_state_, beacon_last_pos_;   // beacon state, last switch_pos, ts of last switch actions
@@ -42,7 +42,8 @@ class Plane {
     bool is_helicopter;
 
     void PlaneLoadedCb();               // callback for XPLM_MSG_PLANE_LOADED
-    bool BeaconState();                 // debounced state
+    bool EnginesOn();
+    bool BeaconOn();                 // debounced state
     void ResetBeacon();                 // e.g. after a teleportation
 };
 

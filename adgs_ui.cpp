@@ -52,7 +52,7 @@ static int ui_selected_stand;
 static inline bool
 IsActive()
 {
-    return (arpt && arpt->state() >= Airport::ACTIVE);
+    return (arpt && arpt->state() >= Airport::ARRIVAL);
 }
 
 static void
@@ -141,7 +141,7 @@ WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t pa
 
     if (msg == xpMsg_PushButtonPressed) {
         if (widget_id == activate_btn) {
-            if (!(plane.BeaconState() && on_ground))
+            if (!(plane.BeaconOn() && on_ground))
                 XPSetWidgetDescriptor(status_line, "Beacon off or not on ground");
             else
                 Activate();
