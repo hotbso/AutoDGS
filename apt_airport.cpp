@@ -64,7 +64,9 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
         if ((i = line.find('\r')) != std::string::npos)
             line.resize(i);
 
-        if (!line.starts_with("SCENERY_PACK ") || line.find("*GLOBAL_AIRPORTS*") != std::string::npos)
+        if (!line.starts_with("SCENERY_PACK ")
+            || line.find("*GLOBAL_AIRPORTS*") != std::string::npos                  // XP12
+            || line.find("Custom Scenery/Global Airports/") != std::string::npos)   // XP11
             continue;
 
         // autoortho pretends every file exists but
@@ -277,7 +279,8 @@ AptAirport::CollectAirports(const std::string& xp_dir)
         ParseAptDat(path + "Earth nav data/apt.dat", ignore);
 	}
 
-    if (!ParseAptDat(xp_dir + "Global Scenery/Global Airports/Earth nav data/apt.dat", false))
+    if (!(ParseAptDat(xp_dir + "Global Scenery/Global Airports/Earth nav data/apt.dat", false)      // XP12
+          || ParseAptDat(xp_dir + "Custom Scenery/Global Airports/Earth nav data/apt.dat", false))) // XP11
         return false;
 
     const std::clock_t c_end = std::clock();
