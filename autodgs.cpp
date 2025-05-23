@@ -198,7 +198,7 @@ FlightLoopCb(float inElapsedSinceLastCall,
             }
         }
 
-        if (arpt && arpt->state() >= Airport::ARRIVAL)
+        if (arpt)
             loop_delay = arpt->StateMachine();
 
         // update global dataref values

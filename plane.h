@@ -43,7 +43,7 @@ class Plane {
 
     void PlaneLoadedCb();               // callback for XPLM_MSG_PLANE_LOADED
     bool EnginesOn();
-    bool BeaconOn();                 // debounced state
+    bool BeaconOn();                    // debounced state
     void ResetBeacon();                 // e.g. after a teleportation
 };
 

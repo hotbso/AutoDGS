@@ -72,7 +72,7 @@ class Stand {
 class Airport {
   public:
     typedef enum {
-        INACTIVE = 0, ARRIVAL, ENGAGED, TRACK, GOOD, BAD, PARKED, CHOCKS, DONE
+        INACTIVE = 0, DEPARTURE, ARRIVAL, ENGAGED, TRACK, GOOD, BAD, PARKED, CHOCKS, DONE
     } state_t;
 
     static const char * const state_str[];
@@ -84,6 +84,7 @@ class Airport {
     std::vector<Stand> stands_;
     int active_stand_;      // -1 or index into stands_
     int selected_stand_;
+    int departure_stand_;
 
     bool user_cfg_changed_;
 
@@ -93,6 +94,7 @@ class Airport {
     float nearest_stand_ts_, update_dgs_log_ts_;
 
     void FindNearestStand();
+    int FindDepartureStand();   // index in to stands_
     void FlushUserCfg();
 
   public:

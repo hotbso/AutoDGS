@@ -285,7 +285,7 @@ Stand::DgsMoveCloser()
 
 //------------------------------------------------------------------------------------
 const char * const Airport::state_str[] = {
-    "INACTIVE", "ARRIVAL", "ENGAGED",
+    "INACTIVE", "DEPARTURE", "ARRIVAL", "ENGAGED",
     "TRACK", "GOOD", "BAD", "PARKED", "CHOCKS", "DONE"
 };
 
@@ -323,7 +323,7 @@ Airport::Airport(const AptAirport& apt_airport)
     }
 
     state_ = INACTIVE;
-    active_stand_ = selected_stand_ = -1;
+    active_stand_ = selected_stand_ = departure_stand_ = -1;
     user_cfg_changed_ = false;
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
@@ -594,17 +594,81 @@ Airport::FindNearestStand()
     }
 }
 
+// find the stand the plane is parked on
+int
+Airport::FindDepartureStand()
+{
+    float plane_x = XPLMGetDataf(plane_x_dr);
+    float plane_z = XPLMGetDataf(plane_z_dr);
+    float plane_hdgt = XPLMGetDataf(plane_true_psi_dr);
+
+    // nose wheel
+    float nw_z = plane_z - plane.nw_z * cosf(kD2R * plane_hdgt);;
+    float nw_x = plane_x + plane.nw_z * sinf(kD2R * plane_hdgt);
+
+    for (int i = 0; i < (int)stands_.size(); i++) {
+        const Stand& s = stands_[i];
+        if (s.dgs_type_ != kVDGS)
+            continue;
+
+        if (fabsf(RA(plane_hdgt - s.hdgt())) > 3.0f)
+            continue;
+
+        float dx = nw_x - s.x_;
+        float dz = nw_z - s.z_;
+        // LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.cname(), dz, dx);
+        if (fabsf(dx * dx + dz * dz) < 1.0f)
+            return i;
+    }
+
+    return -1;
+}
+
 float
 Airport::StateMachine()
 {
     if (error_disabled)
         return 0.0f;
 
-    if (state_ == INACTIVE)
+    // DEPARTURE and friends ...
+    // that's all low freq stuff
+    if (state_ == INACTIVE || state_ == DEPARTURE) {
+        if (plane.BeaconOn() || plane.EnginesOn()) {
+            if (departure_stand_ >= 0)
+                stands_[departure_stand_].SetIdle();
+            departure_stand_ = -1;
+            state_ = INACTIVE;
+            return 2.0f;
+        }
+
+        // check for stand (new or changed)
+        int ds = FindDepartureStand();
+        if (ds != departure_stand_) {
+            if (departure_stand_ >= 0)
+                stands_[departure_stand_].SetIdle();
+            LogMsg("Departure stand now '%s'", ds >= 0 ? stands_[ds].cname() : "*none*");
+            departure_stand_ = ds;
+        }
+
+        if (departure_stand_ < 0) {
+            state_ = INACTIVE;
+            return 4.0f;
+        }
+
+        state_ = DEPARTURE;
+        // FALLTHROUGH
+    }
+
+    if (state_ == DEPARTURE) {
+        LogMsg("in departure");
         return 2.0f;
+    }
+
+    // ARRIVAL and friends ...
+    // that can be high freq stuff
 
     // throttle costly search...
-    // ... but if have a new selected stand activate it immediately
+    // ... but if we have a new selected stand activate it immediately
     if (now > nearest_stand_ts_ + 2.0
         || (selected_stand_ >= 0 && selected_stand_ != active_stand_)) {
         FindNearestStand();
@@ -616,12 +680,13 @@ Airport::StateMachine()
         return 2.0;
     }
 
+    state_t new_state = state_;
+
     int lr_prev = lr_;
     int track_prev = track_;
     float distance_prev = distance_;
 
     float loop_delay = 0.2;
-    state_t new_state = state_;
 
     Stand& as = stands_[active_stand_];
 
