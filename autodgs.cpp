@@ -90,6 +90,10 @@ const char *dgs_dlist_dr[] = {
     "AutoDGS/dgs/r1c3",
     "AutoDGS/dgs/r1c4",
     "AutoDGS/dgs/r1c5",
+    "AutoDGS/dgs/boarding",
+    "AutoDGS/dgs/paxno_0",
+    "AutoDGS/dgs/paxno_1",
+    "AutoDGS/dgs/paxno_2",
     NULL
 };
 

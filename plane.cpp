@@ -76,12 +76,12 @@ Plane::BeaconOn(void)
    return beacon_state_;
 }
 
-float
+int
 Plane::PaxNo()
 {
     if (pax_no_dr_ == NULL)
-        return -1.0f;
-    return XPLMGetDataf(pax_no_dr_);
+        return -1;
+    return XPLMGetDataf(pax_no_dr_) + 0.5f; // round upwards
 }
 
 static bool

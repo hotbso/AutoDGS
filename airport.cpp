@@ -206,6 +206,26 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance)
 }
 
 void
+Stand::SetState(int pax_no)
+{
+    assert(dgs_type_ == kVDGS);
+    int pn_0 = pax_no % 10;
+    pax_no /= 10;
+    int pn_1 = pax_no % 10;
+    pax_no /= 10;
+    int pn_2 = pax_no;
+
+    float drefs[DGS_DR_NUM]{};
+    // status is 0
+    drefs[DGS_DR_BOARDING] = 1;
+    drefs[DGS_DR_PAXNO_0] = pn_0 == 0 ? -1 : pn_0;
+    drefs[DGS_DR_PAXNO_1] = pn_1 == 0 ? -1 : pn_1;
+    drefs[DGS_DR_PAXNO_2] = pn_2 == 0 ? -1 : pn_2;
+
+    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+}
+
+void
 Stand::SetIdle()
 {
     if (vdgs_inst_ref_ == nullptr)
@@ -677,6 +697,7 @@ Airport::StateMachine()
     if (state_ == BOARDING) {
         int pax_no = plane.PaxNo();
         LogMsg("boarding PaxNo: %d", pax_no);
+        stands_[departure_stand_].SetState(pax_no);
         return 1.0f;
     }
 

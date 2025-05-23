@@ -71,6 +71,10 @@ enum _DGS_DREF {
     DGS_DR_R1C3,
     DGS_DR_R1C4,
     DGS_DR_R1C5,
+    DGS_DR_BOARDING,        // boarding state 0/1
+    DGS_DR_PAXNO_0,         // 3 digits
+    DGS_DR_PAXNO_1,
+    DGS_DR_PAXNO_2,
     DGS_DR_NUM              // # of drefs
 };
 

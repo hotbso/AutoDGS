@@ -46,7 +46,7 @@ class Plane {
     bool EnginesOn();
     bool BeaconOn();                    // debounced state
     void ResetBeacon();                 // e.g. after a teleportation
-    float PaxNo();                      // -1: n/a, >=0: # of pax
+    int PaxNo();                        // -1: n/a, >=0: # of pax
 };
 
 extern Plane plane;
