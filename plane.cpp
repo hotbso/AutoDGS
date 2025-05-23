@@ -51,7 +51,7 @@ Plane::ResetBeacon()
 bool
 Plane::BeaconOn(void)
 {
-    if (use_engine_running)
+    if (use_engine_running_)
         return EnginesOn();
 
     // when checking the beacon guard against power transients when switching
@@ -74,6 +74,14 @@ Plane::BeaconOn(void)
    }
 
    return beacon_state_;
+}
+
+float
+Plane::PaxNo()
+{
+    if (pax_no_dr_ == NULL)
+        return -1.0f;
+    return XPLMGetDataf(pax_no_dr_);
 }
 
 static bool
@@ -157,8 +165,12 @@ Plane::PlaneLoadedCb()
     }
 
     // check whether acf is listed in exception files
-    use_engine_running = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
+    use_engine_running_ = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
     dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
+
+    pax_no_dr_ = XPLMFindDataRef("AirbusFBW/NoPax"); // currently only ToLiss
+    if (pax_no_dr_)
+        LogMsg("ToLiss detected");
 
     LogMsg("plane loaded: %s, plane_cg_z: %1.2f, nw_z: %1.2f, mw_z: %1.2f, "
            "pe_y_0_valid: %d, pe_y_0: %0.2f, is_helicopter: %d",

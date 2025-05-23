@@ -72,7 +72,8 @@ class Stand {
 class Airport {
   public:
     typedef enum {
-        INACTIVE = 0, DEPARTURE, ARRIVAL, ENGAGED, TRACK, GOOD, BAD, PARKED, CHOCKS, DONE
+        INACTIVE = 0, DEPARTURE, BOARDING,
+        ARRIVAL, ENGAGED, TRACK, GOOD, BAD, PARKED, CHOCKS, DONE
     } state_t;
 
     static const char * const state_str[];

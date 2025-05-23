@@ -27,12 +27,13 @@
 // and a BeaconOn debounced of power transitions
 
 class Plane {
-    int beacon_state_, beacon_last_pos_;   // beacon state, last switch_pos, ts of last switch actions
+    int beacon_state_, beacon_last_pos_;    // beacon state, last switch_pos, ts of last switch actions
     float beacon_off_ts_, beacon_on_ts_;
+    bool use_engine_running_;               // instead of beacon, e.g. MD11
+    XPLMDataRef pax_no_dr_;                 // dataref reflecting the current # of pax
 
   public:
     std::string acf_icao;
-    bool use_engine_running;            // instead of beacon, e.g. MD11
     bool dont_connect_jetway;           // e.g. for ZIBO with own ground service
     float nw_z, mw_z;                   // z value of plane's 0 to nose wheel, main wheel
 
@@ -45,6 +46,7 @@ class Plane {
     bool EnginesOn();
     bool BeaconOn();                    // debounced state
     void ResetBeacon();                 // e.g. after a teleportation
+    float PaxNo();                      // -1: n/a, >=0: # of pax
 };
 
 extern Plane plane;

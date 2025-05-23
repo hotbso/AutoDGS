@@ -285,7 +285,7 @@ Stand::DgsMoveCloser()
 
 //------------------------------------------------------------------------------------
 const char * const Airport::state_str[] = {
-    "INACTIVE", "DEPARTURE", "ARRIVAL", "ENGAGED",
+    "INACTIVE", "DEPARTURE", "BOARDING", "ARRIVAL", "ENGAGED",
     "TRACK", "GOOD", "BAD", "PARKED", "CHOCKS", "DONE"
 };
 
@@ -632,7 +632,8 @@ Airport::StateMachine()
 
     // DEPARTURE and friends ...
     // that's all low freq stuff
-    if (state_ == INACTIVE || state_ == DEPARTURE) {
+    if (INACTIVE <= state_ && state_ <= BOARDING) {
+        // on beacon or engine or teleportation -> INACTIVE
         if (plane.BeaconOn() || plane.EnginesOn()) {
             if (departure_stand_ >= 0)
                 stands_[departure_stand_].SetIdle();
@@ -655,17 +656,32 @@ Airport::StateMachine()
             return 4.0f;
         }
 
-        state_ = DEPARTURE;
+        if (plane.PaxNo() == 0)
+            state_ = DEPARTURE;
+
+        if (state_ == INACTIVE)
+            return 4.0f;
+
         // FALLTHROUGH
     }
 
     if (state_ == DEPARTURE) {
         LogMsg("in departure");
-        return 2.0f;
+        if (plane.PaxNo() == 0)
+            return 4.0f;
+        state_ = BOARDING;
+        LogMsg("New state %s", state_str[state_]);
+        // FALLTHROUGH
+    }
+
+    if (state_ == BOARDING) {
+        int pax_no = plane.PaxNo();
+        LogMsg("boarding PaxNo: %d", pax_no);
+        return 1.0f;
     }
 
     // ARRIVAL and friends ...
-    // that can be high freq stuff
+    // this can be high freq stuff
 
     // throttle costly search...
     // ... but if we have a new selected stand activate it immediately
