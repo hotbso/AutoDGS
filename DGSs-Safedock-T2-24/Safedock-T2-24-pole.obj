@@ -5,7 +5,7 @@ OBJ
 TEXTURE	Safedock-T2-24.png
 TEXTURE_LIT	Safedock-T2-24_LIT.png
 
-POINT_COUNTS 2444 0 0 3564
+POINT_COUNTS 2580 0 0 3768
 
 # base obj
 VT	-0.4499999	1.52	0.25999999	0	1	0	0.11814175	0.6970464
@@ -1650,6 +1650,142 @@ VT  0.17600  1.17000  0.26300 0 0 1 0.43994 0.80273
 VT  0.17600  1.29444  0.26300 0 0 1 0.43994 0.85742
 VT  0.26489  1.17000  0.26300 0 0 1 0.47900 0.80273
 VT  0.26489  1.29444  0.26300 0 0 1 0.47900 0.85742
+VT -0.16000  0.85000  0.26300 0 0 1 0.63672 0.36133
+VT -0.16000  0.97444  0.26300 0 0 1 0.63672 0.41602
+VT  0.12444  0.85000  0.26300 0 0 1 0.76172 0.36133
+VT  0.12444  0.97444  0.26300 0 0 1 0.76172 0.41602
+VT  0.08000  0.69000  0.26300 0 0 1 0.00781 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.00781 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.04688 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.04688 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.05103 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.05103 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.09009 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.09009 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.09424 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.09424 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.13330 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.13330 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.13745 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.13745 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.17651 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.17651 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.18066 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.18066 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.21973 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.21973 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.22388 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.22388 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.26294 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.26294 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.26709 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.26709 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.30615 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.30615 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.31030 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.31030 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.34937 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.34937 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.35352 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.35352 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.39258 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.39258 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.39673 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.39673 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.43579 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.43579 0.85742
+VT  0.08000  0.69000  0.26300 0 0 1 0.43994 0.80273
+VT  0.08000  0.81444  0.26300 0 0 1 0.43994 0.85742
+VT  0.16889  0.69000  0.26300 0 0 1 0.47900 0.80273
+VT  0.16889  0.81444  0.26300 0 0 1 0.47900 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.00781 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.00781 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.04688 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.04688 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.05103 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.05103 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.09009 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.09009 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.09424 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.09424 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.13330 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.13330 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.13745 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.13745 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.17651 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.17651 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.18066 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.18066 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.21973 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.21973 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.22388 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.22388 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.26294 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.26294 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.26709 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.26709 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.30615 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.30615 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.31030 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.31030 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.34937 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.34937 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.35352 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.35352 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.39258 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.39258 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.39673 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.39673 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.43579 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.43579 0.85742
+VT -0.04000  0.69000  0.26300 0 0 1 0.43994 0.80273
+VT -0.04000  0.81444  0.26300 0 0 1 0.43994 0.85742
+VT  0.04889  0.69000  0.26300 0 0 1 0.47900 0.80273
+VT  0.04889  0.81444  0.26300 0 0 1 0.47900 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.00781 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.00781 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.04688 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.04688 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.05103 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.05103 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.09009 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.09009 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.09424 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.09424 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.13330 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.13330 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.13745 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.13745 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.17651 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.17651 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.18066 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.18066 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.21973 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.21973 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.22388 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.22388 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.26294 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.26294 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.26709 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.26709 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.30615 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.30615 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.31030 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.31030 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.34937 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.34937 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.35352 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.35352 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.39258 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.39258 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.39673 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.39673 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.43579 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.43579 0.85742
+VT -0.16000  0.69000  0.26300 0 0 1 0.43994 0.80273
+VT -0.16000  0.81444  0.26300 0 0 1 0.43994 0.85742
+VT -0.07111  0.69000  0.26300 0 0 1 0.47900 0.80273
+VT -0.07111  0.81444  0.26300 0 0 1 0.47900 0.85742
 VT -0.20000  1.17000  0.26300 0 0 1 0.43994 0.80273
 VT -0.20000  1.41889  0.26300 0 0 1 0.43994 0.85742
 VT -0.11111  1.17000  0.26300 0 0 1 0.47900 0.80273
@@ -2814,10 +2950,34 @@ IDX10 2415 2414 2416 2417 2418 2417 2419 2418 2420 2421
 IDX10 2422 2421 2423 2422 2424 2425 2426 2425 2427 2426
 IDX10 2428 2429 2430 2429 2431 2430 2432 2433 2434 2433
 IDX10 2435 2434 2436 2437 2438 2437 2439 2438 2440 2441
-IDX 2442
-IDX 2441
-IDX 2443
-IDX 2442
+IDX10 2442 2441 2443 2442 2444 2445 2446 2445 2447 2446
+IDX10 2448 2449 2450 2449 2451 2450 2452 2453 2454 2453
+IDX10 2455 2454 2456 2457 2458 2457 2459 2458 2460 2461
+IDX10 2462 2461 2463 2462 2464 2465 2466 2465 2467 2466
+IDX10 2468 2469 2470 2469 2471 2470 2472 2473 2474 2473
+IDX10 2475 2474 2476 2477 2478 2477 2479 2478 2480 2481
+IDX10 2482 2481 2483 2482 2484 2485 2486 2485 2487 2486
+IDX10 2488 2489 2490 2489 2491 2490 2492 2493 2494 2493
+IDX10 2495 2494 2496 2497 2498 2497 2499 2498 2500 2501
+IDX10 2502 2501 2503 2502 2504 2505 2506 2505 2507 2506
+IDX10 2508 2509 2510 2509 2511 2510 2512 2513 2514 2513
+IDX10 2515 2514 2516 2517 2518 2517 2519 2518 2520 2521
+IDX10 2522 2521 2523 2522 2524 2525 2526 2525 2527 2526
+IDX10 2528 2529 2530 2529 2531 2530 2532 2533 2534 2533
+IDX10 2535 2534 2536 2537 2538 2537 2539 2538 2540 2541
+IDX10 2542 2541 2543 2542 2544 2545 2546 2545 2547 2546
+IDX10 2548 2549 2550 2549 2551 2550 2552 2553 2554 2553
+IDX10 2555 2554 2556 2557 2558 2557 2559 2558 2560 2561
+IDX10 2562 2561 2563 2562 2564 2565 2566 2565 2567 2566
+IDX10 2568 2569 2570 2569 2571 2570 2572 2573 2574 2573
+IDX 2575
+IDX 2574
+IDX 2576
+IDX 2577
+IDX 2578
+IDX 2577
+IDX 2579
+IDX 2578
 
 # base obj
 ATTR_LOD	0	200
@@ -4734,6 +4894,252 @@ ANIM_begin
             TRIS 2352 6
         ANIM_end
 
+    ANIM_begin
+        ANIM_hide -10000.0000 0.9990 AutoDGS/dgs/boarding
+        ANIM_hide 1.0010 10000.0000 AutoDGS/dgs/boarding
+        # PAX no
+        TRIS 2358 6
+            # char stack AutoDGS/dgs/paxno_0 @(48, 18)
+            
+
+            # char 0
+            ANIM_begin
+                ANIM_hide -2 -1 AutoDGS/dgs/paxno_0
+                ANIM_hide 1 1000 AutoDGS/dgs/paxno_0
+                TRIS 2364 6
+            ANIM_end
+
+            # char 1
+            ANIM_begin
+                ANIM_hide -2 0 AutoDGS/dgs/paxno_0
+                ANIM_hide 2 1000 AutoDGS/dgs/paxno_0
+                TRIS 2370 6
+            ANIM_end
+
+            # char 2
+            ANIM_begin
+                ANIM_hide -2 1 AutoDGS/dgs/paxno_0
+                ANIM_hide 3 1000 AutoDGS/dgs/paxno_0
+                TRIS 2376 6
+            ANIM_end
+
+            # char 3
+            ANIM_begin
+                ANIM_hide -2 2 AutoDGS/dgs/paxno_0
+                ANIM_hide 4 1000 AutoDGS/dgs/paxno_0
+                TRIS 2382 6
+            ANIM_end
+
+            # char 4
+            ANIM_begin
+                ANIM_hide -2 3 AutoDGS/dgs/paxno_0
+                ANIM_hide 5 1000 AutoDGS/dgs/paxno_0
+                TRIS 2388 6
+            ANIM_end
+
+            # char 5
+            ANIM_begin
+                ANIM_hide -2 4 AutoDGS/dgs/paxno_0
+                ANIM_hide 6 1000 AutoDGS/dgs/paxno_0
+                TRIS 2394 6
+            ANIM_end
+
+            # char 6
+            ANIM_begin
+                ANIM_hide -2 5 AutoDGS/dgs/paxno_0
+                ANIM_hide 7 1000 AutoDGS/dgs/paxno_0
+                TRIS 2400 6
+            ANIM_end
+
+            # char 7
+            ANIM_begin
+                ANIM_hide -2 6 AutoDGS/dgs/paxno_0
+                ANIM_hide 8 1000 AutoDGS/dgs/paxno_0
+                TRIS 2406 6
+            ANIM_end
+
+            # char 8
+            ANIM_begin
+                ANIM_hide -2 7 AutoDGS/dgs/paxno_0
+                ANIM_hide 9 1000 AutoDGS/dgs/paxno_0
+                TRIS 2412 6
+            ANIM_end
+
+            # char 9
+            ANIM_begin
+                ANIM_hide -2 8 AutoDGS/dgs/paxno_0
+                ANIM_hide 10 1000 AutoDGS/dgs/paxno_0
+                TRIS 2418 6
+            ANIM_end
+
+            # char 10
+            ANIM_begin
+                ANIM_hide -2 9 AutoDGS/dgs/paxno_0
+                ANIM_hide 11 1000 AutoDGS/dgs/paxno_0
+                TRIS 2424 6
+            ANIM_end
+
+            # char stack AutoDGS/dgs/paxno_1 @(36, 18)
+            
+
+            # char 0
+            ANIM_begin
+                ANIM_hide -2 -1 AutoDGS/dgs/paxno_1
+                ANIM_hide 1 1000 AutoDGS/dgs/paxno_1
+                TRIS 2430 6
+            ANIM_end
+
+            # char 1
+            ANIM_begin
+                ANIM_hide -2 0 AutoDGS/dgs/paxno_1
+                ANIM_hide 2 1000 AutoDGS/dgs/paxno_1
+                TRIS 2436 6
+            ANIM_end
+
+            # char 2
+            ANIM_begin
+                ANIM_hide -2 1 AutoDGS/dgs/paxno_1
+                ANIM_hide 3 1000 AutoDGS/dgs/paxno_1
+                TRIS 2442 6
+            ANIM_end
+
+            # char 3
+            ANIM_begin
+                ANIM_hide -2 2 AutoDGS/dgs/paxno_1
+                ANIM_hide 4 1000 AutoDGS/dgs/paxno_1
+                TRIS 2448 6
+            ANIM_end
+
+            # char 4
+            ANIM_begin
+                ANIM_hide -2 3 AutoDGS/dgs/paxno_1
+                ANIM_hide 5 1000 AutoDGS/dgs/paxno_1
+                TRIS 2454 6
+            ANIM_end
+
+            # char 5
+            ANIM_begin
+                ANIM_hide -2 4 AutoDGS/dgs/paxno_1
+                ANIM_hide 6 1000 AutoDGS/dgs/paxno_1
+                TRIS 2460 6
+            ANIM_end
+
+            # char 6
+            ANIM_begin
+                ANIM_hide -2 5 AutoDGS/dgs/paxno_1
+                ANIM_hide 7 1000 AutoDGS/dgs/paxno_1
+                TRIS 2466 6
+            ANIM_end
+
+            # char 7
+            ANIM_begin
+                ANIM_hide -2 6 AutoDGS/dgs/paxno_1
+                ANIM_hide 8 1000 AutoDGS/dgs/paxno_1
+                TRIS 2472 6
+            ANIM_end
+
+            # char 8
+            ANIM_begin
+                ANIM_hide -2 7 AutoDGS/dgs/paxno_1
+                ANIM_hide 9 1000 AutoDGS/dgs/paxno_1
+                TRIS 2478 6
+            ANIM_end
+
+            # char 9
+            ANIM_begin
+                ANIM_hide -2 8 AutoDGS/dgs/paxno_1
+                ANIM_hide 10 1000 AutoDGS/dgs/paxno_1
+                TRIS 2484 6
+            ANIM_end
+
+            # char 10
+            ANIM_begin
+                ANIM_hide -2 9 AutoDGS/dgs/paxno_1
+                ANIM_hide 11 1000 AutoDGS/dgs/paxno_1
+                TRIS 2490 6
+            ANIM_end
+
+            # char stack AutoDGS/dgs/paxno_2 @(24, 18)
+            
+
+            # char 0
+            ANIM_begin
+                ANIM_hide -2 -1 AutoDGS/dgs/paxno_2
+                ANIM_hide 1 1000 AutoDGS/dgs/paxno_2
+                TRIS 2496 6
+            ANIM_end
+
+            # char 1
+            ANIM_begin
+                ANIM_hide -2 0 AutoDGS/dgs/paxno_2
+                ANIM_hide 2 1000 AutoDGS/dgs/paxno_2
+                TRIS 2502 6
+            ANIM_end
+
+            # char 2
+            ANIM_begin
+                ANIM_hide -2 1 AutoDGS/dgs/paxno_2
+                ANIM_hide 3 1000 AutoDGS/dgs/paxno_2
+                TRIS 2508 6
+            ANIM_end
+
+            # char 3
+            ANIM_begin
+                ANIM_hide -2 2 AutoDGS/dgs/paxno_2
+                ANIM_hide 4 1000 AutoDGS/dgs/paxno_2
+                TRIS 2514 6
+            ANIM_end
+
+            # char 4
+            ANIM_begin
+                ANIM_hide -2 3 AutoDGS/dgs/paxno_2
+                ANIM_hide 5 1000 AutoDGS/dgs/paxno_2
+                TRIS 2520 6
+            ANIM_end
+
+            # char 5
+            ANIM_begin
+                ANIM_hide -2 4 AutoDGS/dgs/paxno_2
+                ANIM_hide 6 1000 AutoDGS/dgs/paxno_2
+                TRIS 2526 6
+            ANIM_end
+
+            # char 6
+            ANIM_begin
+                ANIM_hide -2 5 AutoDGS/dgs/paxno_2
+                ANIM_hide 7 1000 AutoDGS/dgs/paxno_2
+                TRIS 2532 6
+            ANIM_end
+
+            # char 7
+            ANIM_begin
+                ANIM_hide -2 6 AutoDGS/dgs/paxno_2
+                ANIM_hide 8 1000 AutoDGS/dgs/paxno_2
+                TRIS 2538 6
+            ANIM_end
+
+            # char 8
+            ANIM_begin
+                ANIM_hide -2 7 AutoDGS/dgs/paxno_2
+                ANIM_hide 9 1000 AutoDGS/dgs/paxno_2
+                TRIS 2544 6
+            ANIM_end
+
+            # char 9
+            ANIM_begin
+                ANIM_hide -2 8 AutoDGS/dgs/paxno_2
+                ANIM_hide 10 1000 AutoDGS/dgs/paxno_2
+                TRIS 2550 6
+            ANIM_end
+
+            # char 10
+            ANIM_begin
+                ANIM_hide -2 9 AutoDGS/dgs/paxno_2
+                ANIM_hide 11 1000 AutoDGS/dgs/paxno_2
+                TRIS 2556 6
+            ANIM_end
+
+    ANIM_end
 ANIM_end
 #---- status = 1 && track = 1 -> lead in
 ANIM_begin
@@ -4749,189 +5155,189 @@ ANIM_begin
         ANIM_begin
             ANIM_hide -2 64 AutoDGS/dgs/icao_0
             ANIM_hide 66 1000 AutoDGS/dgs/icao_0
-            TRIS 2358 6
+            TRIS 2562 6
         ANIM_end
 
         # char 11
         ANIM_begin
             ANIM_hide -2 65 AutoDGS/dgs/icao_0
             ANIM_hide 67 1000 AutoDGS/dgs/icao_0
-            TRIS 2364 6
+            TRIS 2568 6
         ANIM_end
 
         # char 12
         ANIM_begin
             ANIM_hide -2 66 AutoDGS/dgs/icao_0
             ANIM_hide 68 1000 AutoDGS/dgs/icao_0
-            TRIS 2370 6
+            TRIS 2574 6
         ANIM_end
 
         # char 13
         ANIM_begin
             ANIM_hide -2 67 AutoDGS/dgs/icao_0
             ANIM_hide 69 1000 AutoDGS/dgs/icao_0
-            TRIS 2376 6
+            TRIS 2580 6
         ANIM_end
 
         # char 14
         ANIM_begin
             ANIM_hide -2 68 AutoDGS/dgs/icao_0
             ANIM_hide 70 1000 AutoDGS/dgs/icao_0
-            TRIS 2382 6
+            TRIS 2586 6
         ANIM_end
 
         # char 15
         ANIM_begin
             ANIM_hide -2 69 AutoDGS/dgs/icao_0
             ANIM_hide 71 1000 AutoDGS/dgs/icao_0
-            TRIS 2388 6
+            TRIS 2592 6
         ANIM_end
 
         # char 16
         ANIM_begin
             ANIM_hide -2 70 AutoDGS/dgs/icao_0
             ANIM_hide 72 1000 AutoDGS/dgs/icao_0
-            TRIS 2394 6
+            TRIS 2598 6
         ANIM_end
 
         # char 17
         ANIM_begin
             ANIM_hide -2 71 AutoDGS/dgs/icao_0
             ANIM_hide 73 1000 AutoDGS/dgs/icao_0
-            TRIS 2400 6
+            TRIS 2604 6
         ANIM_end
 
         # char 18
         ANIM_begin
             ANIM_hide -2 72 AutoDGS/dgs/icao_0
             ANIM_hide 74 1000 AutoDGS/dgs/icao_0
-            TRIS 2406 6
+            TRIS 2610 6
         ANIM_end
 
         # char 19
         ANIM_begin
             ANIM_hide -2 73 AutoDGS/dgs/icao_0
             ANIM_hide 75 1000 AutoDGS/dgs/icao_0
-            TRIS 2412 6
+            TRIS 2616 6
         ANIM_end
 
         # char 20
         ANIM_begin
             ANIM_hide -2 74 AutoDGS/dgs/icao_0
             ANIM_hide 76 1000 AutoDGS/dgs/icao_0
-            TRIS 2418 6
+            TRIS 2622 6
         ANIM_end
 
         # char 21
         ANIM_begin
             ANIM_hide -2 75 AutoDGS/dgs/icao_0
             ANIM_hide 77 1000 AutoDGS/dgs/icao_0
-            TRIS 2424 6
+            TRIS 2628 6
         ANIM_end
 
         # char 22
         ANIM_begin
             ANIM_hide -2 76 AutoDGS/dgs/icao_0
             ANIM_hide 78 1000 AutoDGS/dgs/icao_0
-            TRIS 2430 6
+            TRIS 2634 6
         ANIM_end
 
         # char 23
         ANIM_begin
             ANIM_hide -2 77 AutoDGS/dgs/icao_0
             ANIM_hide 79 1000 AutoDGS/dgs/icao_0
-            TRIS 2436 6
+            TRIS 2640 6
         ANIM_end
 
         # char 24
         ANIM_begin
             ANIM_hide -2 78 AutoDGS/dgs/icao_0
             ANIM_hide 80 1000 AutoDGS/dgs/icao_0
-            TRIS 2442 6
+            TRIS 2646 6
         ANIM_end
 
         # char 25
         ANIM_begin
             ANIM_hide -2 79 AutoDGS/dgs/icao_0
             ANIM_hide 81 1000 AutoDGS/dgs/icao_0
-            TRIS 2448 6
+            TRIS 2652 6
         ANIM_end
 
         # char 26
         ANIM_begin
             ANIM_hide -2 80 AutoDGS/dgs/icao_0
             ANIM_hide 82 1000 AutoDGS/dgs/icao_0
-            TRIS 2454 6
+            TRIS 2658 6
         ANIM_end
 
         # char 27
         ANIM_begin
             ANIM_hide -2 81 AutoDGS/dgs/icao_0
             ANIM_hide 83 1000 AutoDGS/dgs/icao_0
-            TRIS 2460 6
+            TRIS 2664 6
         ANIM_end
 
         # char 28
         ANIM_begin
             ANIM_hide -2 82 AutoDGS/dgs/icao_0
             ANIM_hide 84 1000 AutoDGS/dgs/icao_0
-            TRIS 2466 6
+            TRIS 2670 6
         ANIM_end
 
         # char 29
         ANIM_begin
             ANIM_hide -2 83 AutoDGS/dgs/icao_0
             ANIM_hide 85 1000 AutoDGS/dgs/icao_0
-            TRIS 2472 6
+            TRIS 2676 6
         ANIM_end
 
         # char 30
         ANIM_begin
             ANIM_hide -2 84 AutoDGS/dgs/icao_0
             ANIM_hide 86 1000 AutoDGS/dgs/icao_0
-            TRIS 2478 6
+            TRIS 2682 6
         ANIM_end
 
         # char 31
         ANIM_begin
             ANIM_hide -2 85 AutoDGS/dgs/icao_0
             ANIM_hide 87 1000 AutoDGS/dgs/icao_0
-            TRIS 2484 6
+            TRIS 2688 6
         ANIM_end
 
         # char 32
         ANIM_begin
             ANIM_hide -2 86 AutoDGS/dgs/icao_0
             ANIM_hide 88 1000 AutoDGS/dgs/icao_0
-            TRIS 2490 6
+            TRIS 2694 6
         ANIM_end
 
         # char 33
         ANIM_begin
             ANIM_hide -2 87 AutoDGS/dgs/icao_0
             ANIM_hide 89 1000 AutoDGS/dgs/icao_0
-            TRIS 2496 6
+            TRIS 2700 6
         ANIM_end
 
         # char 34
         ANIM_begin
             ANIM_hide -2 88 AutoDGS/dgs/icao_0
             ANIM_hide 90 1000 AutoDGS/dgs/icao_0
-            TRIS 2502 6
+            TRIS 2706 6
         ANIM_end
 
         # char 35
         ANIM_begin
             ANIM_hide -2 89 AutoDGS/dgs/icao_0
             ANIM_hide 91 1000 AutoDGS/dgs/icao_0
-            TRIS 2508 6
+            TRIS 2712 6
         ANIM_end
 
         # char 36
         ANIM_begin
             ANIM_hide -2 35 AutoDGS/dgs/icao_0
             ANIM_hide 37 1000 AutoDGS/dgs/icao_0
-            TRIS 2514 6
+            TRIS 2718 6
         ANIM_end
 
         # char stack AutoDGS/dgs/icao_1 @(32, 66)
@@ -4941,259 +5347,259 @@ ANIM_begin
         ANIM_begin
             ANIM_hide -2 47 AutoDGS/dgs/icao_1
             ANIM_hide 49 1000 AutoDGS/dgs/icao_1
-            TRIS 2520 6
+            TRIS 2724 6
         ANIM_end
 
         # char 1
         ANIM_begin
             ANIM_hide -2 48 AutoDGS/dgs/icao_1
             ANIM_hide 50 1000 AutoDGS/dgs/icao_1
-            TRIS 2526 6
+            TRIS 2730 6
         ANIM_end
 
         # char 2
         ANIM_begin
             ANIM_hide -2 49 AutoDGS/dgs/icao_1
             ANIM_hide 51 1000 AutoDGS/dgs/icao_1
-            TRIS 2532 6
+            TRIS 2736 6
         ANIM_end
 
         # char 3
         ANIM_begin
             ANIM_hide -2 50 AutoDGS/dgs/icao_1
             ANIM_hide 52 1000 AutoDGS/dgs/icao_1
-            TRIS 2538 6
+            TRIS 2742 6
         ANIM_end
 
         # char 4
         ANIM_begin
             ANIM_hide -2 51 AutoDGS/dgs/icao_1
             ANIM_hide 53 1000 AutoDGS/dgs/icao_1
-            TRIS 2544 6
+            TRIS 2748 6
         ANIM_end
 
         # char 5
         ANIM_begin
             ANIM_hide -2 52 AutoDGS/dgs/icao_1
             ANIM_hide 54 1000 AutoDGS/dgs/icao_1
-            TRIS 2550 6
+            TRIS 2754 6
         ANIM_end
 
         # char 6
         ANIM_begin
             ANIM_hide -2 53 AutoDGS/dgs/icao_1
             ANIM_hide 55 1000 AutoDGS/dgs/icao_1
-            TRIS 2556 6
+            TRIS 2760 6
         ANIM_end
 
         # char 7
         ANIM_begin
             ANIM_hide -2 54 AutoDGS/dgs/icao_1
             ANIM_hide 56 1000 AutoDGS/dgs/icao_1
-            TRIS 2562 6
+            TRIS 2766 6
         ANIM_end
 
         # char 8
         ANIM_begin
             ANIM_hide -2 55 AutoDGS/dgs/icao_1
             ANIM_hide 57 1000 AutoDGS/dgs/icao_1
-            TRIS 2568 6
+            TRIS 2772 6
         ANIM_end
 
         # char 9
         ANIM_begin
             ANIM_hide -2 56 AutoDGS/dgs/icao_1
             ANIM_hide 58 1000 AutoDGS/dgs/icao_1
-            TRIS 2574 6
+            TRIS 2778 6
         ANIM_end
 
         # char 10
         ANIM_begin
             ANIM_hide -2 64 AutoDGS/dgs/icao_1
             ANIM_hide 66 1000 AutoDGS/dgs/icao_1
-            TRIS 2580 6
+            TRIS 2784 6
         ANIM_end
 
         # char 11
         ANIM_begin
             ANIM_hide -2 65 AutoDGS/dgs/icao_1
             ANIM_hide 67 1000 AutoDGS/dgs/icao_1
-            TRIS 2586 6
+            TRIS 2790 6
         ANIM_end
 
         # char 12
         ANIM_begin
             ANIM_hide -2 66 AutoDGS/dgs/icao_1
             ANIM_hide 68 1000 AutoDGS/dgs/icao_1
-            TRIS 2592 6
+            TRIS 2796 6
         ANIM_end
 
         # char 13
         ANIM_begin
             ANIM_hide -2 67 AutoDGS/dgs/icao_1
             ANIM_hide 69 1000 AutoDGS/dgs/icao_1
-            TRIS 2598 6
+            TRIS 2802 6
         ANIM_end
 
         # char 14
         ANIM_begin
             ANIM_hide -2 68 AutoDGS/dgs/icao_1
             ANIM_hide 70 1000 AutoDGS/dgs/icao_1
-            TRIS 2604 6
+            TRIS 2808 6
         ANIM_end
 
         # char 15
         ANIM_begin
             ANIM_hide -2 69 AutoDGS/dgs/icao_1
             ANIM_hide 71 1000 AutoDGS/dgs/icao_1
-            TRIS 2610 6
+            TRIS 2814 6
         ANIM_end
 
         # char 16
         ANIM_begin
             ANIM_hide -2 70 AutoDGS/dgs/icao_1
             ANIM_hide 72 1000 AutoDGS/dgs/icao_1
-            TRIS 2616 6
+            TRIS 2820 6
         ANIM_end
 
         # char 17
         ANIM_begin
             ANIM_hide -2 71 AutoDGS/dgs/icao_1
             ANIM_hide 73 1000 AutoDGS/dgs/icao_1
-            TRIS 2622 6
+            TRIS 2826 6
         ANIM_end
 
         # char 18
         ANIM_begin
             ANIM_hide -2 72 AutoDGS/dgs/icao_1
             ANIM_hide 74 1000 AutoDGS/dgs/icao_1
-            TRIS 2628 6
+            TRIS 2832 6
         ANIM_end
 
         # char 19
         ANIM_begin
             ANIM_hide -2 73 AutoDGS/dgs/icao_1
             ANIM_hide 75 1000 AutoDGS/dgs/icao_1
-            TRIS 2634 6
+            TRIS 2838 6
         ANIM_end
 
         # char 20
         ANIM_begin
             ANIM_hide -2 74 AutoDGS/dgs/icao_1
             ANIM_hide 76 1000 AutoDGS/dgs/icao_1
-            TRIS 2640 6
+            TRIS 2844 6
         ANIM_end
 
         # char 21
         ANIM_begin
             ANIM_hide -2 75 AutoDGS/dgs/icao_1
             ANIM_hide 77 1000 AutoDGS/dgs/icao_1
-            TRIS 2646 6
+            TRIS 2850 6
         ANIM_end
 
         # char 22
         ANIM_begin
             ANIM_hide -2 76 AutoDGS/dgs/icao_1
             ANIM_hide 78 1000 AutoDGS/dgs/icao_1
-            TRIS 2652 6
+            TRIS 2856 6
         ANIM_end
 
         # char 23
         ANIM_begin
             ANIM_hide -2 77 AutoDGS/dgs/icao_1
             ANIM_hide 79 1000 AutoDGS/dgs/icao_1
-            TRIS 2658 6
+            TRIS 2862 6
         ANIM_end
 
         # char 24
         ANIM_begin
             ANIM_hide -2 78 AutoDGS/dgs/icao_1
             ANIM_hide 80 1000 AutoDGS/dgs/icao_1
-            TRIS 2664 6
+            TRIS 2868 6
         ANIM_end
 
         # char 25
         ANIM_begin
             ANIM_hide -2 79 AutoDGS/dgs/icao_1
             ANIM_hide 81 1000 AutoDGS/dgs/icao_1
-            TRIS 2670 6
+            TRIS 2874 6
         ANIM_end
 
         # char 26
         ANIM_begin
             ANIM_hide -2 80 AutoDGS/dgs/icao_1
             ANIM_hide 82 1000 AutoDGS/dgs/icao_1
-            TRIS 2676 6
+            TRIS 2880 6
         ANIM_end
 
         # char 27
         ANIM_begin
             ANIM_hide -2 81 AutoDGS/dgs/icao_1
             ANIM_hide 83 1000 AutoDGS/dgs/icao_1
-            TRIS 2682 6
+            TRIS 2886 6
         ANIM_end
 
         # char 28
         ANIM_begin
             ANIM_hide -2 82 AutoDGS/dgs/icao_1
             ANIM_hide 84 1000 AutoDGS/dgs/icao_1
-            TRIS 2688 6
+            TRIS 2892 6
         ANIM_end
 
         # char 29
         ANIM_begin
             ANIM_hide -2 83 AutoDGS/dgs/icao_1
             ANIM_hide 85 1000 AutoDGS/dgs/icao_1
-            TRIS 2694 6
+            TRIS 2898 6
         ANIM_end
 
         # char 30
         ANIM_begin
             ANIM_hide -2 84 AutoDGS/dgs/icao_1
             ANIM_hide 86 1000 AutoDGS/dgs/icao_1
-            TRIS 2700 6
+            TRIS 2904 6
         ANIM_end
 
         # char 31
         ANIM_begin
             ANIM_hide -2 85 AutoDGS/dgs/icao_1
             ANIM_hide 87 1000 AutoDGS/dgs/icao_1
-            TRIS 2706 6
+            TRIS 2910 6
         ANIM_end
 
         # char 32
         ANIM_begin
             ANIM_hide -2 86 AutoDGS/dgs/icao_1
             ANIM_hide 88 1000 AutoDGS/dgs/icao_1
-            TRIS 2712 6
+            TRIS 2916 6
         ANIM_end
 
         # char 33
         ANIM_begin
             ANIM_hide -2 87 AutoDGS/dgs/icao_1
             ANIM_hide 89 1000 AutoDGS/dgs/icao_1
-            TRIS 2718 6
+            TRIS 2922 6
         ANIM_end
 
         # char 34
         ANIM_begin
             ANIM_hide -2 88 AutoDGS/dgs/icao_1
             ANIM_hide 90 1000 AutoDGS/dgs/icao_1
-            TRIS 2724 6
+            TRIS 2928 6
         ANIM_end
 
         # char 35
         ANIM_begin
             ANIM_hide -2 89 AutoDGS/dgs/icao_1
             ANIM_hide 91 1000 AutoDGS/dgs/icao_1
-            TRIS 2730 6
+            TRIS 2934 6
         ANIM_end
 
         # char 36
         ANIM_begin
             ANIM_hide -2 35 AutoDGS/dgs/icao_1
             ANIM_hide 37 1000 AutoDGS/dgs/icao_1
-            TRIS 2736 6
+            TRIS 2940 6
         ANIM_end
 
         # char stack AutoDGS/dgs/icao_2 @(44, 66)
@@ -5203,259 +5609,259 @@ ANIM_begin
         ANIM_begin
             ANIM_hide -2 47 AutoDGS/dgs/icao_2
             ANIM_hide 49 1000 AutoDGS/dgs/icao_2
-            TRIS 2742 6
+            TRIS 2946 6
         ANIM_end
 
         # char 1
         ANIM_begin
             ANIM_hide -2 48 AutoDGS/dgs/icao_2
             ANIM_hide 50 1000 AutoDGS/dgs/icao_2
-            TRIS 2748 6
+            TRIS 2952 6
         ANIM_end
 
         # char 2
         ANIM_begin
             ANIM_hide -2 49 AutoDGS/dgs/icao_2
             ANIM_hide 51 1000 AutoDGS/dgs/icao_2
-            TRIS 2754 6
+            TRIS 2958 6
         ANIM_end
 
         # char 3
         ANIM_begin
             ANIM_hide -2 50 AutoDGS/dgs/icao_2
             ANIM_hide 52 1000 AutoDGS/dgs/icao_2
-            TRIS 2760 6
+            TRIS 2964 6
         ANIM_end
 
         # char 4
         ANIM_begin
             ANIM_hide -2 51 AutoDGS/dgs/icao_2
             ANIM_hide 53 1000 AutoDGS/dgs/icao_2
-            TRIS 2766 6
+            TRIS 2970 6
         ANIM_end
 
         # char 5
         ANIM_begin
             ANIM_hide -2 52 AutoDGS/dgs/icao_2
             ANIM_hide 54 1000 AutoDGS/dgs/icao_2
-            TRIS 2772 6
+            TRIS 2976 6
         ANIM_end
 
         # char 6
         ANIM_begin
             ANIM_hide -2 53 AutoDGS/dgs/icao_2
             ANIM_hide 55 1000 AutoDGS/dgs/icao_2
-            TRIS 2778 6
+            TRIS 2982 6
         ANIM_end
 
         # char 7
         ANIM_begin
             ANIM_hide -2 54 AutoDGS/dgs/icao_2
             ANIM_hide 56 1000 AutoDGS/dgs/icao_2
-            TRIS 2784 6
+            TRIS 2988 6
         ANIM_end
 
         # char 8
         ANIM_begin
             ANIM_hide -2 55 AutoDGS/dgs/icao_2
             ANIM_hide 57 1000 AutoDGS/dgs/icao_2
-            TRIS 2790 6
+            TRIS 2994 6
         ANIM_end
 
         # char 9
         ANIM_begin
             ANIM_hide -2 56 AutoDGS/dgs/icao_2
             ANIM_hide 58 1000 AutoDGS/dgs/icao_2
-            TRIS 2796 6
+            TRIS 3000 6
         ANIM_end
 
         # char 10
         ANIM_begin
             ANIM_hide -2 64 AutoDGS/dgs/icao_2
             ANIM_hide 66 1000 AutoDGS/dgs/icao_2
-            TRIS 2802 6
+            TRIS 3006 6
         ANIM_end
 
         # char 11
         ANIM_begin
             ANIM_hide -2 65 AutoDGS/dgs/icao_2
             ANIM_hide 67 1000 AutoDGS/dgs/icao_2
-            TRIS 2808 6
+            TRIS 3012 6
         ANIM_end
 
         # char 12
         ANIM_begin
             ANIM_hide -2 66 AutoDGS/dgs/icao_2
             ANIM_hide 68 1000 AutoDGS/dgs/icao_2
-            TRIS 2814 6
+            TRIS 3018 6
         ANIM_end
 
         # char 13
         ANIM_begin
             ANIM_hide -2 67 AutoDGS/dgs/icao_2
             ANIM_hide 69 1000 AutoDGS/dgs/icao_2
-            TRIS 2820 6
+            TRIS 3024 6
         ANIM_end
 
         # char 14
         ANIM_begin
             ANIM_hide -2 68 AutoDGS/dgs/icao_2
             ANIM_hide 70 1000 AutoDGS/dgs/icao_2
-            TRIS 2826 6
+            TRIS 3030 6
         ANIM_end
 
         # char 15
         ANIM_begin
             ANIM_hide -2 69 AutoDGS/dgs/icao_2
             ANIM_hide 71 1000 AutoDGS/dgs/icao_2
-            TRIS 2832 6
+            TRIS 3036 6
         ANIM_end
 
         # char 16
         ANIM_begin
             ANIM_hide -2 70 AutoDGS/dgs/icao_2
             ANIM_hide 72 1000 AutoDGS/dgs/icao_2
-            TRIS 2838 6
+            TRIS 3042 6
         ANIM_end
 
         # char 17
         ANIM_begin
             ANIM_hide -2 71 AutoDGS/dgs/icao_2
             ANIM_hide 73 1000 AutoDGS/dgs/icao_2
-            TRIS 2844 6
+            TRIS 3048 6
         ANIM_end
 
         # char 18
         ANIM_begin
             ANIM_hide -2 72 AutoDGS/dgs/icao_2
             ANIM_hide 74 1000 AutoDGS/dgs/icao_2
-            TRIS 2850 6
+            TRIS 3054 6
         ANIM_end
 
         # char 19
         ANIM_begin
             ANIM_hide -2 73 AutoDGS/dgs/icao_2
             ANIM_hide 75 1000 AutoDGS/dgs/icao_2
-            TRIS 2856 6
+            TRIS 3060 6
         ANIM_end
 
         # char 20
         ANIM_begin
             ANIM_hide -2 74 AutoDGS/dgs/icao_2
             ANIM_hide 76 1000 AutoDGS/dgs/icao_2
-            TRIS 2862 6
+            TRIS 3066 6
         ANIM_end
 
         # char 21
         ANIM_begin
             ANIM_hide -2 75 AutoDGS/dgs/icao_2
             ANIM_hide 77 1000 AutoDGS/dgs/icao_2
-            TRIS 2868 6
+            TRIS 3072 6
         ANIM_end
 
         # char 22
         ANIM_begin
             ANIM_hide -2 76 AutoDGS/dgs/icao_2
             ANIM_hide 78 1000 AutoDGS/dgs/icao_2
-            TRIS 2874 6
+            TRIS 3078 6
         ANIM_end
 
         # char 23
         ANIM_begin
             ANIM_hide -2 77 AutoDGS/dgs/icao_2
             ANIM_hide 79 1000 AutoDGS/dgs/icao_2
-            TRIS 2880 6
+            TRIS 3084 6
         ANIM_end
 
         # char 24
         ANIM_begin
             ANIM_hide -2 78 AutoDGS/dgs/icao_2
             ANIM_hide 80 1000 AutoDGS/dgs/icao_2
-            TRIS 2886 6
+            TRIS 3090 6
         ANIM_end
 
         # char 25
         ANIM_begin
             ANIM_hide -2 79 AutoDGS/dgs/icao_2
             ANIM_hide 81 1000 AutoDGS/dgs/icao_2
-            TRIS 2892 6
+            TRIS 3096 6
         ANIM_end
 
         # char 26
         ANIM_begin
             ANIM_hide -2 80 AutoDGS/dgs/icao_2
             ANIM_hide 82 1000 AutoDGS/dgs/icao_2
-            TRIS 2898 6
+            TRIS 3102 6
         ANIM_end
 
         # char 27
         ANIM_begin
             ANIM_hide -2 81 AutoDGS/dgs/icao_2
             ANIM_hide 83 1000 AutoDGS/dgs/icao_2
-            TRIS 2904 6
+            TRIS 3108 6
         ANIM_end
 
         # char 28
         ANIM_begin
             ANIM_hide -2 82 AutoDGS/dgs/icao_2
             ANIM_hide 84 1000 AutoDGS/dgs/icao_2
-            TRIS 2910 6
+            TRIS 3114 6
         ANIM_end
 
         # char 29
         ANIM_begin
             ANIM_hide -2 83 AutoDGS/dgs/icao_2
             ANIM_hide 85 1000 AutoDGS/dgs/icao_2
-            TRIS 2916 6
+            TRIS 3120 6
         ANIM_end
 
         # char 30
         ANIM_begin
             ANIM_hide -2 84 AutoDGS/dgs/icao_2
             ANIM_hide 86 1000 AutoDGS/dgs/icao_2
-            TRIS 2922 6
+            TRIS 3126 6
         ANIM_end
 
         # char 31
         ANIM_begin
             ANIM_hide -2 85 AutoDGS/dgs/icao_2
             ANIM_hide 87 1000 AutoDGS/dgs/icao_2
-            TRIS 2928 6
+            TRIS 3132 6
         ANIM_end
 
         # char 32
         ANIM_begin
             ANIM_hide -2 86 AutoDGS/dgs/icao_2
             ANIM_hide 88 1000 AutoDGS/dgs/icao_2
-            TRIS 2934 6
+            TRIS 3138 6
         ANIM_end
 
         # char 33
         ANIM_begin
             ANIM_hide -2 87 AutoDGS/dgs/icao_2
             ANIM_hide 89 1000 AutoDGS/dgs/icao_2
-            TRIS 2940 6
+            TRIS 3144 6
         ANIM_end
 
         # char 34
         ANIM_begin
             ANIM_hide -2 88 AutoDGS/dgs/icao_2
             ANIM_hide 90 1000 AutoDGS/dgs/icao_2
-            TRIS 2946 6
+            TRIS 3150 6
         ANIM_end
 
         # char 35
         ANIM_begin
             ANIM_hide -2 89 AutoDGS/dgs/icao_2
             ANIM_hide 91 1000 AutoDGS/dgs/icao_2
-            TRIS 2952 6
+            TRIS 3156 6
         ANIM_end
 
         # char 36
         ANIM_begin
             ANIM_hide -2 35 AutoDGS/dgs/icao_2
             ANIM_hide 37 1000 AutoDGS/dgs/icao_2
-            TRIS 2958 6
+            TRIS 3162 6
         ANIM_end
 
         # char stack AutoDGS/dgs/icao_3 @(56, 66)
@@ -5465,310 +5871,310 @@ ANIM_begin
         ANIM_begin
             ANIM_hide -2 47 AutoDGS/dgs/icao_3
             ANIM_hide 49 1000 AutoDGS/dgs/icao_3
-            TRIS 2964 6
+            TRIS 3168 6
         ANIM_end
 
         # char 1
         ANIM_begin
             ANIM_hide -2 48 AutoDGS/dgs/icao_3
             ANIM_hide 50 1000 AutoDGS/dgs/icao_3
-            TRIS 2970 6
+            TRIS 3174 6
         ANIM_end
 
         # char 2
         ANIM_begin
             ANIM_hide -2 49 AutoDGS/dgs/icao_3
             ANIM_hide 51 1000 AutoDGS/dgs/icao_3
-            TRIS 2976 6
+            TRIS 3180 6
         ANIM_end
 
         # char 3
         ANIM_begin
             ANIM_hide -2 50 AutoDGS/dgs/icao_3
             ANIM_hide 52 1000 AutoDGS/dgs/icao_3
-            TRIS 2982 6
+            TRIS 3186 6
         ANIM_end
 
         # char 4
         ANIM_begin
             ANIM_hide -2 51 AutoDGS/dgs/icao_3
             ANIM_hide 53 1000 AutoDGS/dgs/icao_3
-            TRIS 2988 6
+            TRIS 3192 6
         ANIM_end
 
         # char 5
         ANIM_begin
             ANIM_hide -2 52 AutoDGS/dgs/icao_3
             ANIM_hide 54 1000 AutoDGS/dgs/icao_3
-            TRIS 2994 6
+            TRIS 3198 6
         ANIM_end
 
         # char 6
         ANIM_begin
             ANIM_hide -2 53 AutoDGS/dgs/icao_3
             ANIM_hide 55 1000 AutoDGS/dgs/icao_3
-            TRIS 3000 6
+            TRIS 3204 6
         ANIM_end
 
         # char 7
         ANIM_begin
             ANIM_hide -2 54 AutoDGS/dgs/icao_3
             ANIM_hide 56 1000 AutoDGS/dgs/icao_3
-            TRIS 3006 6
+            TRIS 3210 6
         ANIM_end
 
         # char 8
         ANIM_begin
             ANIM_hide -2 55 AutoDGS/dgs/icao_3
             ANIM_hide 57 1000 AutoDGS/dgs/icao_3
-            TRIS 3012 6
+            TRIS 3216 6
         ANIM_end
 
         # char 9
         ANIM_begin
             ANIM_hide -2 56 AutoDGS/dgs/icao_3
             ANIM_hide 58 1000 AutoDGS/dgs/icao_3
-            TRIS 3018 6
+            TRIS 3222 6
         ANIM_end
 
         # char 10
         ANIM_begin
             ANIM_hide -2 64 AutoDGS/dgs/icao_3
             ANIM_hide 66 1000 AutoDGS/dgs/icao_3
-            TRIS 3024 6
+            TRIS 3228 6
         ANIM_end
 
         # char 11
         ANIM_begin
             ANIM_hide -2 65 AutoDGS/dgs/icao_3
             ANIM_hide 67 1000 AutoDGS/dgs/icao_3
-            TRIS 3030 6
+            TRIS 3234 6
         ANIM_end
 
         # char 12
         ANIM_begin
             ANIM_hide -2 66 AutoDGS/dgs/icao_3
             ANIM_hide 68 1000 AutoDGS/dgs/icao_3
-            TRIS 3036 6
+            TRIS 3240 6
         ANIM_end
 
         # char 13
         ANIM_begin
             ANIM_hide -2 67 AutoDGS/dgs/icao_3
             ANIM_hide 69 1000 AutoDGS/dgs/icao_3
-            TRIS 3042 6
+            TRIS 3246 6
         ANIM_end
 
         # char 14
         ANIM_begin
             ANIM_hide -2 68 AutoDGS/dgs/icao_3
             ANIM_hide 70 1000 AutoDGS/dgs/icao_3
-            TRIS 3048 6
+            TRIS 3252 6
         ANIM_end
 
         # char 15
         ANIM_begin
             ANIM_hide -2 69 AutoDGS/dgs/icao_3
             ANIM_hide 71 1000 AutoDGS/dgs/icao_3
-            TRIS 3054 6
+            TRIS 3258 6
         ANIM_end
 
         # char 16
         ANIM_begin
             ANIM_hide -2 70 AutoDGS/dgs/icao_3
             ANIM_hide 72 1000 AutoDGS/dgs/icao_3
-            TRIS 3060 6
+            TRIS 3264 6
         ANIM_end
 
         # char 17
         ANIM_begin
             ANIM_hide -2 71 AutoDGS/dgs/icao_3
             ANIM_hide 73 1000 AutoDGS/dgs/icao_3
-            TRIS 3066 6
+            TRIS 3270 6
         ANIM_end
 
         # char 18
         ANIM_begin
             ANIM_hide -2 72 AutoDGS/dgs/icao_3
             ANIM_hide 74 1000 AutoDGS/dgs/icao_3
-            TRIS 3072 6
+            TRIS 3276 6
         ANIM_end
 
         # char 19
         ANIM_begin
             ANIM_hide -2 73 AutoDGS/dgs/icao_3
             ANIM_hide 75 1000 AutoDGS/dgs/icao_3
-            TRIS 3078 6
+            TRIS 3282 6
         ANIM_end
 
         # char 20
         ANIM_begin
             ANIM_hide -2 74 AutoDGS/dgs/icao_3
             ANIM_hide 76 1000 AutoDGS/dgs/icao_3
-            TRIS 3084 6
+            TRIS 3288 6
         ANIM_end
 
         # char 21
         ANIM_begin
             ANIM_hide -2 75 AutoDGS/dgs/icao_3
             ANIM_hide 77 1000 AutoDGS/dgs/icao_3
-            TRIS 3090 6
+            TRIS 3294 6
         ANIM_end
 
         # char 22
         ANIM_begin
             ANIM_hide -2 76 AutoDGS/dgs/icao_3
             ANIM_hide 78 1000 AutoDGS/dgs/icao_3
-            TRIS 3096 6
+            TRIS 3300 6
         ANIM_end
 
         # char 23
         ANIM_begin
             ANIM_hide -2 77 AutoDGS/dgs/icao_3
             ANIM_hide 79 1000 AutoDGS/dgs/icao_3
-            TRIS 3102 6
+            TRIS 3306 6
         ANIM_end
 
         # char 24
         ANIM_begin
             ANIM_hide -2 78 AutoDGS/dgs/icao_3
             ANIM_hide 80 1000 AutoDGS/dgs/icao_3
-            TRIS 3108 6
+            TRIS 3312 6
         ANIM_end
 
         # char 25
         ANIM_begin
             ANIM_hide -2 79 AutoDGS/dgs/icao_3
             ANIM_hide 81 1000 AutoDGS/dgs/icao_3
-            TRIS 3114 6
+            TRIS 3318 6
         ANIM_end
 
         # char 26
         ANIM_begin
             ANIM_hide -2 80 AutoDGS/dgs/icao_3
             ANIM_hide 82 1000 AutoDGS/dgs/icao_3
-            TRIS 3120 6
+            TRIS 3324 6
         ANIM_end
 
         # char 27
         ANIM_begin
             ANIM_hide -2 81 AutoDGS/dgs/icao_3
             ANIM_hide 83 1000 AutoDGS/dgs/icao_3
-            TRIS 3126 6
+            TRIS 3330 6
         ANIM_end
 
         # char 28
         ANIM_begin
             ANIM_hide -2 82 AutoDGS/dgs/icao_3
             ANIM_hide 84 1000 AutoDGS/dgs/icao_3
-            TRIS 3132 6
+            TRIS 3336 6
         ANIM_end
 
         # char 29
         ANIM_begin
             ANIM_hide -2 83 AutoDGS/dgs/icao_3
             ANIM_hide 85 1000 AutoDGS/dgs/icao_3
-            TRIS 3138 6
+            TRIS 3342 6
         ANIM_end
 
         # char 30
         ANIM_begin
             ANIM_hide -2 84 AutoDGS/dgs/icao_3
             ANIM_hide 86 1000 AutoDGS/dgs/icao_3
-            TRIS 3144 6
+            TRIS 3348 6
         ANIM_end
 
         # char 31
         ANIM_begin
             ANIM_hide -2 85 AutoDGS/dgs/icao_3
             ANIM_hide 87 1000 AutoDGS/dgs/icao_3
-            TRIS 3150 6
+            TRIS 3354 6
         ANIM_end
 
         # char 32
         ANIM_begin
             ANIM_hide -2 86 AutoDGS/dgs/icao_3
             ANIM_hide 88 1000 AutoDGS/dgs/icao_3
-            TRIS 3156 6
+            TRIS 3360 6
         ANIM_end
 
         # char 33
         ANIM_begin
             ANIM_hide -2 87 AutoDGS/dgs/icao_3
             ANIM_hide 89 1000 AutoDGS/dgs/icao_3
-            TRIS 3162 6
+            TRIS 3366 6
         ANIM_end
 
         # char 34
         ANIM_begin
             ANIM_hide -2 88 AutoDGS/dgs/icao_3
             ANIM_hide 90 1000 AutoDGS/dgs/icao_3
-            TRIS 3168 6
+            TRIS 3372 6
         ANIM_end
 
         # char 35
         ANIM_begin
             ANIM_hide -2 89 AutoDGS/dgs/icao_3
             ANIM_hide 91 1000 AutoDGS/dgs/icao_3
-            TRIS 3174 6
+            TRIS 3378 6
         ANIM_end
 
         # char 36
         ANIM_begin
             ANIM_hide -2 35 AutoDGS/dgs/icao_3
             ANIM_hide 37 1000 AutoDGS/dgs/icao_3
-            TRIS 3180 6
+            TRIS 3384 6
         ANIM_end
 
     ANIM_begin
         ANIM_hide -10000.0000 -0.0010 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 35.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3186 6
+        TRIS 3390 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 35.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 71.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3192 6
+        TRIS 3396 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 71.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 107.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3198 6
+        TRIS 3402 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 107.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 143.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3204 6
+        TRIS 3408 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 143.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 179.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3210 6
+        TRIS 3414 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 179.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 215.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3186 6
+        TRIS 3390 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 215.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 251.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3192 6
+        TRIS 3396 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 251.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 287.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3198 6
+        TRIS 3402 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 287.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 323.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3204 6
+        TRIS 3408 6
     ANIM_end
     ANIM_begin
         ANIM_hide -10000.0000 323.9990 sim/graphics/animation/airport_beacon_rotation
         ANIM_hide 359.9010 10000.0000 sim/graphics/animation/airport_beacon_rotation
-        TRIS 3210 6
+        TRIS 3414 6
     ANIM_end
 ANIM_end
 #---- status = 1 && track = 2,3 -> show guidance info
@@ -5788,189 +6194,189 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 64 AutoDGS/dgs/icao_0
                 ANIM_hide 66 1000 AutoDGS/dgs/icao_0
-                TRIS 2358 6
+                TRIS 2562 6
             ANIM_end
 
             # char 11
             ANIM_begin
                 ANIM_hide -2 65 AutoDGS/dgs/icao_0
                 ANIM_hide 67 1000 AutoDGS/dgs/icao_0
-                TRIS 2364 6
+                TRIS 2568 6
             ANIM_end
 
             # char 12
             ANIM_begin
                 ANIM_hide -2 66 AutoDGS/dgs/icao_0
                 ANIM_hide 68 1000 AutoDGS/dgs/icao_0
-                TRIS 2370 6
+                TRIS 2574 6
             ANIM_end
 
             # char 13
             ANIM_begin
                 ANIM_hide -2 67 AutoDGS/dgs/icao_0
                 ANIM_hide 69 1000 AutoDGS/dgs/icao_0
-                TRIS 2376 6
+                TRIS 2580 6
             ANIM_end
 
             # char 14
             ANIM_begin
                 ANIM_hide -2 68 AutoDGS/dgs/icao_0
                 ANIM_hide 70 1000 AutoDGS/dgs/icao_0
-                TRIS 2382 6
+                TRIS 2586 6
             ANIM_end
 
             # char 15
             ANIM_begin
                 ANIM_hide -2 69 AutoDGS/dgs/icao_0
                 ANIM_hide 71 1000 AutoDGS/dgs/icao_0
-                TRIS 2388 6
+                TRIS 2592 6
             ANIM_end
 
             # char 16
             ANIM_begin
                 ANIM_hide -2 70 AutoDGS/dgs/icao_0
                 ANIM_hide 72 1000 AutoDGS/dgs/icao_0
-                TRIS 2394 6
+                TRIS 2598 6
             ANIM_end
 
             # char 17
             ANIM_begin
                 ANIM_hide -2 71 AutoDGS/dgs/icao_0
                 ANIM_hide 73 1000 AutoDGS/dgs/icao_0
-                TRIS 2400 6
+                TRIS 2604 6
             ANIM_end
 
             # char 18
             ANIM_begin
                 ANIM_hide -2 72 AutoDGS/dgs/icao_0
                 ANIM_hide 74 1000 AutoDGS/dgs/icao_0
-                TRIS 2406 6
+                TRIS 2610 6
             ANIM_end
 
             # char 19
             ANIM_begin
                 ANIM_hide -2 73 AutoDGS/dgs/icao_0
                 ANIM_hide 75 1000 AutoDGS/dgs/icao_0
-                TRIS 2412 6
+                TRIS 2616 6
             ANIM_end
 
             # char 20
             ANIM_begin
                 ANIM_hide -2 74 AutoDGS/dgs/icao_0
                 ANIM_hide 76 1000 AutoDGS/dgs/icao_0
-                TRIS 2418 6
+                TRIS 2622 6
             ANIM_end
 
             # char 21
             ANIM_begin
                 ANIM_hide -2 75 AutoDGS/dgs/icao_0
                 ANIM_hide 77 1000 AutoDGS/dgs/icao_0
-                TRIS 2424 6
+                TRIS 2628 6
             ANIM_end
 
             # char 22
             ANIM_begin
                 ANIM_hide -2 76 AutoDGS/dgs/icao_0
                 ANIM_hide 78 1000 AutoDGS/dgs/icao_0
-                TRIS 2430 6
+                TRIS 2634 6
             ANIM_end
 
             # char 23
             ANIM_begin
                 ANIM_hide -2 77 AutoDGS/dgs/icao_0
                 ANIM_hide 79 1000 AutoDGS/dgs/icao_0
-                TRIS 2436 6
+                TRIS 2640 6
             ANIM_end
 
             # char 24
             ANIM_begin
                 ANIM_hide -2 78 AutoDGS/dgs/icao_0
                 ANIM_hide 80 1000 AutoDGS/dgs/icao_0
-                TRIS 2442 6
+                TRIS 2646 6
             ANIM_end
 
             # char 25
             ANIM_begin
                 ANIM_hide -2 79 AutoDGS/dgs/icao_0
                 ANIM_hide 81 1000 AutoDGS/dgs/icao_0
-                TRIS 2448 6
+                TRIS 2652 6
             ANIM_end
 
             # char 26
             ANIM_begin
                 ANIM_hide -2 80 AutoDGS/dgs/icao_0
                 ANIM_hide 82 1000 AutoDGS/dgs/icao_0
-                TRIS 2454 6
+                TRIS 2658 6
             ANIM_end
 
             # char 27
             ANIM_begin
                 ANIM_hide -2 81 AutoDGS/dgs/icao_0
                 ANIM_hide 83 1000 AutoDGS/dgs/icao_0
-                TRIS 2460 6
+                TRIS 2664 6
             ANIM_end
 
             # char 28
             ANIM_begin
                 ANIM_hide -2 82 AutoDGS/dgs/icao_0
                 ANIM_hide 84 1000 AutoDGS/dgs/icao_0
-                TRIS 2466 6
+                TRIS 2670 6
             ANIM_end
 
             # char 29
             ANIM_begin
                 ANIM_hide -2 83 AutoDGS/dgs/icao_0
                 ANIM_hide 85 1000 AutoDGS/dgs/icao_0
-                TRIS 2472 6
+                TRIS 2676 6
             ANIM_end
 
             # char 30
             ANIM_begin
                 ANIM_hide -2 84 AutoDGS/dgs/icao_0
                 ANIM_hide 86 1000 AutoDGS/dgs/icao_0
-                TRIS 2478 6
+                TRIS 2682 6
             ANIM_end
 
             # char 31
             ANIM_begin
                 ANIM_hide -2 85 AutoDGS/dgs/icao_0
                 ANIM_hide 87 1000 AutoDGS/dgs/icao_0
-                TRIS 2484 6
+                TRIS 2688 6
             ANIM_end
 
             # char 32
             ANIM_begin
                 ANIM_hide -2 86 AutoDGS/dgs/icao_0
                 ANIM_hide 88 1000 AutoDGS/dgs/icao_0
-                TRIS 2490 6
+                TRIS 2694 6
             ANIM_end
 
             # char 33
             ANIM_begin
                 ANIM_hide -2 87 AutoDGS/dgs/icao_0
                 ANIM_hide 89 1000 AutoDGS/dgs/icao_0
-                TRIS 2496 6
+                TRIS 2700 6
             ANIM_end
 
             # char 34
             ANIM_begin
                 ANIM_hide -2 88 AutoDGS/dgs/icao_0
                 ANIM_hide 90 1000 AutoDGS/dgs/icao_0
-                TRIS 2502 6
+                TRIS 2706 6
             ANIM_end
 
             # char 35
             ANIM_begin
                 ANIM_hide -2 89 AutoDGS/dgs/icao_0
                 ANIM_hide 91 1000 AutoDGS/dgs/icao_0
-                TRIS 2508 6
+                TRIS 2712 6
             ANIM_end
 
             # char 36
             ANIM_begin
                 ANIM_hide -2 35 AutoDGS/dgs/icao_0
                 ANIM_hide 37 1000 AutoDGS/dgs/icao_0
-                TRIS 2514 6
+                TRIS 2718 6
             ANIM_end
 
             # char stack AutoDGS/dgs/icao_1 @(32, 66)
@@ -5980,259 +6386,259 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 47 AutoDGS/dgs/icao_1
                 ANIM_hide 49 1000 AutoDGS/dgs/icao_1
-                TRIS 2520 6
+                TRIS 2724 6
             ANIM_end
 
             # char 1
             ANIM_begin
                 ANIM_hide -2 48 AutoDGS/dgs/icao_1
                 ANIM_hide 50 1000 AutoDGS/dgs/icao_1
-                TRIS 2526 6
+                TRIS 2730 6
             ANIM_end
 
             # char 2
             ANIM_begin
                 ANIM_hide -2 49 AutoDGS/dgs/icao_1
                 ANIM_hide 51 1000 AutoDGS/dgs/icao_1
-                TRIS 2532 6
+                TRIS 2736 6
             ANIM_end
 
             # char 3
             ANIM_begin
                 ANIM_hide -2 50 AutoDGS/dgs/icao_1
                 ANIM_hide 52 1000 AutoDGS/dgs/icao_1
-                TRIS 2538 6
+                TRIS 2742 6
             ANIM_end
 
             # char 4
             ANIM_begin
                 ANIM_hide -2 51 AutoDGS/dgs/icao_1
                 ANIM_hide 53 1000 AutoDGS/dgs/icao_1
-                TRIS 2544 6
+                TRIS 2748 6
             ANIM_end
 
             # char 5
             ANIM_begin
                 ANIM_hide -2 52 AutoDGS/dgs/icao_1
                 ANIM_hide 54 1000 AutoDGS/dgs/icao_1
-                TRIS 2550 6
+                TRIS 2754 6
             ANIM_end
 
             # char 6
             ANIM_begin
                 ANIM_hide -2 53 AutoDGS/dgs/icao_1
                 ANIM_hide 55 1000 AutoDGS/dgs/icao_1
-                TRIS 2556 6
+                TRIS 2760 6
             ANIM_end
 
             # char 7
             ANIM_begin
                 ANIM_hide -2 54 AutoDGS/dgs/icao_1
                 ANIM_hide 56 1000 AutoDGS/dgs/icao_1
-                TRIS 2562 6
+                TRIS 2766 6
             ANIM_end
 
             # char 8
             ANIM_begin
                 ANIM_hide -2 55 AutoDGS/dgs/icao_1
                 ANIM_hide 57 1000 AutoDGS/dgs/icao_1
-                TRIS 2568 6
+                TRIS 2772 6
             ANIM_end
 
             # char 9
             ANIM_begin
                 ANIM_hide -2 56 AutoDGS/dgs/icao_1
                 ANIM_hide 58 1000 AutoDGS/dgs/icao_1
-                TRIS 2574 6
+                TRIS 2778 6
             ANIM_end
 
             # char 10
             ANIM_begin
                 ANIM_hide -2 64 AutoDGS/dgs/icao_1
                 ANIM_hide 66 1000 AutoDGS/dgs/icao_1
-                TRIS 2580 6
+                TRIS 2784 6
             ANIM_end
 
             # char 11
             ANIM_begin
                 ANIM_hide -2 65 AutoDGS/dgs/icao_1
                 ANIM_hide 67 1000 AutoDGS/dgs/icao_1
-                TRIS 2586 6
+                TRIS 2790 6
             ANIM_end
 
             # char 12
             ANIM_begin
                 ANIM_hide -2 66 AutoDGS/dgs/icao_1
                 ANIM_hide 68 1000 AutoDGS/dgs/icao_1
-                TRIS 2592 6
+                TRIS 2796 6
             ANIM_end
 
             # char 13
             ANIM_begin
                 ANIM_hide -2 67 AutoDGS/dgs/icao_1
                 ANIM_hide 69 1000 AutoDGS/dgs/icao_1
-                TRIS 2598 6
+                TRIS 2802 6
             ANIM_end
 
             # char 14
             ANIM_begin
                 ANIM_hide -2 68 AutoDGS/dgs/icao_1
                 ANIM_hide 70 1000 AutoDGS/dgs/icao_1
-                TRIS 2604 6
+                TRIS 2808 6
             ANIM_end
 
             # char 15
             ANIM_begin
                 ANIM_hide -2 69 AutoDGS/dgs/icao_1
                 ANIM_hide 71 1000 AutoDGS/dgs/icao_1
-                TRIS 2610 6
+                TRIS 2814 6
             ANIM_end
 
             # char 16
             ANIM_begin
                 ANIM_hide -2 70 AutoDGS/dgs/icao_1
                 ANIM_hide 72 1000 AutoDGS/dgs/icao_1
-                TRIS 2616 6
+                TRIS 2820 6
             ANIM_end
 
             # char 17
             ANIM_begin
                 ANIM_hide -2 71 AutoDGS/dgs/icao_1
                 ANIM_hide 73 1000 AutoDGS/dgs/icao_1
-                TRIS 2622 6
+                TRIS 2826 6
             ANIM_end
 
             # char 18
             ANIM_begin
                 ANIM_hide -2 72 AutoDGS/dgs/icao_1
                 ANIM_hide 74 1000 AutoDGS/dgs/icao_1
-                TRIS 2628 6
+                TRIS 2832 6
             ANIM_end
 
             # char 19
             ANIM_begin
                 ANIM_hide -2 73 AutoDGS/dgs/icao_1
                 ANIM_hide 75 1000 AutoDGS/dgs/icao_1
-                TRIS 2634 6
+                TRIS 2838 6
             ANIM_end
 
             # char 20
             ANIM_begin
                 ANIM_hide -2 74 AutoDGS/dgs/icao_1
                 ANIM_hide 76 1000 AutoDGS/dgs/icao_1
-                TRIS 2640 6
+                TRIS 2844 6
             ANIM_end
 
             # char 21
             ANIM_begin
                 ANIM_hide -2 75 AutoDGS/dgs/icao_1
                 ANIM_hide 77 1000 AutoDGS/dgs/icao_1
-                TRIS 2646 6
+                TRIS 2850 6
             ANIM_end
 
             # char 22
             ANIM_begin
                 ANIM_hide -2 76 AutoDGS/dgs/icao_1
                 ANIM_hide 78 1000 AutoDGS/dgs/icao_1
-                TRIS 2652 6
+                TRIS 2856 6
             ANIM_end
 
             # char 23
             ANIM_begin
                 ANIM_hide -2 77 AutoDGS/dgs/icao_1
                 ANIM_hide 79 1000 AutoDGS/dgs/icao_1
-                TRIS 2658 6
+                TRIS 2862 6
             ANIM_end
 
             # char 24
             ANIM_begin
                 ANIM_hide -2 78 AutoDGS/dgs/icao_1
                 ANIM_hide 80 1000 AutoDGS/dgs/icao_1
-                TRIS 2664 6
+                TRIS 2868 6
             ANIM_end
 
             # char 25
             ANIM_begin
                 ANIM_hide -2 79 AutoDGS/dgs/icao_1
                 ANIM_hide 81 1000 AutoDGS/dgs/icao_1
-                TRIS 2670 6
+                TRIS 2874 6
             ANIM_end
 
             # char 26
             ANIM_begin
                 ANIM_hide -2 80 AutoDGS/dgs/icao_1
                 ANIM_hide 82 1000 AutoDGS/dgs/icao_1
-                TRIS 2676 6
+                TRIS 2880 6
             ANIM_end
 
             # char 27
             ANIM_begin
                 ANIM_hide -2 81 AutoDGS/dgs/icao_1
                 ANIM_hide 83 1000 AutoDGS/dgs/icao_1
-                TRIS 2682 6
+                TRIS 2886 6
             ANIM_end
 
             # char 28
             ANIM_begin
                 ANIM_hide -2 82 AutoDGS/dgs/icao_1
                 ANIM_hide 84 1000 AutoDGS/dgs/icao_1
-                TRIS 2688 6
+                TRIS 2892 6
             ANIM_end
 
             # char 29
             ANIM_begin
                 ANIM_hide -2 83 AutoDGS/dgs/icao_1
                 ANIM_hide 85 1000 AutoDGS/dgs/icao_1
-                TRIS 2694 6
+                TRIS 2898 6
             ANIM_end
 
             # char 30
             ANIM_begin
                 ANIM_hide -2 84 AutoDGS/dgs/icao_1
                 ANIM_hide 86 1000 AutoDGS/dgs/icao_1
-                TRIS 2700 6
+                TRIS 2904 6
             ANIM_end
 
             # char 31
             ANIM_begin
                 ANIM_hide -2 85 AutoDGS/dgs/icao_1
                 ANIM_hide 87 1000 AutoDGS/dgs/icao_1
-                TRIS 2706 6
+                TRIS 2910 6
             ANIM_end
 
             # char 32
             ANIM_begin
                 ANIM_hide -2 86 AutoDGS/dgs/icao_1
                 ANIM_hide 88 1000 AutoDGS/dgs/icao_1
-                TRIS 2712 6
+                TRIS 2916 6
             ANIM_end
 
             # char 33
             ANIM_begin
                 ANIM_hide -2 87 AutoDGS/dgs/icao_1
                 ANIM_hide 89 1000 AutoDGS/dgs/icao_1
-                TRIS 2718 6
+                TRIS 2922 6
             ANIM_end
 
             # char 34
             ANIM_begin
                 ANIM_hide -2 88 AutoDGS/dgs/icao_1
                 ANIM_hide 90 1000 AutoDGS/dgs/icao_1
-                TRIS 2724 6
+                TRIS 2928 6
             ANIM_end
 
             # char 35
             ANIM_begin
                 ANIM_hide -2 89 AutoDGS/dgs/icao_1
                 ANIM_hide 91 1000 AutoDGS/dgs/icao_1
-                TRIS 2730 6
+                TRIS 2934 6
             ANIM_end
 
             # char 36
             ANIM_begin
                 ANIM_hide -2 35 AutoDGS/dgs/icao_1
                 ANIM_hide 37 1000 AutoDGS/dgs/icao_1
-                TRIS 2736 6
+                TRIS 2940 6
             ANIM_end
 
             # char stack AutoDGS/dgs/icao_2 @(44, 66)
@@ -6242,259 +6648,259 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 47 AutoDGS/dgs/icao_2
                 ANIM_hide 49 1000 AutoDGS/dgs/icao_2
-                TRIS 2742 6
+                TRIS 2946 6
             ANIM_end
 
             # char 1
             ANIM_begin
                 ANIM_hide -2 48 AutoDGS/dgs/icao_2
                 ANIM_hide 50 1000 AutoDGS/dgs/icao_2
-                TRIS 2748 6
+                TRIS 2952 6
             ANIM_end
 
             # char 2
             ANIM_begin
                 ANIM_hide -2 49 AutoDGS/dgs/icao_2
                 ANIM_hide 51 1000 AutoDGS/dgs/icao_2
-                TRIS 2754 6
+                TRIS 2958 6
             ANIM_end
 
             # char 3
             ANIM_begin
                 ANIM_hide -2 50 AutoDGS/dgs/icao_2
                 ANIM_hide 52 1000 AutoDGS/dgs/icao_2
-                TRIS 2760 6
+                TRIS 2964 6
             ANIM_end
 
             # char 4
             ANIM_begin
                 ANIM_hide -2 51 AutoDGS/dgs/icao_2
                 ANIM_hide 53 1000 AutoDGS/dgs/icao_2
-                TRIS 2766 6
+                TRIS 2970 6
             ANIM_end
 
             # char 5
             ANIM_begin
                 ANIM_hide -2 52 AutoDGS/dgs/icao_2
                 ANIM_hide 54 1000 AutoDGS/dgs/icao_2
-                TRIS 2772 6
+                TRIS 2976 6
             ANIM_end
 
             # char 6
             ANIM_begin
                 ANIM_hide -2 53 AutoDGS/dgs/icao_2
                 ANIM_hide 55 1000 AutoDGS/dgs/icao_2
-                TRIS 2778 6
+                TRIS 2982 6
             ANIM_end
 
             # char 7
             ANIM_begin
                 ANIM_hide -2 54 AutoDGS/dgs/icao_2
                 ANIM_hide 56 1000 AutoDGS/dgs/icao_2
-                TRIS 2784 6
+                TRIS 2988 6
             ANIM_end
 
             # char 8
             ANIM_begin
                 ANIM_hide -2 55 AutoDGS/dgs/icao_2
                 ANIM_hide 57 1000 AutoDGS/dgs/icao_2
-                TRIS 2790 6
+                TRIS 2994 6
             ANIM_end
 
             # char 9
             ANIM_begin
                 ANIM_hide -2 56 AutoDGS/dgs/icao_2
                 ANIM_hide 58 1000 AutoDGS/dgs/icao_2
-                TRIS 2796 6
+                TRIS 3000 6
             ANIM_end
 
             # char 10
             ANIM_begin
                 ANIM_hide -2 64 AutoDGS/dgs/icao_2
                 ANIM_hide 66 1000 AutoDGS/dgs/icao_2
-                TRIS 2802 6
+                TRIS 3006 6
             ANIM_end
 
             # char 11
             ANIM_begin
                 ANIM_hide -2 65 AutoDGS/dgs/icao_2
                 ANIM_hide 67 1000 AutoDGS/dgs/icao_2
-                TRIS 2808 6
+                TRIS 3012 6
             ANIM_end
 
             # char 12
             ANIM_begin
                 ANIM_hide -2 66 AutoDGS/dgs/icao_2
                 ANIM_hide 68 1000 AutoDGS/dgs/icao_2
-                TRIS 2814 6
+                TRIS 3018 6
             ANIM_end
 
             # char 13
             ANIM_begin
                 ANIM_hide -2 67 AutoDGS/dgs/icao_2
                 ANIM_hide 69 1000 AutoDGS/dgs/icao_2
-                TRIS 2820 6
+                TRIS 3024 6
             ANIM_end
 
             # char 14
             ANIM_begin
                 ANIM_hide -2 68 AutoDGS/dgs/icao_2
                 ANIM_hide 70 1000 AutoDGS/dgs/icao_2
-                TRIS 2826 6
+                TRIS 3030 6
             ANIM_end
 
             # char 15
             ANIM_begin
                 ANIM_hide -2 69 AutoDGS/dgs/icao_2
                 ANIM_hide 71 1000 AutoDGS/dgs/icao_2
-                TRIS 2832 6
+                TRIS 3036 6
             ANIM_end
 
             # char 16
             ANIM_begin
                 ANIM_hide -2 70 AutoDGS/dgs/icao_2
                 ANIM_hide 72 1000 AutoDGS/dgs/icao_2
-                TRIS 2838 6
+                TRIS 3042 6
             ANIM_end
 
             # char 17
             ANIM_begin
                 ANIM_hide -2 71 AutoDGS/dgs/icao_2
                 ANIM_hide 73 1000 AutoDGS/dgs/icao_2
-                TRIS 2844 6
+                TRIS 3048 6
             ANIM_end
 
             # char 18
             ANIM_begin
                 ANIM_hide -2 72 AutoDGS/dgs/icao_2
                 ANIM_hide 74 1000 AutoDGS/dgs/icao_2
-                TRIS 2850 6
+                TRIS 3054 6
             ANIM_end
 
             # char 19
             ANIM_begin
                 ANIM_hide -2 73 AutoDGS/dgs/icao_2
                 ANIM_hide 75 1000 AutoDGS/dgs/icao_2
-                TRIS 2856 6
+                TRIS 3060 6
             ANIM_end
 
             # char 20
             ANIM_begin
                 ANIM_hide -2 74 AutoDGS/dgs/icao_2
                 ANIM_hide 76 1000 AutoDGS/dgs/icao_2
-                TRIS 2862 6
+                TRIS 3066 6
             ANIM_end
 
             # char 21
             ANIM_begin
                 ANIM_hide -2 75 AutoDGS/dgs/icao_2
                 ANIM_hide 77 1000 AutoDGS/dgs/icao_2
-                TRIS 2868 6
+                TRIS 3072 6
             ANIM_end
 
             # char 22
             ANIM_begin
                 ANIM_hide -2 76 AutoDGS/dgs/icao_2
                 ANIM_hide 78 1000 AutoDGS/dgs/icao_2
-                TRIS 2874 6
+                TRIS 3078 6
             ANIM_end
 
             # char 23
             ANIM_begin
                 ANIM_hide -2 77 AutoDGS/dgs/icao_2
                 ANIM_hide 79 1000 AutoDGS/dgs/icao_2
-                TRIS 2880 6
+                TRIS 3084 6
             ANIM_end
 
             # char 24
             ANIM_begin
                 ANIM_hide -2 78 AutoDGS/dgs/icao_2
                 ANIM_hide 80 1000 AutoDGS/dgs/icao_2
-                TRIS 2886 6
+                TRIS 3090 6
             ANIM_end
 
             # char 25
             ANIM_begin
                 ANIM_hide -2 79 AutoDGS/dgs/icao_2
                 ANIM_hide 81 1000 AutoDGS/dgs/icao_2
-                TRIS 2892 6
+                TRIS 3096 6
             ANIM_end
 
             # char 26
             ANIM_begin
                 ANIM_hide -2 80 AutoDGS/dgs/icao_2
                 ANIM_hide 82 1000 AutoDGS/dgs/icao_2
-                TRIS 2898 6
+                TRIS 3102 6
             ANIM_end
 
             # char 27
             ANIM_begin
                 ANIM_hide -2 81 AutoDGS/dgs/icao_2
                 ANIM_hide 83 1000 AutoDGS/dgs/icao_2
-                TRIS 2904 6
+                TRIS 3108 6
             ANIM_end
 
             # char 28
             ANIM_begin
                 ANIM_hide -2 82 AutoDGS/dgs/icao_2
                 ANIM_hide 84 1000 AutoDGS/dgs/icao_2
-                TRIS 2910 6
+                TRIS 3114 6
             ANIM_end
 
             # char 29
             ANIM_begin
                 ANIM_hide -2 83 AutoDGS/dgs/icao_2
                 ANIM_hide 85 1000 AutoDGS/dgs/icao_2
-                TRIS 2916 6
+                TRIS 3120 6
             ANIM_end
 
             # char 30
             ANIM_begin
                 ANIM_hide -2 84 AutoDGS/dgs/icao_2
                 ANIM_hide 86 1000 AutoDGS/dgs/icao_2
-                TRIS 2922 6
+                TRIS 3126 6
             ANIM_end
 
             # char 31
             ANIM_begin
                 ANIM_hide -2 85 AutoDGS/dgs/icao_2
                 ANIM_hide 87 1000 AutoDGS/dgs/icao_2
-                TRIS 2928 6
+                TRIS 3132 6
             ANIM_end
 
             # char 32
             ANIM_begin
                 ANIM_hide -2 86 AutoDGS/dgs/icao_2
                 ANIM_hide 88 1000 AutoDGS/dgs/icao_2
-                TRIS 2934 6
+                TRIS 3138 6
             ANIM_end
 
             # char 33
             ANIM_begin
                 ANIM_hide -2 87 AutoDGS/dgs/icao_2
                 ANIM_hide 89 1000 AutoDGS/dgs/icao_2
-                TRIS 2940 6
+                TRIS 3144 6
             ANIM_end
 
             # char 34
             ANIM_begin
                 ANIM_hide -2 88 AutoDGS/dgs/icao_2
                 ANIM_hide 90 1000 AutoDGS/dgs/icao_2
-                TRIS 2946 6
+                TRIS 3150 6
             ANIM_end
 
             # char 35
             ANIM_begin
                 ANIM_hide -2 89 AutoDGS/dgs/icao_2
                 ANIM_hide 91 1000 AutoDGS/dgs/icao_2
-                TRIS 2952 6
+                TRIS 3156 6
             ANIM_end
 
             # char 36
             ANIM_begin
                 ANIM_hide -2 35 AutoDGS/dgs/icao_2
                 ANIM_hide 37 1000 AutoDGS/dgs/icao_2
-                TRIS 2958 6
+                TRIS 3162 6
             ANIM_end
 
             # char stack AutoDGS/dgs/icao_3 @(56, 66)
@@ -6504,259 +6910,259 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 47 AutoDGS/dgs/icao_3
                 ANIM_hide 49 1000 AutoDGS/dgs/icao_3
-                TRIS 2964 6
+                TRIS 3168 6
             ANIM_end
 
             # char 1
             ANIM_begin
                 ANIM_hide -2 48 AutoDGS/dgs/icao_3
                 ANIM_hide 50 1000 AutoDGS/dgs/icao_3
-                TRIS 2970 6
+                TRIS 3174 6
             ANIM_end
 
             # char 2
             ANIM_begin
                 ANIM_hide -2 49 AutoDGS/dgs/icao_3
                 ANIM_hide 51 1000 AutoDGS/dgs/icao_3
-                TRIS 2976 6
+                TRIS 3180 6
             ANIM_end
 
             # char 3
             ANIM_begin
                 ANIM_hide -2 50 AutoDGS/dgs/icao_3
                 ANIM_hide 52 1000 AutoDGS/dgs/icao_3
-                TRIS 2982 6
+                TRIS 3186 6
             ANIM_end
 
             # char 4
             ANIM_begin
                 ANIM_hide -2 51 AutoDGS/dgs/icao_3
                 ANIM_hide 53 1000 AutoDGS/dgs/icao_3
-                TRIS 2988 6
+                TRIS 3192 6
             ANIM_end
 
             # char 5
             ANIM_begin
                 ANIM_hide -2 52 AutoDGS/dgs/icao_3
                 ANIM_hide 54 1000 AutoDGS/dgs/icao_3
-                TRIS 2994 6
+                TRIS 3198 6
             ANIM_end
 
             # char 6
             ANIM_begin
                 ANIM_hide -2 53 AutoDGS/dgs/icao_3
                 ANIM_hide 55 1000 AutoDGS/dgs/icao_3
-                TRIS 3000 6
+                TRIS 3204 6
             ANIM_end
 
             # char 7
             ANIM_begin
                 ANIM_hide -2 54 AutoDGS/dgs/icao_3
                 ANIM_hide 56 1000 AutoDGS/dgs/icao_3
-                TRIS 3006 6
+                TRIS 3210 6
             ANIM_end
 
             # char 8
             ANIM_begin
                 ANIM_hide -2 55 AutoDGS/dgs/icao_3
                 ANIM_hide 57 1000 AutoDGS/dgs/icao_3
-                TRIS 3012 6
+                TRIS 3216 6
             ANIM_end
 
             # char 9
             ANIM_begin
                 ANIM_hide -2 56 AutoDGS/dgs/icao_3
                 ANIM_hide 58 1000 AutoDGS/dgs/icao_3
-                TRIS 3018 6
+                TRIS 3222 6
             ANIM_end
 
             # char 10
             ANIM_begin
                 ANIM_hide -2 64 AutoDGS/dgs/icao_3
                 ANIM_hide 66 1000 AutoDGS/dgs/icao_3
-                TRIS 3024 6
+                TRIS 3228 6
             ANIM_end
 
             # char 11
             ANIM_begin
                 ANIM_hide -2 65 AutoDGS/dgs/icao_3
                 ANIM_hide 67 1000 AutoDGS/dgs/icao_3
-                TRIS 3030 6
+                TRIS 3234 6
             ANIM_end
 
             # char 12
             ANIM_begin
                 ANIM_hide -2 66 AutoDGS/dgs/icao_3
                 ANIM_hide 68 1000 AutoDGS/dgs/icao_3
-                TRIS 3036 6
+                TRIS 3240 6
             ANIM_end
 
             # char 13
             ANIM_begin
                 ANIM_hide -2 67 AutoDGS/dgs/icao_3
                 ANIM_hide 69 1000 AutoDGS/dgs/icao_3
-                TRIS 3042 6
+                TRIS 3246 6
             ANIM_end
 
             # char 14
             ANIM_begin
                 ANIM_hide -2 68 AutoDGS/dgs/icao_3
                 ANIM_hide 70 1000 AutoDGS/dgs/icao_3
-                TRIS 3048 6
+                TRIS 3252 6
             ANIM_end
 
             # char 15
             ANIM_begin
                 ANIM_hide -2 69 AutoDGS/dgs/icao_3
                 ANIM_hide 71 1000 AutoDGS/dgs/icao_3
-                TRIS 3054 6
+                TRIS 3258 6
             ANIM_end
 
             # char 16
             ANIM_begin
                 ANIM_hide -2 70 AutoDGS/dgs/icao_3
                 ANIM_hide 72 1000 AutoDGS/dgs/icao_3
-                TRIS 3060 6
+                TRIS 3264 6
             ANIM_end
 
             # char 17
             ANIM_begin
                 ANIM_hide -2 71 AutoDGS/dgs/icao_3
                 ANIM_hide 73 1000 AutoDGS/dgs/icao_3
-                TRIS 3066 6
+                TRIS 3270 6
             ANIM_end
 
             # char 18
             ANIM_begin
                 ANIM_hide -2 72 AutoDGS/dgs/icao_3
                 ANIM_hide 74 1000 AutoDGS/dgs/icao_3
-                TRIS 3072 6
+                TRIS 3276 6
             ANIM_end
 
             # char 19
             ANIM_begin
                 ANIM_hide -2 73 AutoDGS/dgs/icao_3
                 ANIM_hide 75 1000 AutoDGS/dgs/icao_3
-                TRIS 3078 6
+                TRIS 3282 6
             ANIM_end
 
             # char 20
             ANIM_begin
                 ANIM_hide -2 74 AutoDGS/dgs/icao_3
                 ANIM_hide 76 1000 AutoDGS/dgs/icao_3
-                TRIS 3084 6
+                TRIS 3288 6
             ANIM_end
 
             # char 21
             ANIM_begin
                 ANIM_hide -2 75 AutoDGS/dgs/icao_3
                 ANIM_hide 77 1000 AutoDGS/dgs/icao_3
-                TRIS 3090 6
+                TRIS 3294 6
             ANIM_end
 
             # char 22
             ANIM_begin
                 ANIM_hide -2 76 AutoDGS/dgs/icao_3
                 ANIM_hide 78 1000 AutoDGS/dgs/icao_3
-                TRIS 3096 6
+                TRIS 3300 6
             ANIM_end
 
             # char 23
             ANIM_begin
                 ANIM_hide -2 77 AutoDGS/dgs/icao_3
                 ANIM_hide 79 1000 AutoDGS/dgs/icao_3
-                TRIS 3102 6
+                TRIS 3306 6
             ANIM_end
 
             # char 24
             ANIM_begin
                 ANIM_hide -2 78 AutoDGS/dgs/icao_3
                 ANIM_hide 80 1000 AutoDGS/dgs/icao_3
-                TRIS 3108 6
+                TRIS 3312 6
             ANIM_end
 
             # char 25
             ANIM_begin
                 ANIM_hide -2 79 AutoDGS/dgs/icao_3
                 ANIM_hide 81 1000 AutoDGS/dgs/icao_3
-                TRIS 3114 6
+                TRIS 3318 6
             ANIM_end
 
             # char 26
             ANIM_begin
                 ANIM_hide -2 80 AutoDGS/dgs/icao_3
                 ANIM_hide 82 1000 AutoDGS/dgs/icao_3
-                TRIS 3120 6
+                TRIS 3324 6
             ANIM_end
 
             # char 27
             ANIM_begin
                 ANIM_hide -2 81 AutoDGS/dgs/icao_3
                 ANIM_hide 83 1000 AutoDGS/dgs/icao_3
-                TRIS 3126 6
+                TRIS 3330 6
             ANIM_end
 
             # char 28
             ANIM_begin
                 ANIM_hide -2 82 AutoDGS/dgs/icao_3
                 ANIM_hide 84 1000 AutoDGS/dgs/icao_3
-                TRIS 3132 6
+                TRIS 3336 6
             ANIM_end
 
             # char 29
             ANIM_begin
                 ANIM_hide -2 83 AutoDGS/dgs/icao_3
                 ANIM_hide 85 1000 AutoDGS/dgs/icao_3
-                TRIS 3138 6
+                TRIS 3342 6
             ANIM_end
 
             # char 30
             ANIM_begin
                 ANIM_hide -2 84 AutoDGS/dgs/icao_3
                 ANIM_hide 86 1000 AutoDGS/dgs/icao_3
-                TRIS 3144 6
+                TRIS 3348 6
             ANIM_end
 
             # char 31
             ANIM_begin
                 ANIM_hide -2 85 AutoDGS/dgs/icao_3
                 ANIM_hide 87 1000 AutoDGS/dgs/icao_3
-                TRIS 3150 6
+                TRIS 3354 6
             ANIM_end
 
             # char 32
             ANIM_begin
                 ANIM_hide -2 86 AutoDGS/dgs/icao_3
                 ANIM_hide 88 1000 AutoDGS/dgs/icao_3
-                TRIS 3156 6
+                TRIS 3360 6
             ANIM_end
 
             # char 33
             ANIM_begin
                 ANIM_hide -2 87 AutoDGS/dgs/icao_3
                 ANIM_hide 89 1000 AutoDGS/dgs/icao_3
-                TRIS 3162 6
+                TRIS 3366 6
             ANIM_end
 
             # char 34
             ANIM_begin
                 ANIM_hide -2 88 AutoDGS/dgs/icao_3
                 ANIM_hide 90 1000 AutoDGS/dgs/icao_3
-                TRIS 3168 6
+                TRIS 3372 6
             ANIM_end
 
             # char 35
             ANIM_begin
                 ANIM_hide -2 89 AutoDGS/dgs/icao_3
                 ANIM_hide 91 1000 AutoDGS/dgs/icao_3
-                TRIS 3174 6
+                TRIS 3378 6
             ANIM_end
 
             # char 36
             ANIM_begin
                 ANIM_hide -2 35 AutoDGS/dgs/icao_3
                 ANIM_hide 37 1000 AutoDGS/dgs/icao_3
-                TRIS 3180 6
+                TRIS 3384 6
             ANIM_end
 
     ANIM_end
@@ -7749,73 +8155,73 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 -1 AutoDGS/dgs/distance_0
                 ANIM_hide 1 1000 AutoDGS/dgs/distance_0
-                TRIS 3216 6
+                TRIS 3420 6
             ANIM_end
 
             # char 1
             ANIM_begin
                 ANIM_hide -2 0 AutoDGS/dgs/distance_0
                 ANIM_hide 2 1000 AutoDGS/dgs/distance_0
-                TRIS 3222 6
+                TRIS 3426 6
             ANIM_end
 
             # char 2
             ANIM_begin
                 ANIM_hide -2 1 AutoDGS/dgs/distance_0
                 ANIM_hide 3 1000 AutoDGS/dgs/distance_0
-                TRIS 3228 6
+                TRIS 3432 6
             ANIM_end
 
             # char 3
             ANIM_begin
                 ANIM_hide -2 2 AutoDGS/dgs/distance_0
                 ANIM_hide 4 1000 AutoDGS/dgs/distance_0
-                TRIS 3234 6
+                TRIS 3438 6
             ANIM_end
 
             # char 4
             ANIM_begin
                 ANIM_hide -2 3 AutoDGS/dgs/distance_0
                 ANIM_hide 5 1000 AutoDGS/dgs/distance_0
-                TRIS 3240 6
+                TRIS 3444 6
             ANIM_end
 
             # char 5
             ANIM_begin
                 ANIM_hide -2 4 AutoDGS/dgs/distance_0
                 ANIM_hide 6 1000 AutoDGS/dgs/distance_0
-                TRIS 3246 6
+                TRIS 3450 6
             ANIM_end
 
             # char 6
             ANIM_begin
                 ANIM_hide -2 5 AutoDGS/dgs/distance_0
                 ANIM_hide 7 1000 AutoDGS/dgs/distance_0
-                TRIS 3252 6
+                TRIS 3456 6
             ANIM_end
 
             # char 7
             ANIM_begin
                 ANIM_hide -2 6 AutoDGS/dgs/distance_0
                 ANIM_hide 8 1000 AutoDGS/dgs/distance_0
-                TRIS 3258 6
+                TRIS 3462 6
             ANIM_end
 
             # char 8
             ANIM_begin
                 ANIM_hide -2 7 AutoDGS/dgs/distance_0
                 ANIM_hide 9 1000 AutoDGS/dgs/distance_0
-                TRIS 3264 6
+                TRIS 3468 6
             ANIM_end
 
             # char 9
             ANIM_begin
                 ANIM_hide -2 8 AutoDGS/dgs/distance_0
                 ANIM_hide 10 1000 AutoDGS/dgs/distance_0
-                TRIS 3270 6
+                TRIS 3474 6
             ANIM_end
 
-        TRIS 3276 6
+        TRIS 3480 6
             # char stack AutoDGS/dgs/distance_01 @(42.0, 65)
             
 
@@ -7823,179 +8229,179 @@ ANIM_begin
             ANIM_begin
                 ANIM_hide -2 -1 AutoDGS/dgs/distance_01
                 ANIM_hide 1 1000 AutoDGS/dgs/distance_01
-                TRIS 3282 6
+                TRIS 3486 6
             ANIM_end
 
             # char 1
             ANIM_begin
                 ANIM_hide -2 0 AutoDGS/dgs/distance_01
                 ANIM_hide 2 1000 AutoDGS/dgs/distance_01
-                TRIS 3288 6
+                TRIS 3492 6
             ANIM_end
 
             # char 2
             ANIM_begin
                 ANIM_hide -2 1 AutoDGS/dgs/distance_01
                 ANIM_hide 3 1000 AutoDGS/dgs/distance_01
-                TRIS 3294 6
+                TRIS 3498 6
             ANIM_end
 
             # char 3
             ANIM_begin
                 ANIM_hide -2 2 AutoDGS/dgs/distance_01
                 ANIM_hide 4 1000 AutoDGS/dgs/distance_01
-                TRIS 3300 6
+                TRIS 3504 6
             ANIM_end
 
             # char 4
             ANIM_begin
                 ANIM_hide -2 3 AutoDGS/dgs/distance_01
                 ANIM_hide 5 1000 AutoDGS/dgs/distance_01
-                TRIS 3306 6
+                TRIS 3510 6
             ANIM_end
 
             # char 5
             ANIM_begin
                 ANIM_hide -2 4 AutoDGS/dgs/distance_01
                 ANIM_hide 6 1000 AutoDGS/dgs/distance_01
-                TRIS 3312 6
+                TRIS 3516 6
             ANIM_end
 
             # char 6
             ANIM_begin
                 ANIM_hide -2 5 AutoDGS/dgs/distance_01
                 ANIM_hide 7 1000 AutoDGS/dgs/distance_01
-                TRIS 3318 6
+                TRIS 3522 6
             ANIM_end
 
             # char 7
             ANIM_begin
                 ANIM_hide -2 6 AutoDGS/dgs/distance_01
                 ANIM_hide 8 1000 AutoDGS/dgs/distance_01
-                TRIS 3324 6
+                TRIS 3528 6
             ANIM_end
 
             # char 8
             ANIM_begin
                 ANIM_hide -2 7 AutoDGS/dgs/distance_01
                 ANIM_hide 9 1000 AutoDGS/dgs/distance_01
-                TRIS 3330 6
+                TRIS 3534 6
             ANIM_end
 
             # char 9
             ANIM_begin
                 ANIM_hide -2 8 AutoDGS/dgs/distance_01
                 ANIM_hide 10 1000 AutoDGS/dgs/distance_01
-                TRIS 3336 6
+                TRIS 3540 6
             ANIM_end
 
-        TRIS 3342 6
+        TRIS 3546 6
     ANIM_end
     # show hbar
-    TRIS 3348 6
+    TRIS 3552 6
     # show vbar + azimuth marker
     ANIM_begin
         ANIM_hide 0.0000 0.0100 AutoDGS/dgs/distance
-        TRIS 3354 6
+        TRIS 3558 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 0.5100 AutoDGS/dgs/distance
-        TRIS 3360 6
+        TRIS 3564 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 1.0100 AutoDGS/dgs/distance
-        TRIS 3366 6
+        TRIS 3570 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 1.5100 AutoDGS/dgs/distance
-        TRIS 3372 6
+        TRIS 3576 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 2.0100 AutoDGS/dgs/distance
-        TRIS 3378 6
+        TRIS 3582 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 2.5100 AutoDGS/dgs/distance
-        TRIS 3384 6
+        TRIS 3588 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 3.0100 AutoDGS/dgs/distance
-        TRIS 3390 6
+        TRIS 3594 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 3.5100 AutoDGS/dgs/distance
-        TRIS 3396 6
+        TRIS 3600 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 4.0100 AutoDGS/dgs/distance
-        TRIS 3402 6
+        TRIS 3606 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 4.5100 AutoDGS/dgs/distance
-        TRIS 3408 6
+        TRIS 3612 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 5.0100 AutoDGS/dgs/distance
-        TRIS 3414 6
+        TRIS 3618 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 5.5100 AutoDGS/dgs/distance
-        TRIS 3420 6
+        TRIS 3624 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 6.0100 AutoDGS/dgs/distance
-        TRIS 3426 6
+        TRIS 3630 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 6.5100 AutoDGS/dgs/distance
-        TRIS 3432 6
+        TRIS 3636 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 7.0100 AutoDGS/dgs/distance
-        TRIS 3438 6
+        TRIS 3642 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 7.5100 AutoDGS/dgs/distance
-        TRIS 3444 6
+        TRIS 3648 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 8.0100 AutoDGS/dgs/distance
-        TRIS 3450 6
+        TRIS 3654 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 8.5100 AutoDGS/dgs/distance
-        TRIS 3456 6
+        TRIS 3660 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 9.0100 AutoDGS/dgs/distance
-        TRIS 3462 6
+        TRIS 3666 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 9.5100 AutoDGS/dgs/distance
-        TRIS 3468 6
+        TRIS 3672 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 10.0100 AutoDGS/dgs/distance
-        TRIS 3474 6
+        TRIS 3678 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 10.5100 AutoDGS/dgs/distance
-        TRIS 3480 6
+        TRIS 3684 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 11.0100 AutoDGS/dgs/distance
-        TRIS 3486 6
+        TRIS 3690 6
     ANIM_end
     ANIM_begin
         ANIM_hide 0.0000 11.5100 AutoDGS/dgs/distance
-        TRIS 3492 6
+        TRIS 3696 6
     ANIM_end
     # Azimuth marker
     ANIM_begin
         ANIM_trans 0 0.0000 0 0 -0.4800 0 0.0 12.0 AutoDGS/dgs/distance
         ANIM_begin
             ANIM_trans -0.1600 0 0 0.1600 0 0 -4.0 4.0 AutoDGS/dgs/azimuth
-            TRIS 3498 6
+            TRIS 3702 6
         ANIM_end
     ANIM_end
     # LR arrow right side
@@ -8004,7 +8410,7 @@ ANIM_begin
         ANIM_hide 2.0010 10000.0000 AutoDGS/dgs/lr
         ANIM_hide -0.9100 -0.3700 sim/graphics/animation/sin_wave_2
         ANIM_hide 0.3700 0.9100 sim/graphics/animation/sin_wave_2
-        TRIS 3504 6
+        TRIS 3708 6
     ANIM_end
     # LR arrow left side
     ANIM_begin
@@ -8012,36 +8418,36 @@ ANIM_begin
         ANIM_hide 1.0010 10000.0000 AutoDGS/dgs/lr
         ANIM_hide -0.7500 -0.2500 sim/graphics/animation/sin_wave_2
         ANIM_hide 0.2500 0.7500 sim/graphics/animation/sin_wave_2
-        TRIS 3510 6
+        TRIS 3714 6
     ANIM_end
 ANIM_end
 #---- status = 2 -> red blocks + STOP
 ANIM_begin
     ANIM_hide -10000.0000 1.9990 AutoDGS/dgs/status
     ANIM_hide 2.0010 10000.0000 AutoDGS/dgs/status
-    TRIS 3516 6
-    TRIS 3522 6
-    TRIS 3528 6
+    TRIS 3720 6
+    TRIS 3726 6
+    TRIS 3732 6
 ANIM_end
 #---- status = 3 -> OK
 ANIM_begin
     ANIM_hide -10000.0000 2.9990 AutoDGS/dgs/status
     ANIM_hide 3.0010 10000.0000 AutoDGS/dgs/status
-    TRIS 3534 6
+    TRIS 3738 6
 ANIM_end
 #---- status = 4 -> TOO FAR
 ANIM_begin
     ANIM_hide -10000.0000 3.9990 AutoDGS/dgs/status
     ANIM_hide 4.0010 10000.0000 AutoDGS/dgs/status
-    TRIS 3540 6
-    TRIS 3546 6
+    TRIS 3744 6
+    TRIS 3750 6
 ANIM_end
 #---- status = 6 -> CHOCK ON
 ANIM_begin
     ANIM_hide -10000.0000 5.9990 AutoDGS/dgs/status
     ANIM_hide 6.0010 10000.0000 AutoDGS/dgs/status
-    TRIS 3552 6
-    TRIS 3558 6
+    TRIS 3756 6
+    TRIS 3762 6
 ANIM_end
 
 # continue base obj

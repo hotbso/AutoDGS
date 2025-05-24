@@ -96,6 +96,7 @@ far_txq = TexQuad(char_tex, 784, 450, 128, 56)
 ok_txq = TexQuad(char_tex, 917, 450, 84, 56)
 chock_txq = TexQuad(char_tex, 652, 525, 216, 56)
 on_txq = TexQuad(char_tex, 874, 525, 82, 56)
+pax_txq = TexQuad(char_tex, 652, 598, 128, 56)
 
 # augment the .obj
 xpo.line("ATTR_light_level 0.0 1.0 AutoDGS/dgs/vdgs_brightness	7000")
@@ -125,6 +126,18 @@ with AnimBlock(xpo):
     xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_m1", last = 6, ascii = False)
     x = x + dx
     xpo.char_stack(char_txq, x, y, "AutoDGS/dgs/time_utc_m0", last = 10, ascii = False)
+
+    with AnimBlock(xpo):
+        xpo.show_if_eq("AutoDGS/dgs/boarding", 1)
+        xpo.line("# PAX no")
+        xpo.quad(pax_txq, LED(1, 8), LED(2, 2))
+        x = LED(1, 8)
+        y = LED(1, 2)
+        dx = 12
+        x += 2 * dx
+        for i in range(3):
+            xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/paxno_{i}", last = 10, ascii = False)
+            x -= dx
 
 
 def icao_large():

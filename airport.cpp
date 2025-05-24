@@ -209,18 +209,24 @@ void
 Stand::SetState(int pax_no)
 {
     assert(dgs_type_ == kVDGS);
-    int pn_0 = pax_no % 10;
-    pax_no /= 10;
-    int pn_1 = pax_no % 10;
-    pax_no /= 10;
-    int pn_2 = pax_no;
+
+    int pn[3]{ -1, -1, -1};
+    for (int i = 0; i < 3; i++) {
+        pn[i] = pax_no % 10;
+        pax_no /= 10;
+        if (pax_no == 0)
+            break;
+    }
 
     float drefs[DGS_DR_NUM]{};
-    // status is 0
+
+    int n = std::min(6, (int)display_name_.length());
+    for (int i = 0; i < n; i++)
+        drefs[DGS_DR_R1C0 + i] = display_name_[i];
+
     drefs[DGS_DR_BOARDING] = 1;
-    drefs[DGS_DR_PAXNO_0] = pn_0 == 0 ? -1 : pn_0;
-    drefs[DGS_DR_PAXNO_1] = pn_1 == 0 ? -1 : pn_1;
-    drefs[DGS_DR_PAXNO_2] = pn_2 == 0 ? -1 : pn_2;
+    for (int i = 0; i < 3; i++)
+        drefs[DGS_DR_PAXNO_0 + i] = pn[i];
 
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
@@ -676,8 +682,10 @@ Airport::StateMachine()
             return 4.0f;
         }
 
-        if (plane.PaxNo() == 0)
+        if (plane.PaxNo() == 0) {
             state_ = DEPARTURE;
+            LogMsg("New state %s", state_str[state_]);
+        }
 
         if (state_ == INACTIVE)
             return 4.0f;
@@ -686,7 +694,6 @@ Airport::StateMachine()
     }
 
     if (state_ == DEPARTURE) {
-        LogMsg("in departure");
         if (plane.PaxNo() == 0)
             return 4.0f;
         state_ = BOARDING;
