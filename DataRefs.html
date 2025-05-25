@@ -32,7 +32,7 @@ kbd {font-family: sans-serif; color: black; background-color: white; border: 1px
 <p>The plugin publishes the following datarefs that you can use to construct your own DGS.</p>
 <dl>
   <dt><code>AutoDGS/dgs/status</code></dt>
-  <dd>0 - "Idle". All other published datarefs will also have value 0.</dd>
+  <dd>0 - "Idle". All other published datarefs (besides boarding) will also have value 0.</dd>
   <dd>1 - "Active". A plane is approaching the gate and the plane's doorway location is known.</dd>
   <dd>2 - "Stop". The plane is at the stopping point.</dd>
   <dd>3 - "Stopped". The plane has stopped engines at the stopping point.</dd>
@@ -70,6 +70,10 @@ kbd {font-family: sans-serif; color: black; background-color: white; border: 1px
   <dd>Array of 4 integers spelling out the ASCII code of the plane's ICAO model designation:</dd>
   <dd>0 if <code>status</code>&ne;1</dd>
   <dd>space, &lsquo;0&rsquo;-&lsquo;9&rsquo; or &lsquo;A&rsquo;-&lsquo;Z&rsquo; if <code>status</code>=1</dd>
+  <dt>&nbsp;</dt>
+  <dt><code>AutoDGS/dgs/boarding</code></dt>
+  <dd>0 - "--" (<code>status</code>=0)</dd>
+  <dd>1 - "Boarding" (<code>status</code>=0)&nbsp;<code>AutoDGS/dgs/paxno_[0-2]</code> contain the digits of pax_no; -1,[0-9]<dd>
 </dl>
 
 <hr>
