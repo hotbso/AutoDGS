@@ -179,7 +179,7 @@ Stand::CycleDgsType()
 }
 
 void
-Stand::SetState(int status, int track, int lr, float azimuth, float distance)
+Stand::SetState(int status, int track, int lr, float azimuth, float distance, bool slow)
 {
     assert(dgs_type_ == kVDGS);
 
@@ -207,8 +207,14 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance)
     drefs[DGS_DR_AZIMUTH] = azimuth;
     drefs[DGS_DR_LR] = lr;
 
-    for (int i = 0; i < 4; i++)
-        drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
+    if (slow) {
+        drefs[DGS_DR_ICAO_0] = 'S';
+        drefs[DGS_DR_ICAO_1] = 'L';
+        drefs[DGS_DR_ICAO_2] = 'O';
+        drefs[DGS_DR_ICAO_3] = 'W';
+    } else
+        for (int i = 0; i < 4; i++)
+            drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
@@ -782,7 +788,8 @@ Airport::StateMachine()
     int beacon_on = plane.BeaconOn();
 
     status_ = lr_ = track_ = 0;
-    distance_ = nw_z; //  - kGoodZ_m;
+    distance_ = nw_z;
+    bool slow = false;
 
     // catch the phase ~180° point -> the Marshaller's arm is straight
     float sin_wave = XPLMGetDataf(sin_wave_dr);
@@ -831,13 +838,17 @@ Airport::StateMachine()
                 azimuth = std::clamp(azimuth, -kAziA, kAziA);
                 float req_hdgt = -3.5 * azimuth;        // to track back to centerline
                 float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
+                float gs = XPLMGetDataf(ground_speed_dr);
+                slow = (distance_ > 20.0f && gs > 4.0f)
+                       || (10.0f < distance_ && distance_ <= 20.0f && gs > 3.0f)
+                       || (distance_ <= 10.0f && gs > 2.0f);
 
                 if (now > update_dgs_log_ts_ + 2.0)
                     LogMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                           "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
+                           "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, gs: %0.1f, slow: %d",
                            azimuth, mw_x, mw_z, nw_x, nw_z,
                            x_dr, z_dr,
-                           local_x, local_hdgt, d_hdgt);
+                           local_x, local_hdgt, d_hdgt, gs, slow);
 
                 if (d_hdgt < -1.5)
                     lr_ = 2;
@@ -960,9 +971,9 @@ Airport::StateMachine()
         } else {
             // always light up a selected VDGS
             if (state_ == ENGAGED && active_stand_ == selected_stand_)
-                as.SetState(1, 1, 0, 0, 0);
+                as.SetState(1, 1, 0, 0, 0, false);
             else
-                as.SetState(status_, track_, lr_, azimuth, distance_);
+                as.SetState(status_, track_, lr_, azimuth, distance_, slow);
         }
     }
 

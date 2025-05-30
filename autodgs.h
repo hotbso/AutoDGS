@@ -118,7 +118,7 @@ extern XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_ps
 extern XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 extern XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
 extern XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
-extern XPLMDataRef vr_enabled_dr;
+extern XPLMDataRef vr_enabled_dr, ground_speed_dr;
 extern XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr,
     toggle_ui_cmdr, toggle_jetway_cmdr;
 extern XPLMProbeRef probe_ref;

@@ -61,7 +61,7 @@ XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
 XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
 XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
-XPLMDataRef vr_enabled_dr;
+XPLMDataRef vr_enabled_dr, ground_speed_dr;
 static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
 XPLMObjectRef dgs_obj[2];
@@ -306,6 +306,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
     sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
     vr_enabled_dr     = XPLMFindDataRef("sim/graphics/VR/enabled");
+    ground_speed_dr   = XPLMFindDataRef("sim/flightmodel/position/groundspeed");
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
 
