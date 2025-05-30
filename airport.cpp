@@ -33,17 +33,17 @@
 #include "XPLMGraphics.h"
 
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
-static constexpr float CAP_A = 15;      // Capture
-static constexpr float CAP_Z = 105;	    // (50-80 in Safedock2 flier)
+static constexpr float kCapA = 15;      // Capture
+static constexpr float kCapZ = 105;	    // (50-80 in Safedock2 flier)
 
-static constexpr float AZI_A = 15;	    // provide azimuth guidance
-static constexpr float AZI_DISP_A = 10; // max value for display
-static constexpr float AZI_Z = 85;
+static constexpr float kAziA = 15;	    // provide azimuth guidance
+static constexpr float kAziDispA = 10; // max value for display
+static constexpr float kAziZ = 85;
 
-static constexpr float GOOD_Z= 0.5;     // stop position for nw
-static constexpr float GOOD_X = 2.0;    // for mw
+static constexpr float kGoodZ= 0.5;     // stop position for nw
+static constexpr float kGoodX = 2.0;    // for mw
 
-static constexpr float REM_Z = 12;	    // Distance remaining from here on
+static constexpr float kRemZ = 12;	    // Distance remaining from here on
 
 static constexpr float kVdgsDefaultDist = 15.0;         // m
 static constexpr float kMarshallerDefaultDist = 25.0;
@@ -565,7 +565,7 @@ Airport::FindNearestStand()
             float nw_x = local_x + plane.nw_z * sinf(kD2R * local_hdgt);
 
             float d = sqrt(SQR(nw_x) + SQR(nw_z));
-            if (d > CAP_Z + 50) // fast exit
+            if (d > kCapZ + 50) // fast exit
                 continue;
 
             //LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.name(), nw_z, nw_x);
@@ -770,11 +770,11 @@ Airport::StateMachine()
     else
         azimuth_nw = 0.0;
 
-    int locgood = (fabsf(mw_x) <= GOOD_X && fabsf(nw_z) <= GOOD_Z);
+    int locgood = (fabsf(mw_x) <= kGoodX && fabsf(nw_z) <= kGoodZ);
     int beacon_on = plane.BeaconOn();
 
     status_ = lr_ = track_ = 0;
-    distance_ = nw_z - GOOD_Z;
+    distance_ = nw_z - kGoodZ;
 
     // catch the phase ~180° point -> the Marshaller's arm is straight
     float sin_wave = XPLMGetDataf(sin_wave_dr);
@@ -785,7 +785,7 @@ Airport::StateMachine()
     switch (state_) {
         case ENGAGED:
             if (beacon_on) {
-                if ((distance_ <= CAP_Z) && (fabsf(azimuth_nw) <= CAP_A))
+                if ((distance_ <= kCapZ) && (fabsf(azimuth_nw) <= kCapA))
                     new_state = TRACK;
             } else { // not beacon_on
                 new_state = DONE;
@@ -803,24 +803,24 @@ Airport::StateMachine()
                     break;
                 }
 
-                if (nw_z < -GOOD_Z) {
+                if (nw_z < -kGoodZ) {
                     new_state = BAD;
                     break;
                 }
 
-                if ((distance_ > CAP_Z) || (fabsf(azimuth_nw) > CAP_A)) {
+                if ((distance_ > kCapZ) || (fabsf(azimuth_nw) > kCapA)) {
                     new_state = ENGAGED;    // moving away from current gate
                     break;
                 }
 
                 status_ = 1;	// plane id
-                if (distance_ > AZI_Z || fabsf(azimuth_nw) > AZI_A) {
+                if (distance_ > kAziZ || fabsf(azimuth_nw) > kAziA) {
                     track_=1;	// lead-in only
                     break;
                 }
 
                 // compute distance_ and guidance commands
-                azimuth = std::clamp(azimuth, -AZI_A, AZI_A);
+                azimuth = std::clamp(azimuth, -kAziA, kAziA);
                 float req_hdgt = -3.5 * azimuth;        // to track back to centerline
                 float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
 
@@ -837,10 +837,10 @@ Airport::StateMachine()
                     lr_ = 1;
 
                 // xform azimuth to values required ob OBJ
-                azimuth = std::clamp(azimuth, -AZI_DISP_A, AZI_DISP_A) * 4.0 / AZI_DISP_A;
+                azimuth = std::clamp(azimuth, -kAziDispA, kAziDispA) * 4.0 / kAziDispA;
                 azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-                if (distance_ <= REM_Z/2) {
+                if (distance_ <= kRemZ/2) {
                     track_ = 3;
                     loop_delay = 0.03;
                 } else // azimuth only
@@ -877,7 +877,7 @@ Airport::StateMachine()
                 return loop_delay;
             }
 
-            if (nw_z >= -GOOD_Z)
+            if (nw_z >= -kGoodZ)
                 new_state = TRACK;
             else {
                 // Too far
@@ -936,7 +936,7 @@ Airport::StateMachine()
             azimuth = 0.0;
         }
 
-        distance_ = std::clamp(distance_, -GOOD_Z, REM_Z);
+        distance_ = std::clamp(distance_, -kGoodZ, kRemZ);
 
         // don't flood the log
         if (now > update_dgs_log_ts_ + 2.0) {
