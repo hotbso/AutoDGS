@@ -33,17 +33,19 @@
 #include "XPLMGraphics.h"
 
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
-static constexpr float kCapA = 15;      // Capture
-static constexpr float kCapZ = 105;	    // (50-80 in Safedock2 flier)
+static constexpr float kCapA = 15;          // Capture
+static constexpr float kCapZ = 105;	        // (50-80 in Safedock2 flier)
 
-static constexpr float kAziA = 15;	    // provide azimuth guidance
-static constexpr float kAziDispA = 10; // max value for display
+static constexpr float kAziA = 15;	        // provide azimuth guidance
+static constexpr float kAziDispA = 10;      // max value for display
 static constexpr float kAziZ = 85;
 
-static constexpr float kGoodZ= 0.5;     // stop position for nw
-static constexpr float kGoodX = 2.0;    // for mw
+static constexpr float kGoodZ_p = 0.2;      // stop position for nw / to stop
+static constexpr float kGoodZ_m = -0.5;     // stop position for nw / beyond stop
 
-static constexpr float kRemZ = 12;	    // Distance remaining from here on
+static constexpr float kGoodX = 2.0;        // for mw
+
+static constexpr float kCrZ = 12;      	    // Closing Rate starts here VDGS, Marshaller uses 0.5 * kCrZ
 
 static constexpr float kVdgsDefaultDist = 15.0;         // m
 static constexpr float kMarshallerDefaultDist = 25.0;
@@ -181,11 +183,17 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance)
 {
     assert(dgs_type_ == kVDGS);
 
-    float d_0 = 0.0f;
-    float d_01 = 0.0f;
+    int d_0 = 0;
+    int d_01 = 0;
+    // according to Safegate_SDK_UG_Pilots_v1.10_s.pdf
+    // > 3m: 1.0 m decrements, <= 3m 0.2m decrements
     if (0.0f <= distance && distance < 10.0f) {
-        d_0 = (float)(int)distance;
-        d_01 = (int)((distance - d_0) * 10.0f);
+        d_0 = distance;
+        if (d_0 < 3) {
+            int d = (distance - d_0) * 10.0f;
+            d &= ~1;    // make it even = 0.2m increments
+            d_01 = d;
+        }
     }
 
     distance =((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
@@ -770,11 +778,11 @@ Airport::StateMachine()
     else
         azimuth_nw = 0.0;
 
-    int locgood = (fabsf(mw_x) <= kGoodX && fabsf(nw_z) <= kGoodZ);
+    int locgood = (fabsf(mw_x) <= kGoodX && kGoodZ_m <= nw_z && nw_z <= kGoodZ_p);
     int beacon_on = plane.BeaconOn();
 
     status_ = lr_ = track_ = 0;
-    distance_ = nw_z - kGoodZ;
+    distance_ = nw_z; //  - kGoodZ_m;
 
     // catch the phase ~180° point -> the Marshaller's arm is straight
     float sin_wave = XPLMGetDataf(sin_wave_dr);
@@ -803,7 +811,7 @@ Airport::StateMachine()
                     break;
                 }
 
-                if (nw_z < -kGoodZ) {
+                if (nw_z < kGoodZ_m) {
                     new_state = BAD;
                     break;
                 }
@@ -815,7 +823,7 @@ Airport::StateMachine()
 
                 status_ = 1;	// plane id
                 if (distance_ > kAziZ || fabsf(azimuth_nw) > kAziA) {
-                    track_=1;	// lead-in only
+                    track_ = 1;	// lead-in only
                     break;
                 }
 
@@ -840,7 +848,7 @@ Airport::StateMachine()
                 azimuth = std::clamp(azimuth, -kAziDispA, kAziDispA) * 4.0 / kAziDispA;
                 azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-                if (distance_ <= kRemZ/2) {
+                if (distance_ <= kCrZ/2) {
                     track_ = 3;
                     loop_delay = 0.03;
                 } else // azimuth only
@@ -877,7 +885,7 @@ Airport::StateMachine()
                 return loop_delay;
             }
 
-            if (nw_z >= -kGoodZ)
+            if (nw_z >= kGoodZ_m)   // moving backwards
                 new_state = TRACK;
             else {
                 // Too far
@@ -936,7 +944,7 @@ Airport::StateMachine()
             azimuth = 0.0;
         }
 
-        distance_ = std::clamp(distance_, -kGoodZ, kRemZ);
+        distance_ = std::clamp(distance_, kGoodZ_m, kCrZ);
 
         // don't flood the log
         if (now > update_dgs_log_ts_ + 2.0) {
