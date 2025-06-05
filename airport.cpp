@@ -102,12 +102,39 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as)
 {
     // create display name
-    int n = as_.name.length();
-    if (n <= kR1Nchar) {
+    // a stand name can be anything between "1" and "Gate A 40 (Class C, Terminal 3)"
+    // we try to extract the net name "A 40" in the latter case
+    const std::string& asn = as_.name;
+
+    if (asn.starts_with("Stand"))
+        display_name_ = asn.substr(6);
+    else if (asn.starts_with("Gate"))
+        display_name_ = asn.substr(5);
+    else
         display_name_ = as_.name;
-        int pad = (kR1Nchar - n) / 2;
-        if (pad > 0)
-            display_name_.insert(0, pad, ' ');
+
+    // delete stuff following and including a "(,;"
+    if (display_name_.length() > kR1Nchar) {
+        const auto i = display_name_.find_first_of("(,;");
+        if (i != std::string::npos) {
+            display_name_.resize(i);
+            display_name_.erase(display_name_.find_last_not_of(" ") + 1);
+        }
+    }
+
+    // trim whitespace
+    display_name_.erase(0, display_name_.find_first_not_of(" "));
+
+    if (display_name_.length() > kR1Nchar)
+        display_name_.clear();  // give up
+    else {
+        // pad for center position
+        const auto n = display_name_.length();
+        if (n < kR1Nchar) {
+            int pad = (kR1Nchar - n) / 2;
+            if (pad > 0)
+                display_name_.insert(0, pad, ' ');
+        }
     }
 
     double x, y, z;
