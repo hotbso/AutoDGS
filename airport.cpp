@@ -782,12 +782,12 @@ Airport::StateMachine()
         }
 
         if (state_ == DEPARTURE) {
-            if (plane.PaxNo() == 0)
-                return ds.SetState(0);
-
-            state_ = BOARDING;
-            LogMsg("New state %s", state_str[state_]);
-           // FALLTHROUGH
+            if (plane.PaxNo() > 0) {
+                state_ = BOARDING;
+                LogMsg("New state %s", state_str[state_]);
+                // FALLTHROUGH
+            } else
+                return ds.SetState(0);  // just scroll the text
         }
 
         if (state_ == BOARDING) {
