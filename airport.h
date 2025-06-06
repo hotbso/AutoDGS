@@ -26,10 +26,21 @@
 #include <memory>
 #include <tuple>
 
+class ScrollTxt {
+    std::string txt_;           // text to scroll
+    int char_pos_;              // next char to enter on the right
+    int dr_scroll_;             // dref value for scroll ctrl
+    char chars_[kR1Nchar]{};    // chars currently visible
+
+  public:
+    ScrollTxt(const std::string& txt);
+    void Tick(float *drefs);
+};
+
 // AptStand augmented
 class Stand {
 	const AptStand& as_;
-    std::string display_name_;   // for use in the VDGS
+    std::string display_name_;  // for use in the VDGS
 
   protected:
     friend class Airport;
@@ -43,6 +54,7 @@ class Stand {
     float dgs_dist_;            // distance to dgs
     float marshaller_max_dist_; // max distance, actual can be lower according to PE
     void SetDgsDist();
+    std::unique_ptr<ScrollTxt> scroll_txt_;
 
   public:
     Stand(Stand&&) = default;
@@ -55,7 +67,7 @@ class Stand {
     void CycleDgsType();
     void DgsMoveCloser();           // with wrap around
     void SetState(int status, int track, int lr, float azimuth, float distance, bool slow);
-    void SetState(int pax_no);
+    float SetState(int pax_no);     // -> delay
     void SetIdle();
 
     // accessors
@@ -87,6 +99,7 @@ class Airport {
     int active_stand_;      // -1 or index into stands_
     int selected_stand_;
     int departure_stand_;
+    float departure_stand_ts_;
 
     bool user_cfg_changed_;
 

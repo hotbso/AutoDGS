@@ -65,6 +65,7 @@ enum _DGS_DREF {
     DGS_DR_ICAO_1,
     DGS_DR_ICAO_2,
     DGS_DR_ICAO_3,
+    DGS_DR_R1_SCROLL,
     DGS_DR_R1C0,            // top row (=1), char #
     DGS_DR_R1C1,
     DGS_DR_R1C2,

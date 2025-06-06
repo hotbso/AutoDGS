@@ -107,11 +107,13 @@ with AnimBlock(xpo):
 
     xpo.line("# NO-openSAM_begin")
     y = LED(5, 2)
-    x = LED(0, 5)
+    x = LED(1)      # align with ICAO field to save some TRIS
     dx = 12
-    for i in range(0, 6):
-        xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
-        x += dx
+    with AnimBlock(xpo):
+        xpo.trans_x(-16, 0, 0, 16, "AutoDGS/dgs/r1_scroll") # lateral
+        for i in range(0, 6):
+            xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
+            x += dx
     xpo.line("# NO-openSAM_end")
 
     y = LED(4, 2)
@@ -193,7 +195,7 @@ with AnimBlock(xpo):
 
         # ICAO normal font
         y = LED(5, 2)
-        x = LED(1, 1)
+        x = LED(1)
         dx = 12
         xpo.char_stack(char_txq, x, y, icao_0_dr, first = 10, last = 36)
         x = x + dx

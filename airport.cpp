@@ -99,6 +99,38 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
+ScrollTxt::ScrollTxt(const std::string& txt)
+{
+    txt_ = txt;
+    dr_scroll_= 10;   // right most
+    chars_[kR1Nchar - 1] = txt_[0];
+    char_pos_ = 0;
+}
+
+void
+ScrollTxt::Tick(float *drefs)
+{
+    if (txt_.size() == 0)
+        return;
+
+    dr_scroll_ -= 2;
+    if (dr_scroll_ < 0) {
+        dr_scroll_ = 10;
+        char_pos_++;
+        if (char_pos_ >= (int)txt_.size())
+            char_pos_ = 0;
+
+        for (int i = 1; i < kR1Nchar; i++)
+            chars_[i - 1] = chars_[i];
+        chars_[kR1Nchar - 1] = txt_[char_pos_];
+    }
+
+    drefs[DGS_DR_R1_SCROLL] = dr_scroll_;
+    for (int i = 0; i < kR1Nchar; i++)
+        drefs[DGS_DR_R1C0 + i] = chars_[i];
+};
+
+//------------------------------------------------------------------------------------
 Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as)
 {
     // create display name
@@ -246,30 +278,40 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance, bo
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
 
-void
+float
 Stand::SetState(int pax_no)
 {
     assert(dgs_type_ == kVDGS);
 
-    int pn[3]{ -1, -1, -1};
-    for (int i = 0; i < 3; i++) {
-        pn[i] = pax_no % 10;
-        pax_no /= 10;
-        if (pax_no == 0)
-            break;
-    }
+    float delay = 1.0f;
 
     float drefs[DGS_DR_NUM]{};
 
-    int n = std::min(6, (int)display_name_.length());
-    for (int i = 0; i < n; i++)
-        drefs[DGS_DR_R1C0 + i] = display_name_[i];
+    if (scroll_txt_) {
+        scroll_txt_->Tick(drefs);
+        delay = 0.05f;
+    } else {
+        drefs[DGS_DR_R1_SCROLL] = 5;
+        int n = std::min(6, (int)display_name_.length());
+        for (int i = 0; i < n; i++)
+            drefs[DGS_DR_R1C0 + i] = display_name_[i];
+    }
 
-    drefs[DGS_DR_BOARDING] = 1;
-    for (int i = 0; i < 3; i++)
-        drefs[DGS_DR_PAXNO_0 + i] = pn[i];
+    if (pax_no > 0) {
+        int pn[3]{ -1, -1, -1};
+        for (int i = 0; i < 3; i++) {
+            pn[i] = pax_no % 10;
+            pax_no /= 10;
+            if (pax_no == 0)
+                break;
+        }
+        drefs[DGS_DR_BOARDING] = 1;
+        for (int i = 0; i < 3; i++)
+            drefs[DGS_DR_PAXNO_0 + i] = pn[i];
+    }
 
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    return delay;
 }
 
 void
@@ -280,8 +322,11 @@ Stand::SetIdle()
 
     LogMsg("SetIdle stand: '%s'", cname());
 
+    scroll_txt_ = nullptr;
+
     float drefs[DGS_DR_NUM]{};
 
+    drefs[DGS_DR_R1_SCROLL] = 5;
     int n = std::min(6, (int)display_name_.length());
     for (int i = 0; i < n; i++)
         drefs[DGS_DR_R1C0 + i] = display_name_[i];
@@ -394,7 +439,7 @@ Airport::Airport(const AptAirport& apt_airport)
     user_cfg_changed_ = false;
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
-    nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
+    departure_stand_ts_ = nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
 }
 
 Airport::~Airport()
@@ -697,25 +742,34 @@ Airport::StateMachine()
     if (error_disabled)
         return 0.0f;
 
+    state_t state_prev = state_;
+
     // DEPARTURE and friends ...
     // that's all low freq stuff
     if (INACTIVE <= state_ && state_ <= BOARDING) {
-        // on beacon or engine or teleportation -> INACTIVE
-        if (plane.BeaconOn() || plane.EnginesOn()) {
-            if (departure_stand_ >= 0)
-                stands_[departure_stand_].SetIdle();
-            departure_stand_ = -1;
-            state_ = INACTIVE;
-            return 2.0f;
-        }
+        if (now > departure_stand_ts_ + 0.2f) {
+            departure_stand_ts_ = now;
+            // on beacon or engine or teleportation -> INACTIVE
+            if (plane.BeaconOn() || plane.EnginesOn()) {
+                if (departure_stand_ >= 0)
+                    stands_[departure_stand_].SetIdle();
+                departure_stand_ = -1;
+                state_ = INACTIVE;
+                return 2.0f;
+            }
 
-        // check for stand (new or changed)
-        int ds = FindDepartureStand();
-        if (ds != departure_stand_) {
-            if (departure_stand_ >= 0)
-                stands_[departure_stand_].SetIdle();
-            LogMsg("Departure stand now '%s'", ds >= 0 ? stands_[ds].cname() : "*none*");
-            departure_stand_ = ds;
+            // check for stand (new or changed)
+            int dsi = FindDepartureStand();
+            if (dsi != departure_stand_) {
+                if (departure_stand_ >= 0)
+                    stands_[departure_stand_].SetIdle();
+                LogMsg("Departure stand now '%s'", dsi >= 0 ? stands_[dsi].cname() : "*none*");
+                if (dsi >= 0)
+                    stands_[dsi].scroll_txt_ =
+                        std::make_unique<ScrollTxt>(name() + " STAND " + stands_[dsi].display_name_ + "   ");
+
+                departure_stand_ = dsi;
+            }
         }
 
         if (departure_stand_ < 0) {
@@ -723,30 +777,33 @@ Airport::StateMachine()
             return 4.0f;
         }
 
+        Stand& ds = stands_[departure_stand_];
+
         if (plane.PaxNo() == 0) {
             state_ = DEPARTURE;
-            LogMsg("New state %s", state_str[state_]);
+            if (state_ != state_prev)
+                LogMsg("New state %s", state_str[state_]);
+            // FALLTHROUGH
         }
 
-        if (state_ == INACTIVE)
-            return 4.0f;
+        if (state_ == INACTIVE) {
+            return std::min(4.0f, ds.SetState(0));
+        }
 
-        // FALLTHROUGH
-    }
+        if (state_ == DEPARTURE) {
+            if (plane.PaxNo() == 0)
+                return ds.SetState(0);
 
-    if (state_ == DEPARTURE) {
-        if (plane.PaxNo() == 0)
-            return 4.0f;
-        state_ = BOARDING;
-        LogMsg("New state %s", state_str[state_]);
-        // FALLTHROUGH
-    }
+            state_ = BOARDING;
+            LogMsg("New state %s", state_str[state_]);
+           // FALLTHROUGH
+        }
 
-    if (state_ == BOARDING) {
-        int pax_no = plane.PaxNo();
-        LogMsg("boarding PaxNo: %d", pax_no);
-        stands_[departure_stand_].SetState(pax_no);
-        return 1.0f;
+        if (state_ == BOARDING) {
+            int pax_no = plane.PaxNo();
+            //LogMsg("boarding PaxNo: %d", pax_no);
+            return ds.SetState(pax_no);
+        }
     }
 
     // ARRIVAL and friends ...
