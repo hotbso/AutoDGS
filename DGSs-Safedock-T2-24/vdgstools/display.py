@@ -180,6 +180,10 @@ class XPObj:
                     v += 48
                 elif 10 <= i and i <= 35:
                     v += -10 + 65
+                elif i == 37:
+                    v = ord(':')
+                elif i == 38:
+                    v = ord('.')
 
             tx = char_txq[i]
             self.line(f"# char {i}")
