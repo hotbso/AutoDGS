@@ -159,15 +159,6 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
 
     if (display_name_.length() > kR1Nchar)
         display_name_.clear();  // give up
-    else {
-        // pad for center position
-        const auto n = display_name_.length();
-        if (n < kR1Nchar) {
-            int pad = (kR1Nchar - n) / 2;
-            if (pad > 0)
-                display_name_.insert(0, pad, ' ');
-        }
-    }
 
     double x, y, z;
     XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x, &y, &z);
@@ -291,10 +282,10 @@ Stand::SetState(int pax_no)
         scroll_txt_->Tick(drefs);
         delay = 0.05f;
     } else {
-        drefs[DGS_DR_R1_SCROLL] = 5;
-        int n = std::min(6, (int)display_name_.length());
+        int n = display_name_.length();
         for (int i = 0; i < n; i++)
             drefs[DGS_DR_R1C0 + i] = display_name_[i];
+        drefs[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
     }
 
     if (pax_no > 0) {
@@ -326,10 +317,10 @@ Stand::SetIdle()
 
     float drefs[DGS_DR_NUM]{};
 
-    drefs[DGS_DR_R1_SCROLL] = 5;
-    int n = std::min(6, (int)display_name_.length());
+    int n = display_name_.length();
     for (int i = 0; i < n; i++)
         drefs[DGS_DR_R1C0 + i] = display_name_[i];
+    drefs[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
 
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
