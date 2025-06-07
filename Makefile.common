@@ -4,7 +4,8 @@ INCLUDES=-I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets
 # platform independent defines
 DEFINES=
 
-SOURCES_CPP=autodgs.cpp adgs_ui.cpp apt_airport.cpp log_msg.cpp api.cpp plane.cpp airport.cpp XPListBox.cpp
+SOURCES_CPP=autodgs.cpp adgs_ui.cpp apt_airport.cpp log_msg.cpp api.cpp plane.cpp airport.cpp simbrief.cpp\
+    XPListBox.cpp
 SOURCES_C=
 
 # the c++ standard to use

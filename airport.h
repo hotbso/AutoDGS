@@ -34,6 +34,7 @@ class ScrollTxt {
 
   public:
     ScrollTxt(const std::string& txt);
+    void AddStr(const std::string& txt);     // add to existing string
     void Tick(float *drefs);
 };
 

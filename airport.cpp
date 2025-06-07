@@ -29,6 +29,7 @@
 #include "airport.h"
 #include "plane.h"
 #include "flat_earth_math.h"
+#include "simbrief.h"
 
 #include "XPLMGraphics.h"
 
@@ -58,6 +59,8 @@ static constexpr float kDgsMoveDeltaMax = 3.0;
 
 static bool marshaller_pe_dist_updated;        // according to pilot's eye AGL
 static float marshaller_pe_dist = kMarshallerDefaultDist;
+
+static std::unique_ptr<Ofp> ofp;
 
 class Marshaller;
 
@@ -105,6 +108,12 @@ ScrollTxt::ScrollTxt(const std::string& txt)
     dr_scroll_= 10;   // right most
     chars_[kR1Nchar - 1] = txt_[0];
     char_pos_ = 0;
+}
+
+void
+ScrollTxt::AddStr(const std::string& txt)
+{
+    txt_ += txt;
 }
 
 void
@@ -772,8 +781,14 @@ Airport::StateMachine()
 
         if (plane.PaxNo() == 0) {
             state_ = DEPARTURE;
-            if (state_ != state_prev)
+            if (state_ != state_prev) {
                 LogMsg("New state %s", state_str[state_]);
+                ofp = Ofp::Load();  // fetch ofp
+                if (ofp) {
+                    std::string ofp_str = ofp->GenDepartureStr();
+                    ds.scroll_txt_->AddStr("  " + ofp_str + "   ");
+                }
+            }
             // FALLTHROUGH
         }
 
