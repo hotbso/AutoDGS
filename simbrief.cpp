@@ -45,7 +45,7 @@ DEF_DR(est_on);
 DEF_DR(est_in);
 #undef DEF_DREF_DR
 
-static XPLMDataRef seqno_dr, valid_dr;
+static XPLMDataRef seqno_dr, stale_dr;
 
 // fetch byte data into a string
 static void
@@ -64,14 +64,14 @@ FetchDref(std::string& str, XPLMDataRef dr)
 #define LOG_DREF(f) LogMsg(" " #f ": '%s'", ofp->f.c_str())
 
 std::unique_ptr<Ofp>
-Ofp::Load()
+Ofp::LoadIfNewer(int cur_seqno)
 {
     if (sbh_unavail)
         return nullptr;
 
     if (!drefs_loaded) {
-        valid_dr = XPLMFindDataRef("sbh/valid");
-        if (valid_dr == nullptr) {
+        stale_dr = XPLMFindDataRef("sbh/stale");
+        if (stale_dr == nullptr) {
             sbh_unavail = true;
             LogMsg("simbrief_hub plugin is not loaded, bye!");
             return nullptr;
@@ -90,15 +90,17 @@ Ofp::Load()
         FIND_DREF(est_in);
     }
 
-    int valid = XPLMGetDatai(valid_dr);
-    if (! valid) {
-        LogMsg("simbrief_hub does not contain a valid ofp");
+    int seqno = XPLMGetDatai(seqno_dr);
+    if (seqno <= cur_seqno)
         return nullptr;
-    }
+
+    int stale = XPLMGetDatai(stale_dr);
+    if (stale)
+        LogMsg("simbrief_hub data may be stale");
 
     auto ofp = std::make_unique<Ofp>();
 
-    ofp->seqno = XPLMGetDatai(seqno_dr);
+    ofp->seqno = seqno;
     GET_DREF(icao_airline);
     GET_DREF(flight_number);
     GET_DREF(aircraft_icao);
@@ -109,7 +111,7 @@ Ofp::Load()
     GET_DREF(est_on);
     GET_DREF(est_in);
 
-    LogMsg("From simbrief_hub:");
+    LogMsg("From simbrief_hub: Seqno: %d", seqno);
     LOG_DREF(icao_airline);
     LOG_DREF(flight_number);
     LOG_DREF(aircraft_icao);

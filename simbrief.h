@@ -29,7 +29,7 @@
 
 struct Ofp
 {
-    int seqno{0};       // incremented after each successfull fetch
+    int seqno;          // incremented after each successfull fetch
     F(icao_airline);
     F(flight_number);
     F(aircraft_icao);
@@ -40,9 +40,9 @@ struct Ofp
     F(est_on);
     F(est_in);
 
-    // return ptr to an OFP or nullptr
-    static std::unique_ptr<Ofp> Load();
- 
+    // return ptr to an OFP if a newer version is available or nullptr
+    static std::unique_ptr<Ofp> LoadIfNewer(int seqno);
+
     // generate a string to be displayed in a VDGS
     const std::string GenDepartureStr() const;
 };
