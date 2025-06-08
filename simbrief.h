@@ -41,7 +41,7 @@ struct Ofp
     F(est_in);
 
     // return ptr to an OFP if a newer version is available or nullptr
-    static std::unique_ptr<Ofp> LoadIfNewer(int seqno);
+    static std::unique_ptr<Ofp> LoadIfNewer(int cur_seqno);
 
     // generate a string to be displayed in a VDGS
     const std::string GenDepartureStr() const;

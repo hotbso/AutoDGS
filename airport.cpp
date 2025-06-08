@@ -62,7 +62,7 @@ static float marshaller_pe_dist = kMarshallerDefaultDist;
 
 static std::unique_ptr<Ofp> ofp;
 static int ofp_seqno;
-
+static float ofp_ts;
 class Marshaller;
 
 // there is exactly none or one Marshaller
@@ -776,16 +776,8 @@ Airport::StateMachine()
 
         if (plane.PaxNo() == 0) {
             state_ = DEPARTURE;
-            if (state_ != state_prev) {
+            if (state_ != state_prev)
                 LogMsg("New state %s", state_str[state_]);
-                ofp = Ofp::LoadIfNewer(ofp_seqno);  // fetch ofp
-                if (ofp) {
-                    ofp_seqno = ofp->seqno;
-                    std::string ofp_str = ofp->GenDepartureStr();
-                    ds.scroll_txt_ = make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
-                                                            + ofp_str + "   ");
-                }
-            }
             // FALLTHROUGH
         }
 
@@ -794,6 +786,18 @@ Airport::StateMachine()
         }
 
         if (state_ == DEPARTURE) {
+            // although LoadIfNewer is cheap throttlibg it is even cheaper
+            if (now > ofp_ts + 5.0f) {
+                ofp_ts = now;
+                ofp = Ofp::LoadIfNewer(ofp_seqno);  // fetch ofp
+                if (ofp) {
+                    ofp_seqno = ofp->seqno;
+                    std::string ofp_str = ofp->GenDepartureStr();
+                    ds.scroll_txt_ = make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
+                                                            + ofp_str + "   ");
+                }
+            }
+
             if (plane.PaxNo() > 0) {
                 state_ = BOARDING;
                 LogMsg("New state %s", state_str[state_]);
