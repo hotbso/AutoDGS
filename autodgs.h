@@ -36,6 +36,8 @@
 #include "XPLMUtilities.h"
 #include "XPLMInstance.h"
 
+#include "log_msg.h"
+
 static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
 static constexpr float kJw2Stand = 25.0;            // m, max dist jw to stand
@@ -129,7 +131,6 @@ extern opmode_t operation_mode;
 extern float now;           // current timestamp
 extern int on_ground;
 
-extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 extern void create_api_drefs();
 extern void ToggleUI(void);
 extern void UpdateUI(bool only_if_visible = true);

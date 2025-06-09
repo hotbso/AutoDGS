@@ -1,5 +1,6 @@
+VPATH:=.:../xplib
 SDK=../SDK
-INCLUDES=-I. -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets
+INCLUDES=-I. -I../xplib -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets
 
 # platform independent defines
 DEFINES=
