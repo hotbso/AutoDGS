@@ -29,7 +29,7 @@
 
 #include "XPLMDataAccess.h"
 
-extern void LogMsg(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+#include "log_msg.h"
 
 static bool drefs_loaded, sbh_unavail;
 
