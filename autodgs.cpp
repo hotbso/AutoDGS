@@ -307,7 +307,6 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     total_running_time_sec_dr = XPLMFindDataRef("sim/time/total_running_time_sec");
     percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
     sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
-    vr_enabled_dr     = XPLMFindDataRef("sim/graphics/VR/enabled");
     ground_speed_dr   = XPLMFindDataRef("sim/flightmodel/position/groundspeed");
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");

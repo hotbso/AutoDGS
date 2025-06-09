@@ -3,10 +3,11 @@ SDK=../SDK
 INCLUDES=-I. -I../xplib -I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets
 
 # platform independent defines
-DEFINES=
+DEFINES=-DXPLM200 -DXPLM210 -DXPLM300 -DXPLM301
 
-SOURCES_CPP=autodgs.cpp adgs_ui.cpp apt_airport.cpp log_msg.cpp api.cpp plane.cpp airport.cpp simbrief.cpp\
-    XPListBox.cpp
+SOURCES_CPP=autodgs.cpp adgs_ui.cpp apt_airport.cpp api.cpp plane.cpp airport.cpp simbrief.cpp \
+    XPListBox.cpp \
+    log_msg.cpp widget_ctx.cpp
 SOURCES_C=
 
 # the c++ standard to use
