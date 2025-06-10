@@ -7,6 +7,9 @@ It works for XP11 and XP12.
 
 Download link: https://github.com/hotbso/AutoDGS/releases
 
+For simbrief integration to work you must install the `simbrief_hub` plugin.\
+Download link: https://github.com/hotbso/simbrief_hub/releases
+
 Just drop the plugin in the plugins folder and you are in automatic set-and-forget mode.
 
 Support Discord: https://discord.gg/qhACbvWKvb
@@ -35,6 +38,10 @@ Depending on the selected stand a Marshaller appears or the VDGS lights up in "l
 ## Boarding
 When parked for departure (= beacon off, engines off, no. of pax = 0) boarding is detected when the no. of pax starts rising. The current no. of pax is displayed in the VDGS.\
 Currently suuports only the ToLiss fleet.
+
+### Simbrief integration
+With Simbrief integration the VDGS displays flight number, destination and out/off times as well.\
+This requires the `simbrief_hub` plugin to be installed.
 
 ![Image](images/boarding.jpg)
 
