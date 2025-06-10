@@ -24,8 +24,9 @@
 #include <cassert>
 #include <ctime>
 
-#define XPLM200
-#define XPLM210
+#ifndef XPLM210
+#error "need at least XPLM210"
+#endif
 
 #include "XPLMDataAccess.h"
 

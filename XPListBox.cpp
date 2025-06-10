@@ -16,10 +16,9 @@
 #include <windows.h>
 #endif
 
-#define XPLM200
-#define XPLM210
-#define XPLM300
-#define XPLM301
+#ifndef XPLM301
+#error "need at least XPLM301"
+#endif
 
 #include <cstring>
 #include <cstdio>
