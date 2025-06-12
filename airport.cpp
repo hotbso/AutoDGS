@@ -774,7 +774,7 @@ Airport::StateMachine()
 
         Stand& ds = stands_[departure_stand_];
 
-        if (plane.PaxNo() == 0) {
+        if (plane.PaxNo() <= 0) {
             state_ = DEPARTURE;
             if (state_ != state_prev)
                 LogMsg("New state %s", state_str[state_]);
