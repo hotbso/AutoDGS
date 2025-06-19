@@ -105,7 +105,6 @@ xpo.line("# ---- status == 0, display stand + display UTC time")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 0)
 
-    xpo.line("# NO-openSAM_begin")
     y = LED(5, 2)
     x = LED(1)      # align with ICAO field to save some TRIS
     dx = 12
@@ -114,7 +113,6 @@ with AnimBlock(xpo):
         for i in range(0, 6):
             xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
             x += dx
-    xpo.line("# NO-openSAM_end")
 
     y = LED(4, 2)
     x = LED(0, 12)
