@@ -42,6 +42,8 @@
 #include "XPLMMenus.h"
 #include "XPLMNavigation.h"
 
+const char *log_msg_prefix = "AutoDGS: ";
+
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
 // Globals
@@ -260,7 +262,6 @@ MenuCb([[maybe_unused]] void *menu_ref, void *item_ref)
 PLUGIN_API int
 XPluginStart(char *outName, char *outSig, char *outDesc)
 {
-    LogMsgInit("AutoDGS");
     strcpy(outName, "AutoDGS " VERSION);
     strcpy(outSig,  "hotbso.AutoDGS");
     strcpy(outDesc, "Automatically provides DGS for gateway airports");
