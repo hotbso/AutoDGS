@@ -759,10 +759,15 @@ Airport::StateMachine()
                 if (departure_stand_ >= 0)
                     stands_[departure_stand_].SetIdle();
                 LogMsg("Departure stand now '%s'", dsi >= 0 ? stands_[dsi].cname() : "*none*");
-                if (dsi >= 0)
-                    stands_[dsi].scroll_txt_ =
-                        std::make_unique<ScrollTxt>(name() + " STAND " + stands_[dsi].display_name_ + "   ");
-
+                if (dsi >= 0) {
+                    Stand& ds = stands_[dsi];
+                    if (ds.display_name_.empty())
+                        ds.scroll_txt_ =
+                            std::make_unique<ScrollTxt>(name() + "   ");
+                    else
+                        ds.scroll_txt_ =
+                            std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   ");
+                }
                 departure_stand_ = dsi;
             }
         }
@@ -793,8 +798,11 @@ Airport::StateMachine()
                 if (ofp) {
                     ofp_seqno = ofp->seqno;
                     std::string ofp_str = ofp->GenDepartureStr();
-                    ds.scroll_txt_ = make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
-                                                            + ofp_str + "   ");
+                    if (ds.display_name_.empty())
+                        ds.scroll_txt_ = make_unique<ScrollTxt>(name() + "   " + ofp_str + "   ");
+                    else
+                        ds.scroll_txt_ = make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
+                                                                + ofp_str + "   ");
                 }
             }
 
