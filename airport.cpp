@@ -791,7 +791,7 @@ Airport::StateMachine()
         }
 
         if (state_ == DEPARTURE) {
-            // although LoadIfNewer is cheap throttlibg it is even cheaper
+            // although LoadIfNewer is cheap throttling it is even cheaper
             if (now > ofp_ts + 5.0f) {
                 ofp_ts = now;
                 ofp = Ofp::LoadIfNewer(ofp_seqno);  // fetch ofp
@@ -1048,6 +1048,13 @@ Airport::StateMachine()
     }
 
     if (state_ > ARRIVAL) {
+        // don't flood the log
+        if (now > update_dgs_log_ts_ + 2.0) {
+            update_dgs_log_ts_ = now;
+            LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
+                   as.name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
+        }
+
         // xform drefs into required constraints for the OBJs
         if (track_ == 0 || track_ == 1) {
             distance_ = 0;
@@ -1056,12 +1063,6 @@ Airport::StateMachine()
 
         distance_ = std::clamp(distance_, kGoodZ_m, kCrZ);
 
-        // don't flood the log
-        if (now > update_dgs_log_ts_ + 2.0) {
-            update_dgs_log_ts_ = now;
-            LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   as.name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
-        }
 
         if (as.dgs_type_ == kMarshaller) {
             if (marshaller == nullptr)
