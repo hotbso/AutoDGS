@@ -130,6 +130,7 @@ ParseAptDat(const std::string& fn, bool ignore)
     line.reserve(2000);          // can be quite long
 
     AptAirport *arpt = nullptr;
+    std::string arpt_name;
 	std::vector<Jetway> jetways;
 
     // save arpt if it has a tower frequency and stands
@@ -155,6 +156,7 @@ ParseAptDat(const std::string& fn, bool ignore)
             delete(arpt);
 
         arpt = nullptr;
+        arpt_name.clear();
     };
 
     while (std::getline(apt, line)) {
@@ -178,38 +180,53 @@ ParseAptDat(const std::string& fn, bool ignore)
 			if (ofs < (int)line.size()) {
                 size_t bpos = std::min(line.find(' ', ofs), line.size());
                 int len = bpos - ofs;
-                if (len > 4)
-                    continue;
-                std::string name = line.substr(ofs, len);
-                if (name.find_first_of("0123456789") != std::string::npos)
-                    continue;   // can't be an icao airport
-
-                try {
-                    airports.at(name);
-                } catch(const std::out_of_range& ex) {
-                    // does not yet exist
-                    arpt = new AptAirport(name);
-                    if (ignore) {
-                        // LogMsg("Saving '%s' with ignore", arpt->icao_.c_str());
-                        arpt->ignore_ = true;
-                        airports[arpt->icao_] = arpt;
-                        arpt = nullptr;
-                    } else
-                        arpt->stands_.reserve(50);
-               }
-            } else
+                arpt_name = line.substr(ofs, len);
+            } else {
+                arpt_name.clear();
                 LogMsg("could not locate airport id '%s'", line.c_str());
+            }
+
 			continue;
 		}
 
-        if (arpt == nullptr)
+        if (arpt_name.empty())
             continue;
+
+        // after 1 comes the 1302 block
 
         // 1302 icao_code ENRM
         if (line.starts_with("1302 icao_code ")) {
-            arpt->icao_ = line.substr(15, 4);
+            arpt_name = line.substr(15, 4);
             continue;
         }
+
+        if (line.starts_with("1302"))   // ignore
+            continue;
+
+        if (arpt == nullptr) {          // after leaving 1302 block ...
+            if (arpt_name.length() > 4 || arpt_name.find_first_of("0123456789") != std::string::npos) {
+                arpt_name.clear();
+                continue;   // can't be an icao airport
+            }
+
+            try {
+                airports.at(arpt_name);
+            } catch(const std::out_of_range& ex) {
+                // does not yet exist
+                arpt = new AptAirport(arpt_name);
+                if (ignore) {
+                    // LogMsg("Saving '%s' with ignore", arpt->icao_.c_str());
+                    arpt->ignore_ = true;
+                    airports[arpt->icao_] = arpt;
+                    arpt = nullptr;
+                    arpt_name.clear();
+                } else
+                    arpt->stands_.reserve(50);
+           }
+        }
+
+        if (arpt == nullptr)
+            continue;
 
         // check for APP or DEP frequency
         if (line.starts_with("1055 ") || line.starts_with("1056 ") || line.starts_with("55 ") || line.starts_with("56 ")) {
@@ -312,8 +329,9 @@ AptAirport::LookupAirport(const std::string& airport_id)
 }
 
 #ifdef TEST_AIRPORTS
-// g++ --std=c++20 -Wall -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -I../SDK/CHeaders/XPLM  -O apt_airport.cpp log_msg.cpp
+// g++ --std=c++20 -Wall -DIBM=1 -DTEST_AIRPORTS -DLOCAL_DEBUGSTRING -DXPLM200 -DXPLM210 -DXPLM300 -DXPLM301 -I../xplib -I../SDK/CHeaders/XPLM  -O apt_airport.cpp ../xplib/log_msg.cpp
 
+const char *log_msg_prefix = "apt_airport: ";
 const AptAirport *arpt;
 
 static
@@ -343,5 +361,6 @@ int main()
     find_and_dump("EKBI");
     find_and_dump("EKBIx");
     find_and_dump("EDDV");
+    find_and_dump("ZUTF");
 }
 #endif
