@@ -42,6 +42,8 @@
 #include "XPLMMenus.h"
 #include "XPLMNavigation.h"
 
+#include "version.h"
+
 const char *log_msg_prefix = "AutoDGS: ";
 
 const char * const opmode_str[] = { "Automatic", "Manual" };

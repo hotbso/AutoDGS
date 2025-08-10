@@ -1,5 +1,4 @@
 
-include version.mak
 include Makefile.common
 
 OBJDIR=./build/win
@@ -21,7 +20,6 @@ LD=g++
 
 COMMON_CFLAGS=$(OPT) -s -Wall -fdiagnostics-color -Wno-format-overflow \
     -DIBM -DWINDOWS -DWIN32 \
-    -DVERSION=\"$(VERSION)\" \
 	$(INCLUDES) $(DEFINES)
 
 CFLAGS=-mdll $(COMMON_CFLAGS)
@@ -32,10 +30,10 @@ LIBS=-L$(SDK)/Libraries/Win -lXPLM_64 -lXPWidgets_64
 COMPILE.cpp = $(CXX) $(CXXFLAGS) $(DEPFLAGS) -c
 COMPILE.c = $(CC) $(CFLAGS) $(DEPFLAGS) -c
 
-$(OBJDIR)/%.o: %.c $(DEPDIR)/%.d version.mak | $(DEPDIR)
+$(OBJDIR)/%.o: %.c $(DEPDIR)/%.d | $(DEPDIR)
 	$(COMPILE.c) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o: %.cpp $(DEPDIR)/%.d version.mak | $(DEPDIR)
+$(OBJDIR)/%.o: %.cpp $(DEPDIR)/%.d | $(DEPDIR)
 	$(COMPILE.cpp) $(CXXFLAGS) -o $@ -c $<
 
 all: $(TARGET)
