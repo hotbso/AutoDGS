@@ -63,6 +63,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             make
+            git
 
       - uses: actions/checkout@v3
 
