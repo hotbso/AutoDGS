@@ -189,8 +189,8 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
 
-    LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), display_name_.c_str(),
-           is_wet_, dgs_type_, dgs_dist_);
+    //LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), display_name_.c_str(),
+    //       is_wet_, dgs_type_, dgs_dist_);
 }
 
 Stand::~Stand()
