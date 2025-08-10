@@ -1,4 +1,3 @@
-include version.mak
 include Makefile.common
 
 OBJDIR=./build/mac
@@ -27,11 +26,13 @@ else
 
     CXXx=o64-clang++ -mmacosx-version-min=13.0
     CXXa=oa64-clang++ -mmacosx-version-min=13.0
+    # the latest SDK has a framework format that is currently not understood by osxcross
+    SDK=../SDK-4.0.1
 endif
 
-DEFS= 
+DEFS=
 
-CFLAGS+=$(OPT) -Wall -DVERSION=\"$(VERSION)\" -DAPL=1 $(INCLUDES) $(DEFINES) \
+CFLAGS+=$(OPT) -Wall -DAPL=1 $(INCLUDES) $(DEFINES) \
 	-fPIC -fno-stack-protector -fvisibility=hidden
 CXXFLAGS:=$(CXXSTD) $(CFLAGS)
 
@@ -46,16 +47,16 @@ LIBS= -F $(SDK)/Libraries/Mac -framework XPLM -framework XPWidgets
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
-$(OBJDIR)/%.o_arm: %.c version.mak
+$(OBJDIR)/%.o_arm: %.c
 	$(CCa) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o_x86: %.c version.mak
+$(OBJDIR)/%.o_x86: %.c
 	$(CCx) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o_arm: %.cpp version.mak
+$(OBJDIR)/%.o_arm: %.cpp
 	$(CXXa) $(CXXFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o_x86: %.cpp version.mak
+$(OBJDIR)/%.o_x86: %.cpp
 	$(CXXx) $(CXXFLAGS) -o $@ -c $<
 
 $(TARGET_arm): $(OBJECTS_arm)

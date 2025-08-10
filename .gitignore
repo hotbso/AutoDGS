@@ -1,3 +1,6 @@
+# generated file
+version.h
+
 *.bak
 *.d
 *.o

@@ -33,6 +33,7 @@
 #include "XPListBox.h"
 
 #include "widget_ctx.h"
+#include "version.h"
 
 static WidgetCtx ui_widget_ctx;
 
@@ -236,7 +237,7 @@ CreateUI()
     int lb_height = 350;
 
     ui_widget = XPCreateWidget(left, top, left + width, top - height,
-                               0, "AutoDGS " VERSION, 1, NULL, xpWidgetClass_MainWindow);
+                               0, "AutoDGS " VERSION_SHORT, 1, NULL, xpWidgetClass_MainWindow);
     ui_widget_ctx.Set(ui_widget, left, top, width, height);
 
     XPSetWidgetProperty(ui_widget, xpProperty_MainWindowHasCloseBoxes, 1);
