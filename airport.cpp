@@ -33,6 +33,8 @@
 
 #include "XPLMGraphics.h"
 
+namespace fem = flat_earth_math;
+
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
 static constexpr float kCapA = 15;          // Capture
 static constexpr float kCapZ = 105;	        // (50-80 in Safedock2 flier)
@@ -627,7 +629,7 @@ Airport::FindNearestStand()
                 continue;
 
             // heading in local system
-            float local_hdgt = RA(plane_hdgt - s.hdgt());
+            float local_hdgt = fem::RA(plane_hdgt - s.hdgt());
 
             if (fabsf(local_hdgt) > 90.0f)
                 continue;   // not looking to stand
@@ -666,7 +668,7 @@ Airport::FindNearestStand()
                     continue;
 
                 // drive-by and beyond a +- 60° sector relative to plane's direction
-                float rel_to_stand = RA(-angle - local_hdgt);
+                float rel_to_stand = fem::RA(-angle - local_hdgt);
                 //LogMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
                 //       s.cname(), nw_x, local_hdgt, rel_to_stand);
                 if ((nw_x > 10.0 && rel_to_stand < -60.0)
@@ -718,7 +720,7 @@ Airport::FindDepartureStand()
         if (s.dgs_type_ != kVDGS)
             continue;
 
-        if (fabsf(RA(plane_hdgt - s.hdgt())) > 3.0f)
+        if (fabsf(fem::RA(plane_hdgt - s.hdgt())) > 3.0f)
             continue;
 
         float dx = nw_x - s.x_;
@@ -854,7 +856,7 @@ Airport::StateMachine()
     float local_z = -as.sin_hdgt_ * dx + as.cos_hdgt_ * dz;
 
     // relative reading to stand +/- 180
-    float local_hdgt = RA(XPLMGetDataf(plane_true_psi_dr) - as.hdgt());
+    float local_hdgt = fem::RA(XPLMGetDataf(plane_true_psi_dr) - as.hdgt());
 
     // nose wheel
     float nw_z = local_z - plane.nw_z;

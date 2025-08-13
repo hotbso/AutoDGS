@@ -31,16 +31,18 @@
 #include "autodgs.h"
 #include "flat_earth_math.h"
 
+namespace fem = flat_earth_math;
+
 struct SceneryPacks {
     std::vector<std::string> sc_paths;
     SceneryPacks(const std::string& xp_dir);
 };
 
 struct Jetway {
-	LLPos pos;
+	fem::LLPos pos;
 	float hdgt;
 	float length;
-    LLPos cabin;    // = pos + length * dir(hdgt)
+    fem::LLPos cabin;    // = pos + length * dir(hdgt)
 };
 
 static std::unordered_map<std::string, AptAirport*> airports;
@@ -142,7 +144,7 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (arpt->has_twr_ && arpt->stands_.size() > 0) {
             for (auto & s : arpt->stands_)
                 for (auto & jw : jetways)
-                    if (len(jw.cabin - LLPos{s.lon, s.lat}) < kJw2Stand) {
+                    if (fem::len(jw.cabin - fem::LLPos{s.lon, s.lat}) < kJw2Stand) {
                         s.has_jw = true;
                         break;
                     }
@@ -259,7 +261,7 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (line.starts_with("1500 ")) {
             Jetway jw;
 			sscanf(line.c_str(), "%*d %lf %lf %f %*d %*d %*f %f", &jw.pos.lat, &jw.pos.lon, &jw.hdgt, &jw.length);
-            Vec2 dir{cosf((90.0f - jw.hdgt) * kD2R), sinf((90.0f - jw.hdgt) * kD2R)};
+            fem::Vec2 dir{cosf((90.0f - jw.hdgt) * kD2R), sinf((90.0f - jw.hdgt) * kD2R)};
             jw.cabin = jw.pos + jw.length * dir;
             jetways.push_back(jw);
         }

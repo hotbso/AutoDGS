@@ -33,6 +33,8 @@
 #ifndef _FLAT_EARTH_MATH_
 #define _FLAT_EARTH_MATH_
 
+namespace flat_earth_math {
+
 #include <cmath>
 
 static constexpr float kLat2m = 111120;             // 1° lat in m
@@ -103,4 +105,5 @@ Vec2 operator*(double c, const Vec2& v)
 	return {c * v.x, c * v.y};
 }
 
+}	// namespace
 #endif
