@@ -62,47 +62,39 @@ struct Vec2 {
 	double x,y;
 };
 
-static inline
-double len(const Vec2& v)
-{
-	return sqrt(v.x * v.x + v.y * v.y);
+static inline double len(const Vec2& v) {
+    return sqrt(v.x * v.x + v.y * v.y);
 }
 
-// pos - pos
-static inline
-Vec2 operator-(const LLPos& b, const LLPos& a)
-{
-	return {RA(b.lon -  a.lon) * kLat2m * cosf(a.lat * 0.01745329252),
-		    RA(b.lat -  a.lat) * kLat2m};
+// pos b - pos a
+static inline Vec2 operator-(const LLPos& b, const LLPos& a) {
+    return {RA(b.lon - a.lon) * kLat2m * cosf(a.lat * 0.01745329252), RA(b.lat - a.lat) * kLat2m};
 }
 
 // pos + vec
-static inline
-LLPos operator+(const LLPos &p, const Vec2& v)
-{
+static inline LLPos operator+(const LLPos &p, const Vec2& v) {
 	return {RA(p.lon + v.x / (kLat2m * cosf(p.lat * 0.01745329252))),
 			RA(p.lat + v.y / kLat2m)};
 }
 
 // vec - vec
-static inline
-Vec2 operator-(const Vec2& b, const Vec2& a)
-{
-	return {b.x - a.x, b.y - a.y};
+static inline Vec2 operator-(const Vec2& b, const Vec2& a) {
+    return {b.x - a.x, b.y - a.y};
 }
 
 // vec + vec
-static inline
-Vec2 operator+(const Vec2& a, const Vec2& b)
-{
-	return {a.x + b.x, a.y + b.y};
+static inline Vec2 operator+(const Vec2& a, const Vec2& b) {
+    return {a.x + b.x, a.y + b.y};
 }
 
 // c * vec
-static inline
-Vec2 operator*(double c, const Vec2& v)
-{
-	return {c * v.x, c * v.y};
+static inline Vec2 operator*(double c, const Vec2& v) {
+    return {c * v.x, c * v.y};
+}
+
+// vec * vec
+static inline double operator*(const Vec2& a, const Vec2& b) {
+    return a.x * b.x + a.y * b.y;  // dot product
 }
 
 }	// namespace
