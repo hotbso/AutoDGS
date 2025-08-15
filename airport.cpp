@@ -743,7 +743,7 @@ Airport::StateMachine()
     // DEPARTURE and friends ...
     // that's all low freq stuff
     if (INACTIVE <= state_ && state_ <= BOARDING) {
-        if (now > departure_stand_ts_ + 0.2f) {
+        if (now > departure_stand_ts_ + 2.0f) {
             departure_stand_ts_ = now;
             // on beacon or engine or teleportation -> INACTIVE
             if (plane.BeaconOn() || plane.EnginesOn()) {
@@ -756,6 +756,7 @@ Airport::StateMachine()
 
             // check for stand (new or changed)
             int dsi = FindDepartureStand();
+            //LogMsg("departure stand: %s, dsi: %d", dsi >= 0 ? stands_[dsi].cname() : "*none*", dsi);
             if (dsi != departure_stand_) {
                 if (departure_stand_ >= 0)
                     stands_[departure_stand_].SetIdle();
@@ -791,7 +792,8 @@ Airport::StateMachine()
             return std::min(4.0f, ds.SetState(0));
         }
 
-        if (state_ == DEPARTURE) {
+        // cdm data may come in late during boarding
+        if (state_ == DEPARTURE || state_ == BOARDING) {
             // although LoadIfNewer is cheap throttling it is even cheaper
             if (now > ofp_ts + 5.0f) {
                 ofp_ts = now;
@@ -806,7 +808,9 @@ Airport::StateMachine()
                                                                 + ofp_str + "   ");
                 }
             }
+        }
 
+        if (state_ == DEPARTURE) {
             if (plane.PaxNo() > 0) {
                 state_ = BOARDING;
                 LogMsg("New state %s", state_str[state_]);

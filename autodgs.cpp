@@ -412,8 +412,9 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
         LogMsg("plane loaded, resetting airport");
         arpt = nullptr;
+        on_ground = 0;
         XPLMScheduleFlightLoop(flight_loop_id, 0, 0);
         pending_plane_loaded_cb = true;
-        XPLMScheduleFlightLoop(flight_loop_id, 5.0, 1);
+        XPLMScheduleFlightLoop(flight_loop_id, 15.0, 1);    // let the dust settle
     }
 }
