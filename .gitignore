@@ -1,6 +1,8 @@
 # generated file
 version.h
 
+*.exe
+
 *.bak
 *.d
 *.o

@@ -36,7 +36,7 @@ $(OBJDIR)/%.o: %.c $(DEPDIR)/%.d | $(DEPDIR)
 $(OBJDIR)/%.o: %.cpp $(DEPDIR)/%.d | $(DEPDIR)
 	$(COMPILE.cpp) $(CXXFLAGS) -o $@ -c $<
 
-all: $(TARGET)
+all: $(TARGET) apt_airport_test.exe
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
 XPL_DIR=/E/X-Plane-12-test
@@ -45,6 +45,12 @@ PLUGDIR:=$(XPL_DIR)/Resources/plugins/AutoDGS/win_x64
 $(TARGET): $(OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)
 	if [ -d $(PLUGDIR) ]; then cp -p build/win.xpl $(PLUGDIR)/AutoDGS.xpl; fi
+
+apt_airport_test.exe: apt_airport_test.cpp $(OBJDIR)/apt_airport.o ../xplib/log_msg.cpp
+	$(CXX) $(CXXSTD) -Wall -fdiagnostics-color -Wno-format-overflow \
+    -I../xplib -I$(SDK)/CHeaders/XPLM -DIBM=1 $(DEFINES) \
+    -DWINDOWS -DWIN32 -DLOCAL_DEBUGSTRING -o $@ \
+	apt_airport_test.cpp $(OBJDIR)/apt_airport.o ../xplib/log_msg.cpp
 
 $(DEPDIR): ; @mkdir -p $@
 

@@ -28,7 +28,6 @@
 #include "autodgs.h"
 #include "airport.h"
 #include "plane.h"
-#include "flat_earth_math.h"
 #include "simbrief.h"
 
 #include "XPLMGraphics.h"

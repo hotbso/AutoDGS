@@ -41,14 +41,14 @@ static constexpr float kLat2m = 111120;             // 1° lat in m
 
 // return relative angle in (-180, 180]
 static inline
-float RA(float angle)
+double RA(double angle)
 {
-    angle = fmodf(angle, 360.0f);
-    if (angle > 180.0f)
-        return angle - 360.0f;
+    angle = fmod(angle, 360.0);
+    if (angle > 180.0)
+        return angle - 360.0;
 
-    if (angle <= -180.0f)
-        return angle + 360.0f;
+    if (angle <= -180.0)
+        return angle + 360.0;
 
     return angle;
 }
@@ -77,7 +77,7 @@ static inline LLPos operator+(const LLPos &p, const Vec2& v) {
 			RA(p.lat + v.y / kLat2m)};
 }
 
-// vec - vec
+// vec b - vec a
 static inline Vec2 operator-(const Vec2& b, const Vec2& a) {
     return {b.x - a.x, b.y - a.y};
 }
@@ -95,6 +95,13 @@ static inline Vec2 operator*(double c, const Vec2& v) {
 // vec * vec
 static inline double operator*(const Vec2& a, const Vec2& b) {
     return a.x * b.x + a.y * b.y;  // dot product
+}
+
+// pos in boundary box
+static inline bool InBB(const LLPos& pos, const LLPos& bbox_min, const LLPos& bbox_max) {
+    // cheap test before we do the more expensive RA
+    return (pos.lat >= bbox_min.lat && pos.lat <= bbox_max.lat && RA(pos.lon - bbox_min.lon) > 0.0f &&
+            RA(pos.lon - bbox_max.lon) < 0.0f);
 }
 
 }	// namespace

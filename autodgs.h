@@ -31,6 +31,7 @@
 #include "XPLMUtilities.h"
 #include "XPLMInstance.h"
 
+#include "flat_earth_math.h"
 #include "log_msg.h"
 
 static constexpr float kD2R = std::numbers::pi/180.0;
@@ -90,18 +91,33 @@ struct AptStand {
     bool has_jw{false};
 };
 
+// code 100 data
+struct AptRunway {
+    std::string name;
+    flat_earth_math::LLPos end1, end2;
+    flat_earth_math::Vec2 cl;   // center line unit vector, end1 -> end2
+    double len;
+    float width;
+};
+
 class AptAirport {
-  public:
+  private:
+    flat_earth_math::LLPos bbox_min_, bbox_max_; // bounding box of this airport
+
+    public:
     static bool CollectAirports(const std::string& xp_dir);
     static const AptAirport *LookupAirport(const std::string& airport_id);
-    std::string icao_;
+    static const std::string LocateAirport(const flat_earth_math::LLPos& pos);
 
+    std::string icao_;
     bool has_app_dep_{false};
     bool has_twr_{false};
     bool ignore_{false};		// e.g. sam or no_autodgs marker present
     std::vector<AptStand> stands_;
+    std::vector<AptRunway> rwys_;
     AptAirport(const std::string& name) : icao_(name) {}
     void dump() const;
+    void ComputeBBox();
 };
 
 extern bool error_disabled;
