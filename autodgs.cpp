@@ -131,7 +131,7 @@ void Activate(void) {
 
     plane.ResetBeacon();
 
-    flat_earth_math::LLPos pos{XPLMGetDataf(plane_lon_dr),XPLMGetDataf(plane_lat_dr)};
+    flat_earth_math::LLPos pos(XPLMGetDataf(plane_lat_dr), XPLMGetDataf(plane_lon_dr));
     std::string airport_id = AptAirport::LocateAirport(pos);
     if (!airport_id.empty()) {
         LogMsg("now on airport: %s", airport_id.c_str());

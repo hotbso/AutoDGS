@@ -37,8 +37,10 @@ static void LocateAndDump(const fem::LLPos& pos) {
     std::string id = AptAirport::LocateAirport(pos);
     if (!id.empty()) {
         arpt = AptAirport::LookupAirport(id);
-        if (arpt)
+        if (arpt) {
+            LogMsg("\n-----------------------------------------------------------------");
             arpt->dump();
+        }
     } else {
         LogMsg("No airport found at %0.8f,%0.8f", pos.lat, pos.lon);
     }
@@ -61,9 +63,8 @@ int main() {
     // find_and_dump("EDDB");
     // find_and_dump("EIDW");
 
-    LocateAndDump({-6.280610, 53.437163});    // Dublin
-    LocateAndDump({-122.393487, 37.619167});  // SFO
-    LocateAndDump({-73.778889, 40.641389});   // JFK
+    LocateAndDump(fem::LLPos(53.437163, -6.280610));    // Dublin
+    LocateAndDump(fem::LLPos(37.619167, -122.393487));  // SFO
 
 #if 0
     find_and_dump("EKBI");

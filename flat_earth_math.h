@@ -33,16 +33,14 @@
 #ifndef _FLAT_EARTH_MATH_
 #define _FLAT_EARTH_MATH_
 
-namespace flat_earth_math {
-
 #include <cmath>
+
+namespace flat_earth_math {
 
 static constexpr float kLat2m = 111120;             // 1° lat in m
 
 // return relative angle in (-180, 180]
-static inline
-double RA(double angle)
-{
+static inline double RA(double angle) {
     angle = fmod(angle, 360.0);
     if (angle > 180.0)
         return angle - 360.0;
@@ -53,13 +51,25 @@ double RA(double angle)
     return angle;
 }
 
+static inline float RA(float angle) {
+    angle = fmodf(angle, 360.0f);
+    if (angle > 180.0f)
+        return angle - 360.0f;
+
+    if (angle <= -180.0f)
+        return angle + 360.0f;
+
+    return angle;
+}
 
 struct LLPos {
-	double lon, lat;
+    double lon, lat;  // right, up
+    LLPos() = default;
+    LLPos(double lat, double lon) : lon(lon), lat(lat) {}  // in conventional order (lat, lon)
 };
 
 struct Vec2 {
-	double x,y;
+    double x, y;  // right, up
 };
 
 static inline double len(const Vec2& v) {
@@ -97,11 +107,11 @@ static inline double operator*(const Vec2& a, const Vec2& b) {
     return a.x * b.x + a.y * b.y;  // dot product
 }
 
-// pos in boundary box
-static inline bool InBB(const LLPos& pos, const LLPos& bbox_min, const LLPos& bbox_max) {
+// pos in rectangle defined by lower_left and upper_right
+static inline bool InRect(const LLPos& pos, const LLPos& lower_left, const LLPos& upper_right) {
     // cheap test before we do the more expensive RA
-    return (pos.lat >= bbox_min.lat && pos.lat <= bbox_max.lat && RA(pos.lon - bbox_min.lon) > 0.0f &&
-            RA(pos.lon - bbox_max.lon) < 0.0f);
+    return (pos.lat >= lower_left.lat && pos.lat <= upper_right.lat && RA(pos.lon - lower_left.lon) > 0.0f &&
+            RA(pos.lon - upper_right.lon) < 0.0f);
 }
 
 }	// namespace

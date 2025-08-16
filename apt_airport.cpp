@@ -410,7 +410,7 @@ const std::string AptAirport::LocateAirport(const fem::LLPos& pos) {
             }
         }
 #endif
-        if (fem::InBB(pos, a->bbox_min_, a->bbox_max_)) {
+        if (fem::InRect(pos, a->bbox_min_, a->bbox_max_)) {
             LogMsg("Found airport '%s' at %0.8f,%0.8f", n.c_str(), pos.lat, pos.lon);
             return n;   // found airport, so return id
         }
