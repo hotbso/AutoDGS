@@ -871,13 +871,13 @@ Airport::StateMachine()
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should be nw if dist is below 6 m
     float a = std::clamp((nw_z - 6.0) / 20.0, 0.0, 1.0);
-    float plane_z_dr = (1.0 - a) * plane.nw_z + a * plane.mw_z;
-    float z_dr = local_z - plane_z_dr;
-    float x_dr = local_x + plane_z_dr * sinf(kD2R * local_hdgt);
+    float plane_ref_z = (1.0 - a) * plane.nw_z + a * plane.mw_z;
+    float ref_z = local_z - plane_ref_z;
+    float ref_x = local_x + plane_ref_z * sinf(kD2R * local_hdgt);
 
     float azimuth;
-    if (fabs(x_dr) > 0.5 && z_dr > 0)
-        azimuth = atanf(x_dr / (z_dr + 0.5 * as.dgs_dist_)) / kD2R;
+    if (fabs(ref_x) > 0.5 && ref_z > 0)
+        azimuth = atanf(ref_x / (ref_z + 0.5 * as.dgs_dist_)) / kD2R;
     else
         azimuth = 0.0;
 
@@ -950,7 +950,7 @@ Airport::StateMachine()
                     LogMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
                            "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, gs: %0.1f, slow: %d",
                            azimuth, mw_x, mw_z, nw_x, nw_z,
-                           x_dr, z_dr,
+                           ref_x, ref_z,
                            local_x, local_hdgt, d_hdgt, gs, slow);
 
                 if (d_hdgt < -1.5)
