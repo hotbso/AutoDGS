@@ -420,11 +420,10 @@ Airport::Airport(const AptAirport& apt_airport)
         else
             dgs_dist = kMarshallerDefaultDist;
 
-        try {
-            std::tie<int, float>(dgs_type, dgs_dist) = cfg.at(as.name);
+        // override with user defined config
+        if (const auto it = cfg.find(as.name); it != cfg.end()) {
+            std::tie<int, float>(dgs_type, dgs_dist) = it->second;
             LogMsg("found in config '%s', %d, %0.1f", as.name.c_str(), dgs_type, dgs_dist);
-        } catch (const std::out_of_range& ex) {
-            // nothing
         }
 
         stands_.emplace_back(as, arpt_elevation, dgs_type, dgs_dist);
