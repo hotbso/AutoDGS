@@ -169,7 +169,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
 
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
-        std::runtime_error("XPLMProbeTerrainXYZ failed");
+        throw std::runtime_error("XPLMProbeTerrainXYZ failed");
 
     is_wet_ = probeinfo.is_wet;
     x_ = probeinfo.locationX;
@@ -330,8 +330,7 @@ Stand::SetIdle()
 }
 
 // compute the DGS position
-void
-Stand::SetDgsDist()
+void Stand::SetDgsDist()
 {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
@@ -346,7 +345,7 @@ Stand::SetDgsDist()
                 // get terrain y below plane y
 
                 if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, plane_x, plane_y, plane_z, &probeinfo))
-                    std::runtime_error("XPLMProbeTerrainXYZ failed");
+                    throw std::runtime_error("XPLMProbeTerrainXYZ failed");
 
                 // pilot eye above agl
                 float pe_agl = plane_y - probeinfo.locationY + plane.pe_y_0;
@@ -368,7 +367,7 @@ Stand::SetDgsDist()
     float z = z_ +  cos_hdgt_ * (-dgs_dist_);
 
     if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y_, z, &probeinfo))
-        std::runtime_error("XPLMProbeTerrainXYZ failed");
+        throw std::runtime_error("XPLMProbeTerrainXYZ failed");
 
     drawinfo_.x = probeinfo.locationX;
     drawinfo_.y = probeinfo.locationY;
