@@ -81,20 +81,16 @@ class Marshaller {
 };
 
 //------------------------------------------------------------------------------------
-Marshaller::Marshaller()
-{
+Marshaller::Marshaller() {
     inst_ref_ = XPLMCreateInstance(dgs_obj[kMarshaller], dgs_dlist_dr);
 }
 
-Marshaller::~Marshaller()
-{
+Marshaller::~Marshaller() {
     if (inst_ref_)
         XPLMDestroyInstance(inst_ref_);
 }
 
-void
-Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr, float distance)
-{
+void Marshaller::SetPos(const XPLMDrawInfo_t* drawinfo, int status, int track, int lr, float distance) {
     float drefs[DGS_DR_NUM]{};
     drefs[DGS_DR_STATUS] = status;
     drefs[DGS_DR_DISTANCE] = distance;
@@ -104,17 +100,14 @@ Marshaller::SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr
 }
 
 //------------------------------------------------------------------------------------
-ScrollTxt::ScrollTxt(const std::string& txt)
-{
+ScrollTxt::ScrollTxt(const std::string& txt) {
     txt_ = txt;
-    dr_scroll_= 10;   // right most
+    dr_scroll_ = 10;  // right most
     chars_[kR1Nchar - 1] = txt_[0];
     char_pos_ = 0;
 }
 
-void
-ScrollTxt::Tick(float *drefs)
-{
+void ScrollTxt::Tick(float* drefs) {
     if (txt_.size() == 0)
         return;
 
@@ -136,8 +129,7 @@ ScrollTxt::Tick(float *drefs)
 };
 
 //------------------------------------------------------------------------------------
-Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as)
-{
+Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) : as_(as) {
     // create display name
     // a stand name can be anything between "1" and "Gate A 40 (Class C, Terminal 3)"
     // we try to extract the net name "A 40" in the latter case
@@ -187,22 +179,20 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     marshaller_max_dist_ = kDgsMaxDist;
 
     dgs_dist_ = dgs_dist;
-    dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
+    dgs_type_ = -1;  // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
 
-    //LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(), display_name_.c_str(),
-    //       is_wet_, dgs_type_, dgs_dist_);
+    // LogMsg("Stand '%s', disp: '%s', is_wet: %d, type: %d, dgs_dist: %0.1f constructed", cname(),
+    // display_name_.c_str(),
+    //        is_wet_, dgs_type_, dgs_dist_);
 }
 
-Stand::~Stand()
-{
+Stand::~Stand() {
     if (vdgs_inst_ref_)
         XPLMDestroyInstance(vdgs_inst_ref_);
 }
 
-void
-Stand::SetDgsType(int dgs_type)
-{
+void Stand::SetDgsType(int dgs_type) {
     LogMsg("Stand::SetDgsType: Stand '%s', type: %d, new_type: %d", cname(), dgs_type_, dgs_type);
 
     if (dgs_type == kAutomatic)
@@ -226,16 +216,12 @@ Stand::SetDgsType(int dgs_type)
     }
 }
 
-void
-Stand::CycleDgsType()
-{
+void Stand::CycleDgsType() {
     int new_dgs_type = (dgs_type_ == kMarshaller ? kVDGS : kMarshaller);
     SetDgsType(new_dgs_type);
 }
 
-void
-Stand::SetState(int status, int track, int lr, float azimuth, float distance, bool slow)
-{
+void Stand::SetState(int status, int track, int lr, float azimuth, float distance, bool slow) {
     assert(dgs_type_ == kVDGS);
 
     int d_0 = 0;
@@ -246,12 +232,12 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance, bo
         d_0 = distance;
         if (d_0 < 3) {
             int d = (distance - d_0) * 10.0f;
-            d &= ~1;    // make it even = 0.2m increments
+            d &= ~1;  // make it even = 0.2m increments
             d_01 = d;
         }
     }
 
-    distance =((float)((int)((distance)*2))) / 2;    // multiple of 0.5m
+    distance = ((float)((int)((distance) * 2))) / 2;  // multiple of 0.5m
 
     float drefs[DGS_DR_NUM]{};
     drefs[DGS_DR_STATUS] = status;
@@ -274,9 +260,7 @@ Stand::SetState(int status, int track, int lr, float azimuth, float distance, bo
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
 }
 
-float
-Stand::SetState(int pax_no)
-{
+float Stand::SetState(int pax_no) {
     assert(dgs_type_ == kVDGS);
 
     float delay = 1.0f;
@@ -294,7 +278,7 @@ Stand::SetState(int pax_no)
     }
 
     if (pax_no > 0) {
-        int pn[3]{ -1, -1, -1};
+        int pn[3]{-1, -1, -1};
         for (int i = 0; i < 3; i++) {
             pn[i] = pax_no % 10;
             pax_no /= 10;
@@ -310,9 +294,7 @@ Stand::SetState(int pax_no)
     return delay;
 }
 
-void
-Stand::SetIdle()
-{
+void Stand::SetIdle() {
     if (vdgs_inst_ref_ == nullptr)
         return;
 
@@ -331,8 +313,7 @@ Stand::SetIdle()
 }
 
 // compute the DGS position
-void Stand::SetDgsDist()
-{
+void Stand::SetDgsDist() {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
     if (dgs_type_ == kMarshaller) {
@@ -354,14 +335,12 @@ void Stand::SetDgsDist()
                 // 4.3 ~ 1 / tan(13°) -> 13° down look
                 marshaller_pe_dist = std::max(kDgsMinDist, std::min(4.3f * pe_agl, kDgsMaxDist));
                 marshaller_pe_dist_updated = true;
-                LogMsg("setting Marshaller PE distance, pe_agl: %0.2f, dist: %0.1f",
-                        pe_agl, marshaller_pe_dist);
+                LogMsg("setting Marshaller PE distance, pe_agl: %0.2f, dist: %0.1f", pe_agl, marshaller_pe_dist);
             }
         }
 
         dgs_dist_ = std::min(marshaller_pe_dist, dgs_dist_);
     }
-
 
     // xform vector (0, -dgs_dist) into global frame
     float x = x_ + -sin_hdgt_ * (-dgs_dist_);
@@ -378,12 +357,10 @@ void Stand::SetDgsDist()
 }
 
 // adjust may be negative to move it closer
-void
-Stand::DgsMoveCloser()
-{
+void Stand::DgsMoveCloser() {
     float delta = std::clamp(0.1f * dgs_dist_, kDgsMoveDeltaMin, kDgsMoveDeltaMax);
     dgs_dist_ -= delta;
-    if (dgs_dist_ < kDgsMinDist)        // wrap around
+    if (dgs_dist_ < kDgsMinDist)  // wrap around
         dgs_dist_ = kDgsMaxDist;
     marshaller_max_dist_ = dgs_dist_;
     SetDgsDist();
@@ -391,27 +368,22 @@ Stand::DgsMoveCloser()
 }
 
 //------------------------------------------------------------------------------------
-const char * const Airport::state_str[] = {
-    "INACTIVE", "DEPARTURE", "BOARDING", "ARRIVAL", "ENGAGED",
-    "TRACK", "GOOD", "BAD", "PARKED", "CHOCKS", "DONE"
-};
+const char* const Airport::state_str[] = {"INACTIVE", "DEPARTURE", "BOARDING", "ARRIVAL", "ENGAGED", "TRACK",
+                                          "GOOD",     "BAD",       "PARKED",   "CHOCKS",  "DONE"};
 
+void LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<int, float>>& cfg);
 
-void LoadCfg(const std::string& pathname,
-             std::unordered_map<std::string, std::tuple<int, float>>& cfg);
-
-Airport::Airport(const AptAirport& apt_airport)
-{
+Airport::Airport(const AptAirport& apt_airport) {
     name_ = apt_airport.icao_;
     stands_.reserve(apt_airport.stands_.size());
-    float arpt_elevation = XPLMGetDataf(plane_elevation_dr);    // best guess
+    float arpt_elevation = XPLMGetDataf(plane_elevation_dr);  // best guess
 
     std::unordered_map<std::string, std::tuple<int, float>> cfg;
     LoadCfg(user_cfg_dir + name() + ".cfg", cfg);
     if (cfg.empty())
         LoadCfg(sys_cfg_dir + name() + ".cfg", cfg);
 
-    for (auto const & as : apt_airport.stands_) {
+    for (auto const& as : apt_airport.stands_) {
         int dgs_type = kAutomatic;
         float dgs_dist;
         if (as.has_jw)
@@ -436,15 +408,12 @@ Airport::Airport(const AptAirport& apt_airport)
     departure_stand_ts_ = nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
 }
 
-Airport::~Airport()
-{
+Airport::~Airport() {
     FlushUserCfg();
     LogMsg("Airport '%s' destructed", name().c_str());
 }
 
-void
-LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<int, float>>& cfg)
-{
+void LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<int, float>>& cfg) {
     std::ifstream f(pathname);
     if (f.is_open()) {
         LogMsg("Loading config from '%s'", pathname.c_str());
@@ -461,22 +430,18 @@ LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<
             float dgs_dist;
             char type;
             int n = sscanf(line.c_str(), "%c,%f, %n", &type, &dgs_dist, &ofs);
-            if (n != 2 || ofs >= (int)line.size()       // distrust user input
-                || !(type == 'V' || type == 'M')
-                || dgs_dist < kDgsMinDist || dgs_dist > kDgsMaxDist) {
+            if (n != 2 || ofs >= (int)line.size()  // distrust user input
+                || !(type == 'V' || type == 'M') || dgs_dist < kDgsMinDist || dgs_dist > kDgsMaxDist) {
                 LogMsg("invalid line: '%s' %d", line.c_str(), n);
                 continue;
             }
 
-            cfg[line.substr(ofs)]
-                = std::make_tuple((type == 'M' ? kMarshaller : kVDGS), dgs_dist);
+            cfg[line.substr(ofs)] = std::make_tuple((type == 'M' ? kMarshaller : kVDGS), dgs_dist);
         }
     }
 }
 
-void
-Airport::FlushUserCfg()
-{
+void Airport::FlushUserCfg() {
     if (!user_cfg_changed_)
         return;
 
@@ -491,26 +456,24 @@ Airport::FlushUserCfg()
     // Hence we build an ordered map first and write that out.
     // Last entry wins.
     std::map<std::string, std::string> cfg;
-    for (auto const & s : stands_) {
+    for (auto const& s : stands_) {
         char line[200];
         float dist = s.dgs_type_ == kMarshaller ? s.marshaller_max_dist_ : s.dgs_dist_;
-        snprintf(line, sizeof(line), "%c, %5.1f, %s\n", (s.dgs_type_ == kMarshaller ? 'M' : 'V'),
-                 dist, s.name().c_str());
+        snprintf(line, sizeof(line), "%c, %5.1f, %s\n", (s.dgs_type_ == kMarshaller ? 'M' : 'V'), dist,
+                 s.name().c_str());
         cfg[s.name()] = line;
     }
 
     f << "# type, dgs_dist, stand_name\n";
     f << "# type = M or V, dgs_dist = dist from parking pos in m\n";
 
-    for (auto const & kv : cfg)
+    for (auto const& kv : cfg)
         f << kv.second;
 
     LogMsg("cfg written to '%s'", fn.c_str());
 }
 
-std::unique_ptr<Airport>
-Airport::LoadAirport(const std::string& icao)
-{
+std::unique_ptr<Airport> Airport::LoadAirport(const std::string& icao) {
     auto arpt = AptAirport::LookupAirport(icao);
     if (arpt == nullptr)
         return nullptr;
@@ -518,9 +481,7 @@ Airport::LoadAirport(const std::string& icao)
     return std::make_unique<Airport>(*arpt);
 }
 
-std::tuple<int, const std::string>
-Airport::GetStand(int idx) const
-{
+std::tuple<int, const std::string> Airport::GetStand(int idx) const {
     assert(0 <= idx && idx < (int)stands_.size());
     const Stand& s = stands_[idx];
     std::string name{s.name()};
@@ -528,9 +489,7 @@ Airport::GetStand(int idx) const
     return std::make_tuple(dgs_type, name);
 }
 
-void
-Airport::SetSelectedStand(int selected_stand)
-{
+void Airport::SetSelectedStand(int selected_stand) {
     assert(-1 <= selected_stand && selected_stand < (int)stands_.size());
     if (selected_stand_ == selected_stand)
         return;
@@ -540,27 +499,21 @@ Airport::SetSelectedStand(int selected_stand)
         arpt->ResetState(Airport::ARRIVAL);
 }
 
-void
-Airport::DgsMoveCloser()
-{
+void Airport::DgsMoveCloser() {
     if (active_stand_ >= 0) {
         stands_[active_stand_].DgsMoveCloser();
         user_cfg_changed_ = true;
     }
 }
 
-void
-Airport::SetDgsType(int dgs_type)
-{
+void Airport::SetDgsType(int dgs_type) {
     if (active_stand_ >= 0) {
         stands_[active_stand_].SetDgsType(dgs_type);
         user_cfg_changed_ = true;
     }
 }
 
-int
-Airport::GetDgsType() const
-{
+int Airport::GetDgsType() const {
     // called by the ui and the selected_stand may not already be the active stand
     if (selected_stand_ >= 0)
         return stands_[selected_stand_].dgs_type_;
@@ -570,9 +523,7 @@ Airport::GetDgsType() const
     return kMarshaller;
 }
 
-void
-Airport::ResetState(state_t new_state)
-{
+void Airport::ResetState(state_t new_state) {
     if (state_ != new_state)
         LogMsg("setting state to %s", state_str[new_state]);
 
@@ -592,18 +543,14 @@ Airport::ResetState(state_t new_state)
     UpdateUI();
 }
 
-void
-Airport::CycleDgsType()
-{
+void Airport::CycleDgsType() {
     if (active_stand_ >= 0) {
         stands_[active_stand_].CycleDgsType();
         user_cfg_changed_ = true;
     }
 }
 
-void
-Airport::FindNearestStand()
-{
+void Airport::FindNearestStand() {
     // Check if the currently active stand is also the selected stand
     if (active_stand_ >= 0 && active_stand_ == selected_stand_)
         return;
@@ -629,7 +576,7 @@ Airport::FindNearestStand()
             float local_hdgt = fem::RA(plane_hdgt - s.hdgt());
 
             if (fabsf(local_hdgt) > 90.0f)
-                continue;   // not looking to stand
+                continue;  // not looking to stand
 
             // transform into gate local coordinate system
 
@@ -645,20 +592,20 @@ Airport::FindNearestStand()
             float nw_x = local_x + plane.nw_z * sinf(kD2R * local_hdgt);
 
             float d = sqrt(SQR(nw_x) + SQR(nw_z));
-            if (d > kCapZ + 50) // fast exit
+            if (d > kCapZ + 50)  // fast exit
                 continue;
 
-            //LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.name(), nw_z, nw_x);
+            // LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.name(), nw_z, nw_x);
 
             // behind
             if (nw_z < -4.0) {
-                //LogMsg("behind: %s", s.cname());
+                // LogMsg("behind: %s", s.cname());
                 continue;
             }
 
             if (nw_z > 10.0) {
                 float angle = atan(nw_x / nw_z) / kD2R;
-                //LogMsg("angle to plane: %s, %3.1f", s.cname(), angle);
+                // LogMsg("angle to plane: %s, %3.1f", s.cname(), angle);
 
                 // check whether plane is in a +-60° sector relative to stand
                 if (fabsf(angle) > 60.0)
@@ -666,21 +613,20 @@ Airport::FindNearestStand()
 
                 // drive-by and beyond a +- 60° sector relative to plane's direction
                 float rel_to_stand = fem::RA(-angle - local_hdgt);
-                //LogMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
-                //       s.cname(), nw_x, local_hdgt, rel_to_stand);
-                if ((nw_x > 10.0 && rel_to_stand < -60.0)
-                    || (nw_x < -10.0 && rel_to_stand > 60.0)) {
-                    //LogMsg("drive by %s", s.cname());
+                // LogMsg("rel_to_stand: %s, nw_x: %0.1f, local_hdgt %0.1f, rel_to_stand: %0.1f",
+                //        s.cname(), nw_x, local_hdgt, rel_to_stand);
+                if ((nw_x > 10.0 && rel_to_stand < -60.0) || (nw_x < -10.0 && rel_to_stand > 60.0)) {
+                    // LogMsg("drive by %s", s.cname());
                     continue;
                 }
             }
 
             // for the final comparison give azimuth a higher weight
             static const float azi_weight = 4.0;
-            d = sqrt(SQR(azi_weight * nw_x)+ SQR(nw_z));
+            d = sqrt(SQR(azi_weight * nw_x) + SQR(nw_z));
 
             if (d < dist) {
-                //LogMsg("new min: %s, z: %2.1f, x: %2.1f", s.cname(), nw_z, nw_x);
+                // LogMsg("new min: %s, z: %2.1f, x: %2.1f", s.cname(), nw_z, nw_x);
                 dist = d;
                 min_stand = i;
             }
@@ -701,9 +647,7 @@ Airport::FindNearestStand()
 }
 
 // find the stand the plane is parked on
-int
-Airport::FindDepartureStand()
-{
+int Airport::FindDepartureStand() {
     float plane_x = XPLMGetDataf(plane_x_dr);
     float plane_z = XPLMGetDataf(plane_z_dr);
     float plane_hdgt = XPLMGetDataf(plane_true_psi_dr);
@@ -731,9 +675,7 @@ Airport::FindDepartureStand()
     return -1;
 }
 
-float
-Airport::StateMachine()
-{
+float Airport::StateMachine() {
     if (error_disabled)
         return 0.0f;
 
@@ -755,7 +697,7 @@ Airport::StateMachine()
 
             // check for stand (new or changed)
             int dsi = FindDepartureStand();
-            //LogMsg("departure stand: %s, dsi: %d", dsi >= 0 ? stands_[dsi].cname() : "*none*", dsi);
+            // LogMsg("departure stand: %s, dsi: %d", dsi >= 0 ? stands_[dsi].cname() : "*none*", dsi);
             if (dsi != departure_stand_) {
                 if (departure_stand_ >= 0)
                     stands_[departure_stand_].SetIdle();
@@ -763,11 +705,9 @@ Airport::StateMachine()
                 if (dsi >= 0) {
                     Stand& ds = stands_[dsi];
                     if (ds.display_name_.empty())
-                        ds.scroll_txt_ =
-                            std::make_unique<ScrollTxt>(name() + "   ");
+                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + "   ");
                     else
-                        ds.scroll_txt_ =
-                            std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   ");
+                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   ");
                 }
                 departure_stand_ = dsi;
             }
@@ -803,8 +743,8 @@ Airport::StateMachine()
                     if (ds.display_name_.empty())
                         ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + "   " + ofp_str + "   ");
                     else
-                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
-                                                                     + ofp_str + "   ");
+                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   " +
+                                                                     ofp_str + "   ");
                 }
             }
         }
@@ -820,7 +760,7 @@ Airport::StateMachine()
 
         if (state_ == BOARDING) {
             int pax_no = plane.PaxNo();
-            //LogMsg("boarding PaxNo: %d", pax_no);
+            // LogMsg("boarding PaxNo: %d", pax_no);
             return ds.SetState(pax_no);
         }
     }
@@ -830,8 +770,7 @@ Airport::StateMachine()
 
     // throttle costly search...
     // ... but if we have a new selected stand activate it immediately
-    if (now > nearest_stand_ts_ + 2.0
-        || (selected_stand_ >= 0 && selected_stand_ != active_stand_)) {
+    if (now > nearest_stand_ts_ + 2.0 || (selected_stand_ >= 0 && selected_stand_ != active_stand_)) {
         FindNearestStand();
         nearest_stand_ts_ = now;
     }
@@ -905,101 +844,97 @@ Airport::StateMachine()
             if (beacon_on) {
                 if ((distance_ <= kCapZ) && (fabsf(azimuth_nw) <= kCapA))
                     new_state = TRACK;
-            } else { // not beacon_on
+            } else {  // not beacon_on
                 new_state = DONE;
             }
             break;
 
         case TRACK: {
-                if (!beacon_on) {       // don't get stuck in TRACK
-                    new_state = DONE;
-                    break;
-                }
+            if (!beacon_on) {  // don't get stuck in TRACK
+                new_state = DONE;
+                break;
+            }
 
-                if (locgood) {
-                    new_state = GOOD;
-                    break;
-                }
+            if (locgood) {
+                new_state = GOOD;
+                break;
+            }
 
-                if (nw_z < kGoodZ_m) {
-                    new_state = BAD;
-                    break;
-                }
+            if (nw_z < kGoodZ_m) {
+                new_state = BAD;
+                break;
+            }
 
-                if ((distance_ > kCapZ) || (fabsf(azimuth_nw) > kCapA)) {
-                    new_state = ENGAGED;    // moving away from current gate
-                    break;
-                }
+            if ((distance_ > kCapZ) || (fabsf(azimuth_nw) > kCapA)) {
+                new_state = ENGAGED;  // moving away from current gate
+                break;
+            }
 
-                status_ = 1;	// plane id
-                if (distance_ > kAziZ || fabsf(azimuth_nw) > kAziA) {
-                    track_ = 1;	// lead-in only
-                    break;
-                }
+            status_ = 1;  // plane id
+            if (distance_ > kAziZ || fabsf(azimuth_nw) > kAziA) {
+                track_ = 1;  // lead-in only
+                break;
+            }
 
-                // compute distance_ and guidance commands
-                azimuth = std::clamp(azimuth, -kAziA, kAziA);
-                float req_hdgt = -3.5 * azimuth;        // to track back to centerline
-                float d_hdgt = req_hdgt - local_hdgt;   // degrees to turn
-                float gs = XPLMGetDataf(ground_speed_dr);
-                slow = (distance_ > 20.0f && gs > 4.0f)
-                       || (10.0f < distance_ && distance_ <= 20.0f && gs > 3.0f)
-                       || (distance_ <= 10.0f && gs > 2.0f);
+            // compute distance_ and guidance commands
+            azimuth = std::clamp(azimuth, -kAziA, kAziA);
+            float req_hdgt = -3.5 * azimuth;       // to track back to centerline
+            float d_hdgt = req_hdgt - local_hdgt;  // degrees to turn
+            float gs = XPLMGetDataf(ground_speed_dr);
+            slow = (distance_ > 20.0f && gs > 4.0f) || (10.0f < distance_ && distance_ <= 20.0f && gs > 3.0f) ||
+                   (distance_ <= 10.0f && gs > 2.0f);
 
-                if (now > update_dgs_log_ts_ + 2.0)
-                    LogMsg("azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                           "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, gs: %0.1f, slow: %d",
-                           azimuth, mw_x, mw_z, nw_x, nw_z,
-                           ref_x, ref_z,
-                           local_x, local_hdgt, d_hdgt, gs, slow);
+            if (now > update_dgs_log_ts_ + 2.0)
+                LogMsg(
+                    "azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
+                    "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, gs: %0.1f, slow: %d",
+                    azimuth, mw_x, mw_z, nw_x, nw_z, ref_x, ref_z, local_x, local_hdgt, d_hdgt, gs, slow);
 
-                if (d_hdgt < -1.5)
-                    lr_ = 2;
-                else if (d_hdgt > 1.5)
-                    lr_ = 1;
+            if (d_hdgt < -1.5)
+                lr_ = 2;
+            else if (d_hdgt > 1.5)
+                lr_ = 1;
 
-                // xform azimuth to values required ob OBJ
-                azimuth = std::clamp(azimuth, -kAziDispA, kAziDispA) * 4.0 / kAziDispA;
-                azimuth=((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
+            // xform azimuth to values required ob OBJ
+            azimuth = std::clamp(azimuth, -kAziDispA, kAziDispA) * 4.0 / kAziDispA;
+            azimuth = ((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
-                if (distance_ <= kCrZ/2) {
-                    track_ = 3;
-                    loop_delay = 0.03;
-                } else // azimuth only
-                    track_ = 2;
+            if (distance_ <= kCrZ / 2) {
+                track_ = 3;
+                loop_delay = 0.03;
+            } else  // azimuth only
+                track_ = 2;
 
-                if (! phase180) { // no wild oscillation
-                    lr_ = lr_prev;
+            if (!phase180) {  // no wild oscillation
+                lr_ = lr_prev;
 
-                    // sync transition with Marshaller's arm movement
-                    if (as.dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
-                        track_ = track_prev;
-                        distance_ = distance_prev;
-                    }
+                // sync transition with Marshaller's arm movement
+                if (as.dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
+                    track_ = track_prev;
+                    distance_ = distance_prev;
                 }
             }
-            break;
+        } break;
 
-        case GOOD:  {
-                // @stop position
-                status_ = 2; lr_ = 3;
+        case GOOD: {
+            // @stop position
+            status_ = 2;
+            lr_ = 3;
 
-                int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
-                if (!locgood)
-                    new_state = TRACK;
-                else if (parkbrake_set || !beacon_on)
-                    new_state = PARKED;
-            }
-            break;
+            int parkbrake_set = (XPLMGetDataf(parkbrake_dr) > 0.5);
+            if (!locgood)
+                new_state = TRACK;
+            else if (parkbrake_set || !beacon_on)
+                new_state = PARKED;
+        } break;
 
         case BAD:
-            if (!beacon_on
-                && (now > timestamp_ + 5.0)) {
+            if (!beacon_on && (now > timestamp_ + 5.0)) {
                 ResetState(INACTIVE);
                 return loop_delay;
             }
 
-            if (nw_z >= kGoodZ_m)   // moving backwards
+            if (nw_z >= kGoodZ_m)  // moving backwards
                 new_state = TRACK;
             else {
                 // Too far
@@ -1012,9 +947,9 @@ Airport::StateMachine()
             status_ = 3;
             lr_ = 0;
             // wait for beacon off
-            if (! beacon_on) {
+            if (!beacon_on) {
                 new_state = DONE;
-                if (operation_mode == MODE_AUTO && ! plane.dont_connect_jetway) {
+                if (operation_mode == MODE_AUTO && !plane.dont_connect_jetway) {
                     XPLMCommandOnce(toggle_jetway_cmdr);
                     // check whether it's a ToLiss, then set chocks
                     XPLMDataRef tls_chocks = XPLMFindDataRef("AirbusFBW/Chocks");
@@ -1067,7 +1002,6 @@ Airport::StateMachine()
 
         distance_ = std::clamp(distance_, kGoodZ_m, kCrZ);
 
-
         if (as.dgs_type_ == kMarshaller) {
             if (marshaller == nullptr)
                 marshaller = std::make_unique<Marshaller>();
@@ -1083,4 +1017,3 @@ Airport::StateMachine()
 
     return loop_delay;
 }
-
