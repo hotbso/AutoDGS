@@ -53,13 +53,13 @@ kbd {font-family: sans-serif; color: black; background-color: white; border: 1px
   <dd>2 - "Tracking right". The plane is to the right of the stopping point (<code>track</code>=2 or 3).</dd>
   <dd>3 - "Stop/Too far/ID fail". The plane is at or beyond the stopping point (<code>track</code>=0).</dd>
   <dt>&nbsp;</dt>
-  <dt><code>AutoDGS/dgs/azimuth</code></dt>
+  <dt><code>AutoDGS/dgs/xtrack</code></dt>
   <dd>0 if <code>track</code>=0 or 1.</dd>
-  <dd>Distance (in increments of 0.5m) that the plane is to the right of the stopping point if <code>track</code>=2 or 3. Negative when the plane is to the left of the stopping point. Has value -4 or +4 if the plane is >4m to the left or right of the stopping point.</dd>
+  <dd>Distance in m (rounded to increments of 0.5m) that the plane is to the right of the stopping point if <code>track</code>=2 or 3. Negative when the plane is to the left of the stopping point. Has value -4 or +4 if the plane is >4m to the left or right of the stopping point.</dd>
   <dt>&nbsp;</dt>
   <dt><code>AutoDGS/dgs/distance</code></dt>
   <dd>0 if <code>track</code>=0 or 1.</dd>
-  <dd>Distance (in increments of 0.5m) of the plane from the stopping point if <code>track</code>=2 or 3. Has value 12 if the plane is >12m from the stopping point.</dd>
+  <dd>Distance in m (rounded to increments of 0.5m) of the plane from the stopping point if <code>track</code>=2 or 3. Has value 12 if the plane is >12m from the stopping point.</dd>
   <dt>&nbsp;</dt>
   <dt><code>AutoDGS/dgs/distance2</code></dt>
   <dd>0 if <code>track</code>=0 or 1.</dd>

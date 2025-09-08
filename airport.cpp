@@ -21,6 +21,7 @@
 //
 
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <map>
 #include <algorithm>
@@ -35,35 +36,40 @@
 namespace fem = flat_earth_math;
 
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
-static constexpr float kCapA = 15;          // Capture
-static constexpr float kCapZ = 105;	        // (50-80 in Safedock2 flier)
+static constexpr float kCapA = 15;   // Capture
+static constexpr float kCapZ = 105;  // (50-80 in Safedock2 flier)
 
-static constexpr float kAziA = 15;	        // provide azimuth guidance
-static constexpr float kAziDispA = 10;      // max value for display
-static constexpr float kAziZ = 85;
+static constexpr float kAziA = 15;  // °, provide azimuth guidance
+static constexpr float kAziZ = 85;  // m, from this distance
 
-static constexpr float kGoodZ_p = 0.2;      // stop position for nw / to stop
-static constexpr float kGoodZ_m = -0.5;     // stop position for nw / beyond stop
+static constexpr float kAziCrossover = 6;  // m, switch from azimuth to xtrack guidance
 
-static constexpr float kGoodX = 2.0;        // for mw
+static constexpr float kGoodZ_p = 0.2;   // stop position for nw / to stop
+static constexpr float kGoodZ_m = -0.5;  // stop position for nw / beyond stop
 
-static constexpr float kCrZ = 12;      	    // Closing Rate starts here VDGS, Marshaller uses 0.5 * kCrZ
+static constexpr float kGoodX = 2.0;  // for mw
 
-static constexpr float kVdgsDefaultDist = 15.0;         // m
+static constexpr float kCrZ = 12;  // Closing Rate starts here VDGS, Marshaller uses 0.5 * kCrZ
+
+static constexpr int kTurnRight = 1;  // arrow on left side
+static constexpr int kTurnLeft = 2;   // arrow on right side
+
+static constexpr float kVdgsDefaultDist = 15.0;  // m
 static constexpr float kMarshallerDefaultDist = 25.0;
-static constexpr float kVdgsDefaultHeight = 5.0;        // m AGL
+static constexpr float kVdgsDefaultHeight = 5.0;  // m AGL
 
 static constexpr float kDgsMinDist = 8.0;
 static constexpr float kDgsMaxDist = 30.0;
 static constexpr float kDgsMoveDeltaMin = 1.0;  // min/max for 'move closer' cmd
 static constexpr float kDgsMoveDeltaMax = 3.0;
 
-static bool marshaller_pe_dist_updated;        // according to pilot's eye AGL
+static bool marshaller_pe_dist_updated;  // according to pilot's eye AGL
 static float marshaller_pe_dist = kMarshallerDefaultDist;
 
 static std::unique_ptr<Ofp> ofp;
 static int ofp_seqno;
 static float ofp_ts;
+
 class Marshaller;
 
 // there is exactly none or one Marshaller
@@ -221,7 +227,7 @@ void Stand::CycleDgsType() {
     SetDgsType(new_dgs_type);
 }
 
-void Stand::SetState(int status, int track, int lr, float azimuth, float distance, bool slow) {
+void Stand::SetState(int status, int track, int lr, float xtrack, float distance, bool slow) {
     assert(dgs_type_ == kVDGS);
 
     int d_0 = 0;
@@ -245,7 +251,7 @@ void Stand::SetState(int status, int track, int lr, float azimuth, float distanc
     drefs[DGS_DR_DISTANCE] = distance;
     drefs[DGS_DR_DISTANCE_0] = d_0;
     drefs[DGS_DR_DISTANCE_01] = d_01;
-    drefs[DGS_DR_AZIMUTH] = azimuth;
+    drefs[DGS_DR_XTRACK] = xtrack;
     drefs[DGS_DR_LR] = lr;
 
     if (slow) {
@@ -621,9 +627,9 @@ void Airport::FindNearestStand() {
                 }
             }
 
-            // for the final comparison give azimuth a higher weight
-            static const float azi_weight = 4.0;
-            d = sqrt(SQR(azi_weight * nw_x) + SQR(nw_z));
+            // for the final comparison give xtrack a higher weight
+            static const float xtrack_weight = 4.0;
+            d = sqrt(SQR(xtrack_weight * nw_x) + SQR(nw_z));
 
             if (d < dist) {
                 // LogMsg("new min: %s, z: %2.1f, x: %2.1f", s.cname(), nw_z, nw_x);
@@ -809,20 +815,16 @@ float Airport::StateMachine() {
 
     // ref pos on logitudinal axis of acf blending from mw to nw as we come closer
     // should be nw if dist is below 6 m
-    float a = std::clamp((nw_z - 6.0) / 20.0, 0.0, 1.0);
+    float a = std::clamp((nw_z - kAziCrossover) / 20.0, 0.0, 1.0);
     float plane_ref_z = (1.0 - a) * plane.nw_z + a * plane.mw_z;
     float ref_z = local_z - plane_ref_z;
     float ref_x = local_x + plane_ref_z * sinf(kD2R * local_hdgt);
 
-    float azimuth;
-    if (fabs(ref_x) > 0.5 && ref_z > 0)
-        azimuth = atanf(ref_x / (ref_z + 0.5 * as.dgs_dist_)) / kD2R;
-    else
-        azimuth = 0.0;
+    float xtrack = 0.0;  // xtrack for VDGS, set later if needed
 
     float azimuth_nw;
     if (nw_z > 0)
-        azimuth_nw = atanf(nw_x / (nw_z + 0.5 * as.dgs_dist_)) / kD2R;
+        azimuth_nw = atanf(nw_x / (nw_z + 5.0f)) / kD2R;
     else
         azimuth_nw = 0.0;
 
@@ -877,27 +879,42 @@ float Airport::StateMachine() {
             }
 
             // compute distance_ and guidance commands
-            azimuth = std::clamp(azimuth, -kAziA, kAziA);
-            float req_hdgt = -3.5 * azimuth;       // to track back to centerline
-            float d_hdgt = req_hdgt - local_hdgt;  // degrees to turn
+
+            // xform xtrack distance to values required by the OBJ
+            xtrack = std::clamp(ref_x, -4.0f, 4.0f);     // in m, 4 is hardcoded in the OBJ
+            xtrack = std::roundf(xtrack * 2.0f) / 2.0f;  // round to 0.5 increments
+
+            // compute left/right command
+            if (ref_z > kAziCrossover) {
+                // far, use azimuth angle
+                float azimuth_a = atanf(ref_x / ref_z) / kD2R;  // azimuth angle to acf ref point
+                azimuth_a = std::clamp(azimuth_a, -kAziA, kAziA);
+                float req_hdgt = -3.5 * azimuth_a;     // to track back to centerline
+                float d_hdgt = req_hdgt - local_hdgt;  // degrees to turn
+                if (d_hdgt < -1.5f)
+                    lr_ = kTurnLeft;
+                else if (d_hdgt > 1.5f)
+                    lr_ = kTurnRight;
+
+                if (now > update_dgs_log_ts_ + 2.0)
+                    LogMsg(
+                        "azimuth_a: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
+                        "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
+                        azimuth_a, mw_x, mw_z, nw_x, nw_z, ref_x, ref_z, local_x, local_hdgt, d_hdgt);
+
+            } else {
+                // close, use xtrack
+                if (ref_x < -0.25f)
+                    lr_ = kTurnRight;
+                else if (ref_x > 0.25f)
+                    lr_ = kTurnLeft;
+            }
+
+            // decide whether to show the SLOW indication
+            // depends on distance and ground speed
             float gs = XPLMGetDataf(ground_speed_dr);
             slow = (distance_ > 20.0f && gs > 4.0f) || (10.0f < distance_ && distance_ <= 20.0f && gs > 3.0f) ||
                    (distance_ <= 10.0f && gs > 2.0f);
-
-            if (now > update_dgs_log_ts_ + 2.0)
-                LogMsg(
-                    "azimuth: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                    "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, gs: %0.1f, slow: %d",
-                    azimuth, mw_x, mw_z, nw_x, nw_z, ref_x, ref_z, local_x, local_hdgt, d_hdgt, gs, slow);
-
-            if (d_hdgt < -1.5)
-                lr_ = 2;
-            else if (d_hdgt > 1.5)
-                lr_ = 1;
-
-            // xform azimuth to values required ob OBJ
-            azimuth = std::clamp(azimuth, -kAziDispA, kAziDispA) * 4.0 / kAziDispA;
-            azimuth = ((float)((int)(azimuth * 2))) / 2;  // round to 0.5 increments
 
             if (distance_ <= kCrZ / 2) {
                 track_ = 3;
@@ -990,14 +1007,14 @@ float Airport::StateMachine() {
         // don't flood the log
         if (now > update_dgs_log_ts_ + 2.0) {
             update_dgs_log_ts_ = now;
-            LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, azimuth: %0.1f",
-                   as.name().c_str(), state_str[state_], status_, track_, lr_, distance_, azimuth);
+            LogMsg("stand: %s, state: %s, status: %d, track: %d, lr: %d, distance: %0.2f, xtrack: %0.1f m",
+                   as.name().c_str(), state_str[state_], status_, track_, lr_, distance_, xtrack);
         }
 
         // xform drefs into required constraints for the OBJs
         if (track_ == 0 || track_ == 1) {
             distance_ = 0;
-            azimuth = 0.0;
+            xtrack = 0.0;
         }
 
         distance_ = std::clamp(distance_, kGoodZ_m, kCrZ);
@@ -1005,13 +1022,14 @@ float Airport::StateMachine() {
         if (as.dgs_type_ == kMarshaller) {
             if (marshaller == nullptr)
                 marshaller = std::make_unique<Marshaller>();
+
             marshaller->SetPos(&as.drawinfo_, status_, track_, lr_, distance_);
         } else {
             // always light up a selected VDGS
             if (state_ == ENGAGED && active_stand_ == selected_stand_)
                 as.SetState(1, 1, 0, 0, 0, false);
             else
-                as.SetState(status_, track_, lr_, azimuth, distance_, slow);
+                as.SetState(status_, track_, lr_, xtrack, distance_, slow);
         }
     }
 

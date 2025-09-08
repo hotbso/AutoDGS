@@ -55,7 +55,7 @@ enum _DGS_DREF {
     DGS_DR_STATUS,
     DGS_DR_LR,
     DGS_DR_TRACK,
-    DGS_DR_AZIMUTH,
+    DGS_DR_XTRACK,
     DGS_DR_DISTANCE,
     DGS_DR_DISTANCE_0,      // if distance < 10: full meters digit
     DGS_DR_DISTANCE_01,     // first decimal digit

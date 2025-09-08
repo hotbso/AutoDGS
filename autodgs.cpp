@@ -79,7 +79,7 @@ const char *dgs_dlist_dr[] = {
     "AutoDGS/dgs/status",
     "AutoDGS/dgs/lr",
     "AutoDGS/dgs/track",
-    "AutoDGS/dgs/azimuth",
+    "AutoDGS/dgs/xtrack",
     "AutoDGS/dgs/distance",
     "AutoDGS/dgs/distance_0",
     "AutoDGS/dgs/distance_01",
