@@ -849,6 +849,12 @@ float Airport::StateMachine() {
             } else {  // not beacon_on
                 new_state = DONE;
             }
+
+            // always light up the VDGS or signal "this way" for the selected stand
+            if (active_stand_ == selected_stand_) {
+                status_ = 1;  // plane id
+                track_ = 1;   // lead-in
+            }
             break;
 
         case TRACK: {
@@ -1024,13 +1030,8 @@ float Airport::StateMachine() {
                 marshaller = std::make_unique<Marshaller>();
 
             marshaller->SetPos(&as.drawinfo_, status_, track_, lr_, distance_);
-        } else {
-            // always light up a selected VDGS
-            if (state_ == ENGAGED && active_stand_ == selected_stand_)
-                as.SetState(1, 1, 0, 0, 0, false);
-            else
-                as.SetState(status_, track_, lr_, xtrack, distance_, slow);
-        }
+        } else
+            as.SetState(status_, track_, lr_, xtrack, distance_, slow);
     }
 
     return loop_delay;
