@@ -828,19 +828,14 @@ float Airport::StateMachine() {
     else
         azimuth_nw = 0.0;
 
-    int locgood = (fabsf(mw_x) <= kGoodX && kGoodZ_m <= nw_z && nw_z <= kGoodZ_p);
-    int beacon_on = plane.BeaconOn();
+    bool locgood = (fabsf(mw_x) <= kGoodX && kGoodZ_m <= nw_z && nw_z <= kGoodZ_p);
+    bool beacon_on = plane.BeaconOn();
 
     status_ = lr_ = track_ = 0;
     distance_ = nw_z;
     bool slow = false;
 
-    // catch the phase ~180° point -> the Marshaller's arm is straight
-    float sin_wave = XPLMGetDataf(sin_wave_dr);
-    int phase180 = (sin_wave_prev_ > 0.0) && (sin_wave <= 0.0);
-    sin_wave_prev_ = sin_wave;
-
-    // set drefs according to *current* state
+   // set drefs according to *current* state
     switch (state_) {
         case ENGAGED:
             if (beacon_on) {
@@ -892,10 +887,8 @@ float Airport::StateMachine() {
 
             // compute left/right command
             if (ref_z > kAziCrossover) {
-                // far, use azimuth angle
-                float azimuth_a = atanf(ref_x / ref_z) / kD2R;  // azimuth angle to acf ref point
-                azimuth_a = std::clamp(azimuth_a, -kAziA, kAziA);
-                float req_hdgt = -3.5 * azimuth_a;     // to track back to centerline
+                // far, aim to an intermediate point between ref point and stand
+                float req_hdgt = atanf(-ref_x / (0.3f * ref_z)) / kD2R;  // required hdgt
                 float d_hdgt = req_hdgt - local_hdgt;  // degrees to turn
                 if (d_hdgt < -1.5f)
                     lr_ = kTurnLeft;
@@ -904,9 +897,10 @@ float Airport::StateMachine() {
 
                 if (now > update_dgs_log_ts_ + 2.0)
                     LogMsg(
-                        "azimuth_a: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), ref: (%0.1f, %0.1f), "
-                        "x: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f",
-                        azimuth_a, mw_x, mw_z, nw_x, nw_z, ref_x, ref_z, local_x, local_hdgt, d_hdgt);
+                        "req_hdgt: %0.1f, local_hdgt: %0.1f, d_hdgt: %0.1f, mw: (%0.1f, %0.1f), nw: (%0.1f, %0.1f), "
+                        "ref: (%0.1f, %0.1f), "
+                        "x: %0.1f, ",
+                        req_hdgt, local_hdgt, d_hdgt, mw_x, mw_z, nw_x, nw_z, ref_x, ref_z, local_x);
 
             } else {
                 // close, use xtrack
@@ -928,13 +922,20 @@ float Airport::StateMachine() {
             } else  // azimuth only
                 track_ = 2;
 
-            if (!phase180) {  // no wild oscillation
-                lr_ = lr_prev;
+            // For the Marshaller sync change of straight ahead / turn commands with arm position
+            if (as.dgs_type_ == kMarshaller) {
+                // catch the phase ~180° point -> the Marshaller's arm is straight
+                float sin_wave = XPLMGetDataf(sin_wave_dr);
+                bool phase180 = (sin_wave_prev_ > 0.0) && (sin_wave <= 0.0);
+                sin_wave_prev_ = sin_wave;
 
-                // sync transition with Marshaller's arm movement
-                if (as.dgs_type_ == kMarshaller && track_ == 3 && track_prev == 2) {
-                    track_ = track_prev;
-                    distance_ = distance_prev;
+                if (!phase180) {
+                    lr_ = lr_prev;
+
+                    if (track_ == 3 && track_prev == 2) {
+                        track_ = track_prev;
+                        distance_ = distance_prev;
+                    }
                 }
             }
         } break;
