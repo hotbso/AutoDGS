@@ -35,12 +35,23 @@
 
 #include <cmath>
 
+namespace flat_earth_math {
+
 static constexpr float kLat2m = 111120;             // 1° lat in m
 
 // return relative angle in (-180, 180]
-static inline
-float RA(float angle)
-{
+static inline double RA(double angle) {
+    angle = fmod(angle, 360.0);
+    if (angle > 180.0)
+        return angle - 360.0;
+
+    if (angle <= -180.0)
+        return angle + 360.0;
+
+    return angle;
+}
+
+static inline float RA(float angle) {
     angle = fmodf(angle, 360.0f);
     if (angle > 180.0f)
         return angle - 360.0f;
@@ -51,56 +62,57 @@ float RA(float angle)
     return angle;
 }
 
-
 struct LLPos {
-	double lon, lat;
+    double lon, lat;  // right, up
+    LLPos() = default;
+    LLPos(double lat, double lon) : lon(lon), lat(lat) {}  // in conventional order (lat, lon)
 };
 
 struct Vec2 {
-	double x,y;
+    double x, y;  // right, up
 };
 
-static inline
-double len(const Vec2& v)
-{
-	return sqrt(v.x * v.x + v.y * v.y);
+static inline double len(const Vec2& v) {
+    return sqrt(v.x * v.x + v.y * v.y);
 }
 
-// pos - pos
-static inline
-Vec2 operator-(const LLPos& b, const LLPos& a)
-{
-	return {RA(b.lon -  a.lon) * kLat2m * cosf(a.lat * 0.01745329252),
-		    RA(b.lat -  a.lat) * kLat2m};
+// pos b - pos a
+static inline Vec2 operator-(const LLPos& b, const LLPos& a) {
+    return {RA(b.lon - a.lon) * kLat2m * cosf(a.lat * 0.01745329252), RA(b.lat - a.lat) * kLat2m};
 }
 
 // pos + vec
-static inline
-LLPos operator+(const LLPos &p, const Vec2& v)
-{
+static inline LLPos operator+(const LLPos &p, const Vec2& v) {
 	return {RA(p.lon + v.x / (kLat2m * cosf(p.lat * 0.01745329252))),
 			RA(p.lat + v.y / kLat2m)};
 }
 
-// vec - vec
-static inline
-Vec2 operator-(const Vec2& b, const Vec2& a)
-{
-	return {b.x - a.x, b.y - a.y};
+// vec b - vec a
+static inline Vec2 operator-(const Vec2& b, const Vec2& a) {
+    return {b.x - a.x, b.y - a.y};
 }
 
 // vec + vec
-static inline
-Vec2 operator+(const Vec2& a, const Vec2& b)
-{
-	return {a.x + b.x, a.y + b.y};
+static inline Vec2 operator+(const Vec2& a, const Vec2& b) {
+    return {a.x + b.x, a.y + b.y};
 }
 
 // c * vec
-static inline
-Vec2 operator*(double c, const Vec2& v)
-{
-	return {c * v.x, c * v.y};
+static inline Vec2 operator*(double c, const Vec2& v) {
+    return {c * v.x, c * v.y};
 }
 
+// vec * vec
+static inline double operator*(const Vec2& a, const Vec2& b) {
+    return a.x * b.x + a.y * b.y;  // dot product
+}
+
+// pos in rectangle defined by lower_left and upper_right
+static inline bool InRect(const LLPos& pos, const LLPos& lower_left, const LLPos& upper_right) {
+    // cheap test before we do the more expensive RA
+    return (pos.lat >= lower_left.lat && pos.lat <= upper_right.lat && RA(pos.lon - lower_left.lon) > 0.0f &&
+            RA(pos.lon - upper_right.lon) < 0.0f);
+}
+
+}	// namespace
 #endif

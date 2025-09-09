@@ -40,7 +40,10 @@
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
 #include "XPLMMenus.h"
-#include "XPLMNavigation.h"
+
+#include "version.h"
+
+const char *log_msg_prefix = "AutoDGS: ";
 
 const char * const opmode_str[] = { "Automatic", "Manual" };
 
@@ -76,7 +79,7 @@ const char *dgs_dlist_dr[] = {
     "AutoDGS/dgs/status",
     "AutoDGS/dgs/lr",
     "AutoDGS/dgs/track",
-    "AutoDGS/dgs/azimuth",
+    "AutoDGS/dgs/xtrack",
     "AutoDGS/dgs/distance",
     "AutoDGS/dgs/distance_0",
     "AutoDGS/dgs/distance_01",
@@ -117,10 +120,8 @@ static bool pending_plane_loaded_cb = false;    // delayed init
 //------------------------------------------------------------------------------------
 
 // set mode to arrival
-void
-Activate(void)
-{
-    if (! on_ground) {
+void Activate(void) {
+    if (!on_ground) {
         LogMsg("can't set active when not on ground");
         return;
     }
@@ -130,22 +131,15 @@ Activate(void)
 
     plane.ResetBeacon();
 
-    float lat = XPLMGetDataf(plane_lat_dr);
-    float lon = XPLMGetDataf(plane_lon_dr);
-
-    // find and load airport I'm on now
-    XPLMNavRef ref = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL, xplm_Nav_Airport);
-    if (XPLM_NAV_NOT_FOUND != ref) {
-        char buffer[50];
-        XPLMGetNavAidInfo(ref, NULL, &lat, &lon, NULL, NULL, NULL, buffer,
-                NULL, NULL);
-        std::string airport_id(buffer);
+    flat_earth_math::LLPos pos(XPLMGetDataf(plane_lat_dr), XPLMGetDataf(plane_lon_dr));
+    std::string airport_id = AptAirport::LocateAirport(pos);
+    if (!airport_id.empty()) {
         LogMsg("now on airport: %s", airport_id.c_str());
-        if (arpt == nullptr || arpt->name() != airport_id) {   // don't reload same
+        if (arpt == nullptr || arpt->name() != airport_id) {  // don't reload same
             arpt = Airport::LoadAirport(airport_id);
         }
     } else {
-        LogMsg("airport could not be identified at %0.8f,%0.8f", lat, lon);
+        LogMsg("airport could not be identified at %0.8f,%0.8f", pos.lat, pos.lon);
         arpt = nullptr;
     }
 
@@ -260,7 +254,6 @@ MenuCb([[maybe_unused]] void *menu_ref, void *item_ref)
 PLUGIN_API int
 XPluginStart(char *outName, char *outSig, char *outDesc)
 {
-    LogMsgInit("AutoDGS");
     strcpy(outName, "AutoDGS " VERSION);
     strcpy(outSig,  "hotbso.AutoDGS");
     strcpy(outDesc, "Automatically provides DGS for gateway airports");
@@ -417,9 +410,11 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
 
     // my plane loaded
     if (in_msg == XPLM_MSG_PLANE_LOADED && in_param == 0) {
+        LogMsg("plane loaded, resetting airport");
         arpt = nullptr;
+        on_ground = 0;
         XPLMScheduleFlightLoop(flight_loop_id, 0, 0);
         pending_plane_loaded_cb = true;
-        XPLMScheduleFlightLoop(flight_loop_id, 5.0, 1);
+        XPLMScheduleFlightLoop(flight_loop_id, 15.0, 1);    // let the dust settle
     }
 }

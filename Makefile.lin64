@@ -1,5 +1,4 @@
 
-include version.mak
 include Makefile.common
 
 OBJDIR=./build/lx
@@ -12,7 +11,7 @@ CC=gcc
 CXX=g++
 LD=g++
 
-COMMON_CFLAGS=$(OPT) -DVERSION=\"$(VERSION)\" \
+COMMON_CFLAGS=$(OPT) \
     -Wall $(INCLUDES) $(DEFINES) -fPIC -DLIN=1 -fno-stack-protector
 CFLAGS=$(COMMON_CFLAGS)
 CXXFLAGS:=$(CXXSTD) $(CFLAGS)
@@ -26,10 +25,10 @@ LIBS=
 all: $(TARGET)
     $(shell [ -d $(OBJDIR) ] || mkdir -p $(OBJDIR))
 
-$(OBJDIR)/%.o: %.c version.mak $(HEADERS)
+$(OBJDIR)/%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/%.o: %.cpp version.mak $(HEADERS)
+$(OBJDIR)/%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(TARGET): $(OBJECTS)

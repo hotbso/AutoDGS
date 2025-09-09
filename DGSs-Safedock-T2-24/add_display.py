@@ -39,7 +39,7 @@ track_dr = "AutoDGS/dgs/track"
 distance_dr = "AutoDGS/dgs/distance"
 distance_0_dr = "AutoDGS/dgs/distance_0"
 distance_01_dr = "AutoDGS/dgs/distance_01"
-azimuth_dr = "AutoDGS/dgs/azimuth"
+xtrack_dr = "AutoDGS/dgs/xtrack"
 lr_dr = "AutoDGS/dgs/lr"
 icao_0_dr = "AutoDGS/dgs/icao_0"
 icao_1_dr = "AutoDGS/dgs/icao_1"
@@ -105,7 +105,6 @@ xpo.line("# ---- status == 0, display stand + display UTC time")
 with AnimBlock(xpo):
     xpo.show_if_eq(status_dr, 0)
 
-    xpo.line("# NO-openSAM_begin")
     y = LED(5, 2)
     x = LED(1)      # align with ICAO field to save some TRIS
     dx = 12
@@ -114,7 +113,6 @@ with AnimBlock(xpo):
         for i in range(0, 6):
             xpo.char_stack(char_txq, x, y, f"AutoDGS/dgs/r1c{i}")
             x += dx
-    xpo.line("# NO-openSAM_end")
 
     y = LED(4, 2)
     x = LED(0, 12)
@@ -236,7 +234,7 @@ with AnimBlock(xpo):
     with AnimBlock(xpo):
         xpo.trans_y(0, -LED(3), 0.0, 12.0, distance_dr) # below vbar
         with AnimBlock(xpo):
-            xpo.trans_x(-16, 16, -4.0, 4.0, azimuth_dr) # lateral
+            xpo.trans_x(-16, 16, -4.0, 4.0, xtrack_dr) # lateral
             xpo.quad(azimuth_txq, xazi, yazi)
 
     xpo.line("# LR arrow right side")

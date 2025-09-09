@@ -114,6 +114,8 @@ class Airport {
 
   public:
     static std::unique_ptr<Airport> LoadAirport(const std::string& icao);
+    // Load airport from position
+    static std::unique_ptr<Airport> LoadAirport(const flat_earth_math::LLPos& pos);
 
     Airport() = delete;
     Airport(const AptAirport&);
