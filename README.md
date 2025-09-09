@@ -10,7 +10,8 @@ Download link: https://github.com/hotbso/AutoDGS/releases
 For simbrief integration to work you must install the `simbrief_hub` plugin.\
 Download link: https://github.com/hotbso/simbrief_hub/releases
 
-Just drop the plugin in the plugins folder and you are in automatic set-and-forget mode.
+Just unzip the download into the ```Resources\plugins``` folder and you are in automatic set-and-forget mode.\
+Further updates can be installed with Skunkcrafts updater.
 
 Support Discord: https://discord.gg/qhACbvWKvb
 
@@ -87,9 +88,10 @@ Add the ICAO code of your plane to file "acf_dont_connect_jetway.txt" and jetway
 It's likely that this plane does not use the "beacon" datarefs in a standard way. Enter the ICAO code of the plane into "acf_use_engine_running.txt" and the plugin will "engine running" instead of "beacon".
 
 # Credits
-Jonathan Harris (aka Marginal) (https://github.com/Marginal) for creating Autogate\
-@cxn0026 for explaining how Marshallers and VDGS really use guidance signals\
-@Papickx + @cxn0026 for providing better textures and day + night lighting
+[Jonathan Harris (aka Marginal)](https://github.com/Marginal) for creating Autogate\
+[cxn0026](https://forums.x-plane.org/profile/121130-cxn0026) for explaining how Marshallers and VDGS really use guidance signals\
+[Papickx](https://forums.x-plane.org/profile/823983-papickx/) + @cxn0026 for providing better textures and day + night lighting\
+[Pierre](https://github.com/pierr3) for reworking the VDGS model and giving it much more precision and details
 
 ## License
 Please observe that this project is covered by various licenses.
