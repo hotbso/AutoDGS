@@ -183,7 +183,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     drawinfo_.pitch = drawinfo_.roll = 0.0f;
     vdgs_inst_ref_ = nullptr;
 
-    marshaller_max_dist_ = kDgsMaxDist;;
+    marshaller_max_dist_ = kDgsMaxDist;
 
     dgs_dist_ = dgs_dist;
     dgs_type_ = -1;         // invalidate to ensure that SetDgsType's code does something
@@ -420,7 +420,7 @@ Airport::Airport(const AptAirport& apt_airport)
 
         // override with user defined config
         if (const auto it = cfg.find(as.name); it != cfg.end()) {
-            std::tie<int, float>(dgs_type, dgs_dist) = it->second;
+            std::tie(dgs_type, dgs_dist) = it->second;
             LogMsg("found in config '%s', %d, %0.1f", as.name.c_str(), dgs_type, dgs_dist);
         }
 
@@ -603,7 +603,7 @@ Airport::CycleDgsType()
 void
 Airport::FindNearestStand()
 {
-    // check whether we already have an active  selected stand
+    // Check if the currently active stand is also the selected stand
     if (active_stand_ >= 0 && active_stand_ == selected_stand_)
         return;
 
@@ -688,7 +688,7 @@ Airport::FindNearestStand()
 
     if (min_stand >= 0 && min_stand != active_stand_) {
         Stand& ms = stands_[min_stand];
-        LogMsg("stand: %s, %f, %f, %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
+        LogMsg("stand: %s, lat: %f, lon: %f, hdgt: %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
 
         if (active_stand_ >= 0)
             stands_[active_stand_].SetIdle();
@@ -708,7 +708,7 @@ Airport::FindDepartureStand()
     float plane_hdgt = XPLMGetDataf(plane_true_psi_dr);
 
     // nose wheel
-    float nw_z = plane_z - plane.nw_z * cosf(kD2R * plane_hdgt);;
+    float nw_z = plane_z - plane.nw_z * cosf(kD2R * plane_hdgt);
     float nw_x = plane_x + plane.nw_z * sinf(kD2R * plane_hdgt);
 
     for (int i = 0; i < (int)stands_.size(); i++) {
@@ -722,7 +722,8 @@ Airport::FindDepartureStand()
         float dx = nw_x - s.x_;
         float dz = nw_z - s.z_;
         // LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.cname(), dz, dx);
-        if (fabsf(dx * dx + dz * dz) < 1.0f)
+        if (dx * dx + dz * dz < 1.0f)
+            // Return the first matching stand found
             return i;
     }
 
@@ -791,8 +792,11 @@ Airport::StateMachine()
                 if (ofp) {
                     ofp_seqno = ofp->seqno;
                     std::string ofp_str = ofp->GenDepartureStr();
-                    ds.scroll_txt_ = make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
-                                                            + ofp_str + "   ");
+                    if (ds.display_name_.empty())
+                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + "   " + ofp_str + "   ");
+                    else
+                        ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   "
+                                                                     + ofp_str + "   ");
                 }
             }
 
