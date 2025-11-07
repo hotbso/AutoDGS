@@ -110,7 +110,6 @@ class AptAirport {
     static const std::string LocateAirport(const flat_earth_math::LLPos& pos);
 
     std::string icao_;
-    bool has_app_dep_{false};
     bool has_twr_{false};
     bool ignore_{false};		// e.g. sam or no_autodgs marker present
     std::vector<AptStand> stands_;

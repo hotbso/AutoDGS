@@ -267,12 +267,6 @@ ParseAptDat(const std::string& fn, bool ignore)
         if (arpt == nullptr)
             continue;
 
-        // check for APP or DEP frequency
-        if (line.starts_with("1055 ") || line.starts_with("1056 ") || line.starts_with("55 ") || line.starts_with("56 ")) {
-            arpt->has_app_dep_ = true;
-            continue;
-        }
-
         if (line.starts_with("1054 ") || line.starts_with("54 ")) {
             arpt->has_twr_ = true;
             continue;
