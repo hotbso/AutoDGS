@@ -241,9 +241,8 @@ static bool ParseAptDat(const std::string& fn, bool ignore) {
                 continue;  // can't be an icao airport
             }
 
-            try {
-                apt_airports.at(arpt_name);
-            } catch (const std::out_of_range& ex) {
+
+            if (apt_airports.find(arpt_name) == apt_airports.end()) {
                 // does not yet exist
                 arpt = new AptAirport(arpt_name);
                 if (ignore) {
