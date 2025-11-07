@@ -28,9 +28,7 @@
 
 Plane plane;
 
-bool
-Plane::EnginesOn()
-{
+bool Plane::EnginesOn() {
     int er[8];
     int n = XPLMGetDatavi(eng_running_dr, er, 0, 8);
     for (int i = 0; i < n; i++)
@@ -38,19 +36,14 @@ Plane::EnginesOn()
             return true;
 
     return false;
-
 }
 
-void
-Plane::ResetBeacon()
-{
+void Plane::ResetBeacon() {
     beacon_state_ = beacon_last_pos_ = XPLMGetDatai(beacon_dr);
     beacon_on_ts_ = beacon_off_ts_ = -10.0;
 }
 
-bool
-Plane::BeaconOn(void)
-{
+bool Plane::BeaconOn(void) {
     if (use_engine_running_)
         return EnginesOn();
 
@@ -60,7 +53,7 @@ Plane::BeaconOn(void)
 
     int beacon = XPLMGetDatai(beacon_dr);
     if (beacon) {
-        if (! beacon_last_pos_) {
+        if (!beacon_last_pos_) {
             beacon_on_ts_ = now;
             beacon_last_pos_ = 1;
         } else if (now > beacon_on_ts_ + 0.5)
@@ -71,22 +64,18 @@ Plane::BeaconOn(void)
             beacon_last_pos_ = 0;
         } else if (now > beacon_off_ts_ + 3.0)
             beacon_state_ = 0;
-   }
+    }
 
-   return beacon_state_;
+    return beacon_state_;
 }
 
-int
-Plane::PaxNo()
-{
+int Plane::PaxNo() {
     if (pax_no_dr_ == NULL)
         return -1;
-    return XPLMGetDataf(pax_no_dr_) + 0.5f; // round upwards
+    return XPLMGetDataf(pax_no_dr_) + 0.5f;  // round upwards
 }
 
-static bool
-FindIcaoInFile(const std::string& acf_icao, const std::string& fn)
-{
+static bool FindIcaoInFile(const std::string& acf_icao, const std::string& fn) {
     std::ifstream f(fn);
     if (!f.is_open()) {
         LogMsg("Can't open '%s'", fn.c_str());
@@ -96,7 +85,7 @@ FindIcaoInFile(const std::string& acf_icao, const std::string& fn)
     LogMsg("check whether acf '%s' is in exception file %s", acf_icao.c_str(), fn.c_str());
     std::string line;
     while (std::getline(f, line)) {
-        if (line.size() > 0 && line.back() == '\r') // just in case
+        if (line.size() > 0 && line.back() == '\r')  // just in case
             line.pop_back();
 
         if (line == acf_icao) {
@@ -108,13 +97,11 @@ FindIcaoInFile(const std::string& acf_icao, const std::string& fn)
     return false;
 }
 
-void
-Plane::PlaneLoadedCb()
-{
+void Plane::PlaneLoadedCb() {
     char buffer[41]{};
     XPLMGetDatab(acf_icao_dr, buffer, 0, 40);
 
-    for (int i=0; i<4; i++)
+    for (int i = 0; i < 4; i++)
         buffer[i] = (isupper(buffer[i]) || isdigit(buffer[i])) ? buffer[i] : ' ';
     buffer[4] = '\0';
     acf_icao = buffer;
@@ -128,18 +115,18 @@ Plane::PlaneLoadedCb()
     float plane_cg_z = kF2M * XPLMGetDataf(acf_cg_z_dr);
 
     float gear_z[2];
-    if (2 == XPLMGetDatavf(gear_z_dr, gear_z, 0, 2)) {      // nose + main wheel
+    if (2 == XPLMGetDatavf(gear_z_dr, gear_z, 0, 2)) {  // nose + main wheel
         nw_z = -gear_z[0];
         mw_z = -gear_z[1];
     } else
-        nw_z = mw_z = plane_cg_z;         // fall back to CG
+        nw_z = mw_z = plane_cg_z;  // fall back to CG
 
     is_helicopter = XPLMGetDatai(is_helicopter_dr);
 
     pe_y_0_valid = false;
     pe_y_0 = 0.0;
 
-    if (! is_helicopter) {
+    if (!is_helicopter) {
         // unfortunately the *default* pilot eye y coordinate is not published in
         // a dataref, only the dynamic values.
         // Therefore we pull it from the acf file.
@@ -168,16 +155,16 @@ Plane::PlaneLoadedCb()
     use_engine_running_ = FindIcaoInFile(acf_icao, base_dir + "acf_use_engine_running.txt");
     dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
 
-    pax_no_dr_ = XPLMFindDataRef("AirbusFBW/NoPax"); // currently only ToLiss
+    pax_no_dr_ = XPLMFindDataRef("AirbusFBW/NoPax");  // currently only ToLiss
     if (pax_no_dr_) {
         LogMsg("ToLiss detected");
         int pax_no = PaxNo();
-        if (pax_no > 0)     // warn on common user error
+        if (pax_no > 0)  // warn on common user error
             LogMsg("WARNING: plane is already boarded with initial # of pax: %d", pax_no);
     }
 
-    LogMsg("plane loaded: %s, plane_cg_z: %1.2f, nw_z: %1.2f, mw_z: %1.2f, "
-           "pe_y_0_valid: %d, pe_y_0: %0.2f, is_helicopter: %d",
-           acf_icao.c_str(), plane_cg_z, nw_z, mw_z,
-           pe_y_0_valid, pe_y_0, is_helicopter);
+    LogMsg(
+        "plane loaded: %s, plane_cg_z: %1.2f, nw_z: %1.2f, mw_z: %1.2f, "
+        "pe_y_0_valid: %d, pe_y_0: %0.2f, is_helicopter: %d",
+        acf_icao.c_str(), plane_cg_z, nw_z, mw_z, pe_y_0_valid, pe_y_0, is_helicopter);
 }
