@@ -169,8 +169,12 @@ Plane::PlaneLoadedCb()
     dont_connect_jetway = FindIcaoInFile(acf_icao, base_dir + "acf_dont_connect_jetway.txt");
 
     pax_no_dr_ = XPLMFindDataRef("AirbusFBW/NoPax"); // currently only ToLiss
-    if (pax_no_dr_)
+    if (pax_no_dr_) {
         LogMsg("ToLiss detected");
+        int pax_no = PaxNo();
+        if (pax_no > 0)     // warn on common user error
+            LogMsg("WARNING: plane is already boarded with initial # of pax: %d", pax_no);
+    }
 
     LogMsg("plane loaded: %s, plane_cg_z: %1.2f, nw_z: %1.2f, mw_z: %1.2f, "
            "pe_y_0_valid: %d, pe_y_0: %0.2f, is_helicopter: %d",
