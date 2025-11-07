@@ -95,18 +95,14 @@ SceneryPacks::SceneryPacks(const std::string& xp_dir)
     sc_paths.shrink_to_fit();
 }
 
-static bool
-operator<(const AptStand& a, const AptStand& b)
-{
+static bool operator<(const AptStand& a, const AptStand& b) {
     return a.name < b.name;
 }
 
-void
-AptAirport::dump() const
-{
+void AptAirport::dump() const {
     LogMsg("Dump of airport: %s", icao_.c_str());
 
-    for (auto const & s : stands_)
+    for (auto const& s : stands_)
         LogMsg("'%s', %0.6f, %0.6f, %0.6f, has_jw: %d", s.name.c_str(), s.lat, s.lon, s.hdgt, s.has_jw);
 
 #if 0
@@ -115,15 +111,14 @@ AptAirport::dump() const
                 jw.pos.lat, jw.pos.lon, jw.hdgt, jw.length, jw.cabin.lat, jw.cabin.lon);
 #endif
 
-    for (auto const & rwy : rwys_) {
-        LogMsg("Runway: '%s', %0.8f, %0.8f, %0.8f, %0.8f, len: %0.1f, width: %0.1f",
-               rwy.name.c_str(), rwy.end1.lat, rwy.end1.lon, rwy.end2.lat, rwy.end2.lon,
-               rwy.len, rwy.width);
+    for (auto const& rwy : rwys_) {
+        LogMsg("Runway: '%s', %0.8f, %0.8f, %0.8f, %0.8f, len: %0.1f, width: %0.1f", rwy.name.c_str(), rwy.end1.lat,
+               rwy.end1.lon, rwy.end2.lat, rwy.end2.lon, rwy.len, rwy.width);
     }
 }
 
 void AptAirport::ComputeBBox() {
-    static constexpr double kDlat = 150.0 / fem::kLat2m;    // 150 m grace distance
+    static constexpr double kDlat = 150.0 / fem::kLat2m;  // 150 m grace distance
 
     bbox_max_ = {-1000.0, -1000.0};
     bbox_min_ = {+1000.0, +1000.0};
@@ -149,37 +144,35 @@ void AptAirport::ComputeBBox() {
         bbox_max_.lat = std::max(bbox_max_.lat, r.end2.lat + kDlat);
     }
 
-    //LogMsg("BBox for airport %s: min: %0.8f,%0.8f, max: %0.8f,%0.8f",
-    //       icao_.c_str(), bbox_min_.lat, bbox_min_.lon, bbox_max_.lat, bbox_max_.lon);
+    // LogMsg("BBox for airport %s: min: %0.8f,%0.8f, max: %0.8f,%0.8f",
+    //        icao_.c_str(), bbox_min_.lat, bbox_min_.lon, bbox_max_.lat, bbox_max_.lon);
 }
 
 static int n_stands;
 
 // go through apt.dat and collect stands
-static bool
-ParseAptDat(const std::string& fn, bool ignore)
-{
+static bool ParseAptDat(const std::string& fn, bool ignore) {
     std::ifstream apt(fn);
     if (apt.fail())
         return false;
 
     LogMsg("Processing '%s'", fn.c_str());
     std::string line;
-    line.reserve(2000);          // can be quite long
+    line.reserve(2000);  // can be quite long
 
-    AptAirport *arpt = nullptr;
+    AptAirport* arpt = nullptr;
     std::string arpt_name;
-	std::vector<Jetway> jetways;
+    std::vector<Jetway> jetways;
 
     // save arpt if it has a tower frequency and stands
-    auto save_arpt = [&] () {
+    auto save_arpt = [&]() {
         if (arpt == nullptr)
             return;
 
         // LogMsg("Save ---> '%s', %d, %d", arpt->icao_.c_str(), arpt->has_twr_, (int)arpt->stands_.size());
         if (arpt->has_twr_ && arpt->stands_.size() > 0) {
-            for (auto & s : arpt->stands_)
-                for (auto & jw : jetways)
+            for (auto& s : arpt->stands_)
+                for (auto& jw : jetways)
                     if (fem::len(jw.cabin - fem::LLPos{s.lon, s.lat}) < kJw2Stand) {
                         s.has_jw = true;
                         break;
@@ -190,9 +183,9 @@ ParseAptDat(const std::string& fn, bool ignore)
             std::sort(arpt->stands_.begin(), arpt->stands_.end());
             apt_airports[arpt->icao_] = arpt;
             jetways.clear();
-            arpt->ComputeBBox(); // compute bounding box for this airport
+            arpt->ComputeBBox();  // compute bounding box for this airport
         } else
-            delete(arpt);
+            delete (arpt);
 
         arpt = nullptr;
         arpt_name.clear();
@@ -200,23 +193,23 @@ ParseAptDat(const std::string& fn, bool ignore)
 
     while (std::getline(apt, line)) {
         // ignore helipads + seaplane bases
-        //17      0 0 0 EKAR [H] South Arne Helideck
+        // 17      0 0 0 EKAR [H] South Arne Helideck
         if (line.starts_with("17 ") || line.starts_with("16 ")) {
             save_arpt();
             continue;
         }
 
-        //1    681 0 0 ENGM Oslo Gardermoen
+        // 1    681 0 0 ENGM Oslo Gardermoen
         if (line.starts_with("1 ")) {
-			//LogMsg("%s", line.c_str());
+            // LogMsg("%s", line.c_str());
             save_arpt();
 
             if (line.back() == '\r')
                 line.pop_back();
 
             int ofs;
-			sscanf(line.c_str(), "%*d %*d %*d %*d %n", &ofs);
-			if (ofs < (int)line.size()) {
+            sscanf(line.c_str(), "%*d %*d %*d %*d %n", &ofs);
+            if (ofs < (int)line.size()) {
                 size_t bpos = std::min(line.find(' ', ofs), line.size());
                 int len = bpos - ofs;
                 arpt_name = line.substr(ofs, len);
@@ -225,8 +218,8 @@ ParseAptDat(const std::string& fn, bool ignore)
                 LogMsg("could not locate airport id '%s'", line.c_str());
             }
 
-			continue;
-		}
+            continue;
+        }
 
         if (arpt_name.empty())
             continue;
@@ -239,18 +232,18 @@ ParseAptDat(const std::string& fn, bool ignore)
             continue;
         }
 
-        if (line.starts_with("1302"))   // ignore
+        if (line.starts_with("1302"))  // ignore
             continue;
 
-        if (arpt == nullptr) {          // after leaving 1302 block ...
+        if (arpt == nullptr) {  // after leaving 1302 block ...
             if (arpt_name.length() > 4 || arpt_name.find_first_of("0123456789") != std::string::npos) {
                 arpt_name.clear();
-                continue;   // can't be an icao airport
+                continue;  // can't be an icao airport
             }
 
             try {
                 apt_airports.at(arpt_name);
-            } catch(const std::out_of_range& ex) {
+            } catch (const std::out_of_range& ex) {
                 // does not yet exist
                 arpt = new AptAirport(arpt_name);
                 if (ignore) {
@@ -261,7 +254,7 @@ ParseAptDat(const std::string& fn, bool ignore)
                     arpt_name.clear();
                 } else
                     arpt->stands_.reserve(50);
-           }
+            }
         }
 
         if (arpt == nullptr)
@@ -273,25 +266,25 @@ ParseAptDat(const std::string& fn, bool ignore)
         }
 
         // stand
-		//1300 50.030069 8.557858 159.4 tie_down jets|turboprops|props S403
+        // 1300 50.030069 8.557858 159.4 tie_down jets|turboprops|props S403
         if (line.starts_with("1300 ")) {
             if (line.back() == '\r')
                 line.pop_back();
 
             AptStand st;
             int ofs;
-			sscanf(line.c_str(), "%*d %lf %lf %f %*s %*s %n", &st.lat, &st.lon, &st.hdgt, &ofs);
-			if (ofs < (int)line.size())
+            sscanf(line.c_str(), "%*d %lf %lf %f %*s %*s %n", &st.lat, &st.lon, &st.hdgt, &ofs);
+            if (ofs < (int)line.size())
                 st.name = line.substr(ofs, line.size() - ofs);
             arpt->stands_.push_back(st);
             continue;
-		}
+        }
 
         // jetway
         // 1500 60.3161845 24.9597493 234.4 2 1 234.4 16.17 253.2
         if (line.starts_with("1500 ")) {
             Jetway jw;
-			sscanf(line.c_str(), "%*d %lf %lf %f %*d %*d %*f %f", &jw.pos.lat, &jw.pos.lon, &jw.hdgt, &jw.length);
+            sscanf(line.c_str(), "%*d %lf %lf %f %*d %*d %*f %f", &jw.pos.lat, &jw.pos.lon, &jw.hdgt, &jw.length);
             fem::Vec2 dir{cosf((90.0f - jw.hdgt) * kD2R), sinf((90.0f - jw.hdgt) * kD2R)};
             jw.cabin = jw.pos + jw.length * dir;
             jetways.push_back(jw);
@@ -299,12 +292,14 @@ ParseAptDat(const std::string& fn, bool ignore)
         }
 
         // runway
-        // 100 45.11 1 0 0.25 0 2 0  17 -15.64371363 -056.12159961 0 55 3 0 0 0 35 -15.66223638 -056.11174395 0 62 3 0 0 0
+        // 100 45.11 1 0 0.25 0 2 0  17 -15.64371363 -056.12159961 0 55 3 0 0 0 35 -15.66223638 -056.11174395 0 62 3 0 0
+        // 0
         if (line.starts_with("100 ")) {
             AptRunway rwy;
             char name1[10], name2[10];
-			int n = sscanf(line.c_str(), "%*d %f %*d %*d %*f %*d %*d %*d %9s %lf %lf %*f %*f %*d %*d %*d %*d %9s %lf %lf",
-                           &rwy.width, name1, &rwy.end1.lat, &rwy.end1.lon, name2, &rwy.end2.lat, &rwy.end2.lon);
+            int n =
+                sscanf(line.c_str(), "%*d %f %*d %*d %*f %*d %*d %*d %9s %lf %lf %*f %*f %*d %*d %*d %*d %9s %lf %lf",
+                       &rwy.width, name1, &rwy.end1.lat, &rwy.end1.lon, name2, &rwy.end2.lat, &rwy.end2.lon);
             if (n == 7) {
                 rwy.name = std::string(name1) + "/" + std::string(name2);
                 rwy.cl = rwy.end2 - rwy.end1;  // center line vector
@@ -313,13 +308,11 @@ ParseAptDat(const std::string& fn, bool ignore)
                     LogMsg("Runway '%s' too short: %0.1f", rwy.name.c_str(), rwy.len);
                     continue;
                 }
-                rwy.cl = (1/rwy.len) * rwy.cl; // normalize
+                rwy.cl = (1 / rwy.len) * rwy.cl;  // normalize
                 arpt->rwys_.push_back(rwy);
             }
             continue;
         }
-
-
     }
 
     save_arpt();
@@ -327,9 +320,7 @@ ParseAptDat(const std::string& fn, bool ignore)
     return true;
 }
 
-bool
-AptAirport::CollectAirports(const std::string& xp_dir)
-{
+bool AptAirport::CollectAirports(const std::string& xp_dir) {
     const std::clock_t c_start = std::clock();
     auto t_start = std::chrono::high_resolution_clock::now();
 
@@ -342,18 +333,19 @@ AptAirport::CollectAirports(const std::string& xp_dir)
     apt_airports.reserve(5000);
     n_stands = 0;
 
-	for (auto & path : scp.sc_paths) {
-        bool ignore = (std::filesystem::exists(path + "no_autodgs") || std::filesystem::exists(path + "no_autodgs.txt"));
-        if (std::filesystem::exists(path + "sam.xml")
-            && !(std::filesystem::exists(path + "use_autodgs") || std::filesystem::exists(path + "use_autodgs.txt")))
+    for (auto& path : scp.sc_paths) {
+        bool ignore =
+            (std::filesystem::exists(path + "no_autodgs") || std::filesystem::exists(path + "no_autodgs.txt"));
+        if (std::filesystem::exists(path + "sam.xml") &&
+            !(std::filesystem::exists(path + "use_autodgs") || std::filesystem::exists(path + "use_autodgs.txt")))
             ignore = true;
 
         // don't check return code here, maybe meshes etc...
         ParseAptDat(path + "Earth nav data/apt.dat", ignore);
-	}
+    }
 
-    if (!(ParseAptDat(xp_dir + "Global Scenery/Global Airports/Earth nav data/apt.dat", false)      // XP12
-          || ParseAptDat(xp_dir + "Custom Scenery/Global Airports/Earth nav data/apt.dat", false))) // XP11
+    if (!(ParseAptDat(xp_dir + "Global Scenery/Global Airports/Earth nav data/apt.dat", false)       // XP12
+          || ParseAptDat(xp_dir + "Custom Scenery/Global Airports/Earth nav data/apt.dat", false)))  // XP11
         return false;
 
     const std::clock_t c_end = std::clock();
@@ -383,7 +375,6 @@ const AptAirport* AptAirport::LookupAirport(const std::string& airport_id) {
 
 // Locate airport from position -> id
 const std::string AptAirport::LocateAirport(const fem::LLPos& pos) {
-
     for (const auto& [n, a] : apt_airports) {
         if (a->ignore_)
             continue;
@@ -406,10 +397,10 @@ const std::string AptAirport::LocateAirport(const fem::LLPos& pos) {
 #endif
         if (fem::InRect(pos, a->bbox_min_, a->bbox_max_)) {
             LogMsg("Found airport '%s' at %0.8f,%0.8f", n.c_str(), pos.lat, pos.lon);
-            return n;   // found airport, so return id
+            return n;  // found airport, so return id
         }
     }
 
     LogMsg("sorry, %0.8f,%0.8f is not on an AutoDGS airport", pos.lat, pos.lon);
-    return ""; // not found
+    return "";  // not found
 }
