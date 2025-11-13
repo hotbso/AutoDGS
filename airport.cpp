@@ -181,6 +181,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     drawinfo_.heading = as_.hdgt;
     drawinfo_.pitch = drawinfo_.roll = 0.0f;
     vdgs_inst_ref_ = nullptr;
+    pole_base_inst_ref_ = nullptr;
 
     marshaller_max_dist_ = kDgsMaxDist;
 
@@ -196,6 +197,8 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
 Stand::~Stand() {
     if (vdgs_inst_ref_)
         XPLMDestroyInstance(vdgs_inst_ref_);
+    if (pole_base_inst_ref_)
+        XPLMDestroyInstance(pole_base_inst_ref_);
 }
 
 void Stand::SetDgsType(int dgs_type) {
@@ -213,11 +216,18 @@ void Stand::SetDgsType(int dgs_type) {
         if (vdgs_inst_ref_)
             XPLMDestroyInstance(vdgs_inst_ref_);
         vdgs_inst_ref_ = nullptr;
+
+        if (pole_base_inst_ref_)
+            XPLMDestroyInstance(pole_base_inst_ref_);
+        pole_base_inst_ref_ = nullptr;
+
         SetDgsDist();
     } else {
+        static const char* null_dlist[] = {nullptr};
         marshaller = nullptr;
-        SetDgsDist();
         vdgs_inst_ref_ = XPLMCreateInstance(dgs_obj[kVDGS], dgs_dlist_dr);
+        pole_base_inst_ref_ = XPLMCreateInstance(pole_base_obj, null_dlist);
+        SetDgsDist();
         SetIdle();
     }
 }
@@ -358,8 +368,11 @@ void Stand::SetDgsDist() {
     drawinfo_.x = probeinfo.locationX;
     drawinfo_.y = probeinfo.locationY;
     drawinfo_.z = probeinfo.locationZ;
-    if (dgs_type_ == kVDGS)
+    if (dgs_type_ == kVDGS) {
+        assert(pole_base_inst_ref_ != nullptr);
+        XPLMInstanceSetPosition(pole_base_inst_ref_, &drawinfo_, nullptr);
         drawinfo_.y += kVdgsDefaultHeight;
+    }
 }
 
 // adjust may be negative to move it closer

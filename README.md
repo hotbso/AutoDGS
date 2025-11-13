@@ -91,7 +91,9 @@ It's likely that this plane does not use the "beacon" datarefs in a standard way
 [Jonathan Harris (aka Marginal)](https://github.com/Marginal) for creating Autogate\
 [cxn0026](https://forums.x-plane.org/profile/121130-cxn0026) for explaining how Marshallers and VDGS really use guidance signals\
 [Papickx](https://forums.x-plane.org/profile/823983-papickx/) + @cxn0026 for providing better textures and day + night lighting\
-[Pierre](https://github.com/pierr3) for reworking the VDGS model and giving it much more precision and details
+[Pierre](https://github.com/pierr3) for reworking the VDGS model and giving it much more precision and details\
+[Designed by kues1 / Freepik](https://www.freepik.com) for a texture\
+[Designed by Kjpargeter / Freepik](https://www.freepik.com) for a texture
 
 ## License
 Please observe that this project is covered by various licenses.
@@ -100,6 +102,9 @@ Please observe that this project is covered by various licenses.
 -- copy of license remark from https://github.com/Marginal/AutoGate ---\
 The plugin code in the src directory is licensed under the GNU LGPL v2.1 license.\
 The rest of the kit is licensed under the Creative Commons Attribution license. In short, you can use any part of this kit (including the 3D objects and their textures) in original or modified form in a free or commerical scenery package, but you must give the author credit.
+
+### Textures of Freepik
+See https://www.freepik.com
 
 ### Contributions by hotbso:
 This is in parts a derived work from Autogate so the above mentioned licenses apply accordingly to the components of this project.\

@@ -67,7 +67,7 @@ XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 XPLMDataRef vr_enabled_dr, ground_speed_dr;
 static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
-XPLMObjectRef dgs_obj[2];
+XPLMObjectRef dgs_obj[2], pole_base_obj;
 
 float now;           // current timestamp
 int on_ground;
@@ -251,8 +251,7 @@ MenuCb([[maybe_unused]] void *menu_ref, void *item_ref)
 }
 
 // =========================== plugin entry points ===============================================
-PLUGIN_API int
-XPluginStart(char *outName, char *outSig, char *outDesc)
+PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
     strcpy(outName, "AutoDGS " VERSION);
     strcpy(outSig,  "hotbso.AutoDGS");
@@ -304,7 +303,7 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
 
-    // // these are served via instancing
+    // these are served via instancing
     for (int i = 0; i < DGS_DR_NUM; i++)
         XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, GetDgsFloat,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)0, 0);
@@ -335,13 +334,20 @@ XPluginStart(char *outName, char *outSig, char *outDesc)
     }
 
     for (int i = 0; i < 2; i++) {
-        std::string on = base_dir + "/resources/" + obj_name[i];
+        std::string on = base_dir + "resources/" + obj_name[i];
         dgs_obj[i] = XPLMLoadObject(on.c_str());
 
         if (dgs_obj[i] == NULL) {
             LogMsg("error loading obj: %s", on.c_str());
             return 0;
         }
+    }
+
+    std::string on = base_dir + "resources/pole_base.obj";
+    pole_base_obj = XPLMLoadObject(on.c_str());
+    if (pole_base_obj == NULL) {
+        LogMsg("error loading obj: %s", on.c_str());
+        return 0;
     }
 
     // own commands

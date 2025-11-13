@@ -50,7 +50,7 @@ class Stand {
     int dgs_type_;
     bool is_wet_;
     XPLMDrawInfo_t drawinfo_;
-    XPLMInstanceRef vdgs_inst_ref_;
+    XPLMInstanceRef vdgs_inst_ref_, pole_base_inst_ref_;
     float dgs_dist_;            // distance to dgs
     float marshaller_max_dist_; // max distance, actual can be lower according to PE
     void SetDgsDist();

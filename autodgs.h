@@ -135,7 +135,7 @@ extern XPLMDataRef ground_speed_dr;
 extern XPLMCommandRef cycle_dgs_cmdr, move_dgs_closer_cmdr, activate_cmdr,
     toggle_ui_cmdr, toggle_jetway_cmdr;
 extern XPLMProbeRef probe_ref;
-extern XPLMObjectRef dgs_obj[2];
+extern XPLMObjectRef dgs_obj[2], pole_base_obj;
 
 extern opmode_t operation_mode;
 extern float now;           // current timestamp
