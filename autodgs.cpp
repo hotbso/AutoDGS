@@ -380,13 +380,14 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     return 1;
 }
 
-PLUGIN_API void
-XPluginStop(void)
-{
+PLUGIN_API void XPluginStop(void) {
     XPLMUnregisterFlightLoopCallback(FlightLoopCb, NULL);
     for (int i = 0; i < 2; i++)
         if (dgs_obj[i])
             XPLMUnloadObject(dgs_obj[i]);
+
+    if (pole_base_obj)
+        XPLMUnloadObject(pole_base_obj);
 }
 
 PLUGIN_API int
