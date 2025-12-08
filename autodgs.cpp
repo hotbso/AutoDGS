@@ -103,19 +103,14 @@ const char *dgs_dlist_dr[] = {
 
 static float time_utc_m0, time_utc_m1, time_utc_h0, time_utc_h1, vdgs_brightness;
 
-static float FlightLoopCb(float inElapsedSinceLastCall,
-               float inElapsedTimeSinceLastFlightLoop, int inCounter,
-               void *inRefcon);
+static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter,
+                          void* inRefcon);
 
-static XPLMCreateFlightLoop_t flight_loop_ctx = {
-    sizeof(XPLMCreateFlightLoop_t),
-    xplm_FlightLoop_Phase_BeforeFlightModel,
-    FlightLoopCb,
-    nullptr
-};
+static XPLMCreateFlightLoop_t flight_loop_ctx = {sizeof(XPLMCreateFlightLoop_t),
+                                                 xplm_FlightLoop_Phase_BeforeFlightModel, FlightLoopCb, nullptr};
 
 static XPLMFlightLoopID flight_loop_id;
-static bool pending_plane_loaded_cb = false;    // delayed init
+static bool pending_plane_loaded_cb = false;  // delayed init
 
 //------------------------------------------------------------------------------------
 
@@ -152,20 +147,15 @@ void Activate(void) {
 }
 
 // Dataref accessor, only called for the _utc_ datarefs
-static float
-GetDgsFloat(void *ref)
-{
+static float GetDgsFloat(void* ref) {
     if (ref == nullptr)
         return -1.0f;
 
-    return *(float *)ref;
+    return *(float*)ref;
 }
 
-static float
-FlightLoopCb(float inElapsedSinceLastCall,
-               float inElapsedTimeSinceLastFlightLoop, int inCounter,
-               void *inRefcon)
-{
+static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter,
+                          void* inRefcon) {
     static float on_ground_ts;  // debounce ground contact
 
     try {
@@ -201,8 +191,9 @@ FlightLoopCb(float inElapsedSinceLastCall,
             loop_delay = arpt->StateMachine();
 
         // update global dataref values
-        static constexpr float min_brightness = 0.025;   // relative to 1
-        vdgs_brightness = min_brightness + (1.0f - min_brightness) * std::pow(1.0f - XPLMGetDataf(percent_lights_dr), 1.7f);
+        static constexpr float min_brightness = 0.025;  // relative to 1
+        vdgs_brightness =
+            min_brightness + (1.0f - min_brightness) * std::pow(1.0f - XPLMGetDataf(percent_lights_dr), 1.7f);
         int zm = XPLMGetDatai(zulu_time_minutes_dr);
         int zh = XPLMGetDatai(zulu_time_hours_dr);
         time_utc_m0 = zm % 10;
@@ -219,9 +210,7 @@ FlightLoopCb(float inElapsedSinceLastCall,
 }
 
 // call backs for commands
-static int
-CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
-{
+static int CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void* ref) {
     if (xplm_CommandBegin != phase)
         return 0;
 
@@ -244,17 +233,14 @@ CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void *ref)
 }
 
 // call back for menu
-static void
-MenuCb([[maybe_unused]] void *menu_ref, void *item_ref)
-{
-    XPLMCommandOnce(*(XPLMCommandRef *)item_ref);
+static void MenuCb([[maybe_unused]] void* menu_ref, void* item_ref) {
+    XPLMCommandOnce(*(XPLMCommandRef*)item_ref);
 }
 
 // =========================== plugin entry points ===============================================
-PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
-{
+PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     strcpy(outName, "AutoDGS " VERSION);
-    strcpy(outSig,  "hotbso.AutoDGS");
+    strcpy(outSig, "hotbso.AutoDGS");
     strcpy(outDesc, "Automatically provides DGS for gateway airports");
 
     LogMsg("startup " VERSION);
@@ -263,7 +249,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
     char buffer[2048];
-	XPLMGetSystemPath(buffer);
+    XPLMGetSystemPath(buffer);
     xp_dir = std::string(buffer);
 
     // set plugin's base dir
@@ -278,51 +264,51 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
     }
 
     // Datarefs
-    xp_version_dr     = XPLMFindDataRef("sim/version/xplane_internal_version");
-    plane_x_dr        = XPLMFindDataRef("sim/flightmodel/position/local_x");
-    plane_y_dr        = XPLMFindDataRef("sim/flightmodel/position/local_y");
-    plane_z_dr        = XPLMFindDataRef("sim/flightmodel/position/local_z");
-    gear_fnrml_dr     = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
-    plane_lat_dr      = XPLMFindDataRef("sim/flightmodel/position/latitude");
-    plane_lon_dr      = XPLMFindDataRef("sim/flightmodel/position/longitude");
-    plane_elevation_dr= XPLMFindDataRef("sim/flightmodel/position/elevation");
+    xp_version_dr = XPLMFindDataRef("sim/version/xplane_internal_version");
+    plane_x_dr = XPLMFindDataRef("sim/flightmodel/position/local_x");
+    plane_y_dr = XPLMFindDataRef("sim/flightmodel/position/local_y");
+    plane_z_dr = XPLMFindDataRef("sim/flightmodel/position/local_z");
+    gear_fnrml_dr = XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear");
+    plane_lat_dr = XPLMFindDataRef("sim/flightmodel/position/latitude");
+    plane_lon_dr = XPLMFindDataRef("sim/flightmodel/position/longitude");
+    plane_elevation_dr = XPLMFindDataRef("sim/flightmodel/position/elevation");
     plane_true_psi_dr = XPLMFindDataRef("sim/flightmodel2/position/true_psi");
-    parkbrake_dr      = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
-    beacon_dr         = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
-    eng_running_dr    = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running");
-    acf_icao_dr       = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
-    acf_cg_y_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
-    acf_cg_z_dr       = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
-    gear_z_dr         = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
-    is_helicopter_dr  = XPLMFindDataRef("sim/aircraft2/metadata/is_helicopter");
-    y_agl_dr          = XPLMFindDataRef("sim/flightmodel2/position/y_agl");
+    parkbrake_dr = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
+    beacon_dr = XPLMFindDataRef("sim/cockpit2/switches/beacon_on");
+    eng_running_dr = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running");
+    acf_icao_dr = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    acf_cg_y_dr = XPLMFindDataRef("sim/aircraft/weight/acf_cgY_original");
+    acf_cg_z_dr = XPLMFindDataRef("sim/aircraft/weight/acf_cgZ_original");
+    gear_z_dr = XPLMFindDataRef("sim/aircraft/parts/acf_gear_znodef");
+    is_helicopter_dr = XPLMFindDataRef("sim/aircraft2/metadata/is_helicopter");
+    y_agl_dr = XPLMFindDataRef("sim/flightmodel2/position/y_agl");
     total_running_time_sec_dr = XPLMFindDataRef("sim/time/total_running_time_sec");
     percent_lights_dr = XPLMFindDataRef("sim/graphics/scenery/percent_lights_on");
-    sin_wave_dr       = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
-    ground_speed_dr   = XPLMFindDataRef("sim/flightmodel/position/groundspeed");
+    sin_wave_dr = XPLMFindDataRef("sim/graphics/animation/sin_wave_2");
+    ground_speed_dr = XPLMFindDataRef("sim/flightmodel/position/groundspeed");
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
 
     // these are served via instancing
     for (int i = 0; i < DGS_DR_NUM; i++)
-        XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                                 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (void *)0, 0);
+        XPLMRegisterDataAccessor(dgs_dlist_dr[i], xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL, NULL, NULL,
+                                 NULL, NULL, NULL, NULL, NULL, (void*)0, 0);
 
     // these are served globally
-    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m0, 0);
-    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m1, 0);
-    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h0", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h0, 0);
-    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h1", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h1, 0);
-    XPLMRegisterDataAccessor("AutoDGS/dgs/vdgs_brightness", xplmType_Float, 0, NULL, NULL, GetDgsFloat,
-                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &vdgs_brightness, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m0", xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m0, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_m1", xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_m1, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h0", xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h0, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/time_utc_h1", xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, &time_utc_h1, 0);
+    XPLMRegisterDataAccessor("AutoDGS/dgs/vdgs_brightness", xplmType_Float, 0, NULL, NULL, GetDgsFloat, NULL, NULL,
+                             NULL, NULL, NULL, NULL, NULL, NULL, NULL, &vdgs_brightness, 0);
 
     create_api_drefs();
     int is_XP11 = (XPLMGetDatai(xp_version_dr) < 120000);
-    const char *obj_name[2];
+    const char* obj_name[2];
 
     if (is_XP11) {
         LogMsg("XP11 detected");
@@ -390,28 +376,22 @@ PLUGIN_API void XPluginStop(void) {
         XPLMUnloadObject(pole_base_obj);
 }
 
-PLUGIN_API int
-XPluginEnable(void)
-{
+PLUGIN_API int XPluginEnable(void) {
     if (error_disabled)
         return 0;
 
     probe_ref = XPLMCreateProbe(xplm_ProbeY);
-    UpdateUI(false);     // in case we reenable
+    UpdateUI(false);  // in case we reenable
     return 1;
 }
 
-PLUGIN_API void
-XPluginDisable(void)
-{
+PLUGIN_API void XPluginDisable(void) {
     arpt = nullptr;
     if (probe_ref)
         XPLMDestroyProbe(probe_ref);
 }
 
-PLUGIN_API void
-XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *in_param)
-{
+PLUGIN_API void XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void* in_param) {
     if (error_disabled)
         return;
 
@@ -422,6 +402,6 @@ XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, long in_msg, void *
         on_ground = 0;
         XPLMScheduleFlightLoop(flight_loop_id, 0, 0);
         pending_plane_loaded_cb = true;
-        XPLMScheduleFlightLoop(flight_loop_id, 15.0, 1);    // let the dust settle
+        XPLMScheduleFlightLoop(flight_loop_id, 15.0, 1);  // let the dust settle
     }
 }
