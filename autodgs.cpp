@@ -63,7 +63,7 @@ XPLMDataRef plane_x_dr, plane_y_dr, plane_z_dr, is_helicopter_dr, y_agl_dr;
 XPLMDataRef plane_lat_dr, plane_lon_dr, plane_elevation_dr, plane_true_psi_dr;
 XPLMDataRef gear_fnrml_dr, acf_cg_y_dr, acf_cg_z_dr, gear_z_dr;
 XPLMDataRef beacon_dr, parkbrake_dr, acf_icao_dr, total_running_time_sec_dr;
-XPLMDataRef percent_lights_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
+XPLMDataRef percent_lights_dr, ev100_dr, xp_version_dr, eng_running_dr, sin_wave_dr;
 XPLMDataRef vr_enabled_dr, ground_speed_dr;
 static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
@@ -191,10 +191,28 @@ static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSince
             loop_delay = arpt->StateMachine();
 
         // update global dataref values
-        static constexpr float min_brightness = 0.025;  // relative to 1
-        vdgs_brightness =
-            min_brightness + (1.0f - min_brightness) * std::pow(1.0f - XPLMGetDataf(percent_lights_dr), 6.0f);
 
+        // brightness for VDGS
+        static constexpr float min_brightness = 0.025;  // relative to 1
+
+        if (ev100_dr) {
+            // if ev100 is available, we use it to set brightness
+            static constexpr float kMinEv100 = 6.0f;
+            static constexpr float kMaxEv100 = 11.0f;
+            float ev100 = XPLMGetDataf(ev100_dr);
+            ev100 = std::clamp(ev100, kMinEv100, kMaxEv100);
+            const float f = (ev100 - kMinEv100) / (kMaxEv100 - kMinEv100);
+            // ev100 is logarithmic and vdgs_brightness linear, so we use exp here
+            const float exp_f = (std::exp(f) - 1.0f) / (std::exp(1.0f) - 1.0f);
+            vdgs_brightness = min_brightness + (1.0f - min_brightness) * exp_f;
+            // LogMsg("ev100: %0.2f, vdgs_brightness: %0.3f", ev100, vdgs_brightness);
+        } else {
+            // fallback: use percent_lights_on
+            vdgs_brightness =
+                min_brightness + (1.0f - min_brightness) * std::pow(1.0f - XPLMGetDataf(percent_lights_dr), 6.0f);
+        }
+
+        // UTC time digits
         int zm = XPLMGetDatai(zulu_time_minutes_dr);
         int zh = XPLMGetDatai(zulu_time_hours_dr);
         time_utc_m0 = zm % 10;
@@ -404,5 +422,15 @@ PLUGIN_API void XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, lon
         XPLMScheduleFlightLoop(flight_loop_id, 0, 0);
         pending_plane_loaded_cb = true;
         XPLMScheduleFlightLoop(flight_loop_id, 15.0, 1);  // let the dust settle
+        return;
+    }
+
+    if (in_msg == XPLM_MSG_SCENERY_LOADED) {
+        // private datarefs are usually intialized late
+        if (ev100_dr == nullptr) {
+            ev100_dr = XPLMFindDataRef("sim/private/controls/photometric/ev100");
+            if (ev100_dr)
+                LogMsg("ev100 dataref mapped");
+        }
     }
 }
