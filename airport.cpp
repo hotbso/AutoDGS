@@ -163,18 +163,6 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     if (display_name_.length() > kR1Nchar)
         display_name_.clear();  // give up
 
-    double x, y, z;
-    XPLMWorldToLocal(as_.lat, as_.lon, elevation, &x, &y, &z);
-
-    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
-    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
-        throw std::runtime_error("XPLMProbeTerrainXYZ failed");
-
-    is_wet_ = probeinfo.is_wet;
-    x_ = probeinfo.locationX;
-    y_ = probeinfo.locationY;
-    z_ = probeinfo.locationZ;
-
     sin_hdgt_ = sinf(kD2R * as_.hdgt);
     cos_hdgt_ = cosf(kD2R * as_.hdgt);
     drawinfo_.structSize = sizeof(drawinfo_);
@@ -186,6 +174,11 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     marshaller_max_dist_ = kDgsMaxDist;
 
     dgs_dist_ = dgs_dist;
+
+    // determine local coords
+    xyz_ref_gen_ = -1;  // force update
+    UpdateXYZ();
+
     dgs_type_ = -1;  // invalidate to ensure that SetDgsType's code does something
     SetDgsType(dgs_type);
 
@@ -199,6 +192,42 @@ Stand::~Stand() {
         XPLMDestroyInstance(vdgs_inst_ref_);
     if (pole_base_inst_ref_)
         XPLMDestroyInstance(pole_base_inst_ref_);
+}
+
+// set x_, y_, z_, drawinfo_ from as_.lon, as_.lat in the current reference frame
+void Stand::UpdateXYZ() {
+    XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
+
+    if (xyz_ref_gen_ != ref_gen) {
+        xyz_ref_gen_ = ref_gen;
+        double x, y, z;
+        XPLMWorldToLocal(as_.lat, as_.lon, 0.0, &x, &y, &z);
+
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
+            throw std::runtime_error("XPLMProbeTerrainXYZ 1 failed");
+
+        is_wet_ = probeinfo.is_wet;
+        x_ = probeinfo.locationX;
+        y_ = probeinfo.locationY;
+        z_ = probeinfo.locationZ;
+        drawinfo_dgs_dist_ = -1.0f;  // force update
+    }
+
+    // change of dgs_dist_ requires update of drawinfo_
+    if (drawinfo_dgs_dist_ != dgs_dist_) {
+        drawinfo_dgs_dist_ = dgs_dist_;
+
+        // xform vector (0, -dgs_dist) into global frame
+        float x = x_ + -sin_hdgt_ * (-dgs_dist_);
+        float z = z_ +  cos_hdgt_ * (-dgs_dist_);
+
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y_, z, &probeinfo))
+            throw std::runtime_error("XPLMProbeTerrainXYZ 2 failed");
+
+        drawinfo_.x = probeinfo.locationX;
+        drawinfo_.y = probeinfo.locationY;
+        drawinfo_.z = probeinfo.locationZ;
+    }
 }
 
 void Stand::SetDgsType(int dgs_type) {
@@ -273,7 +302,10 @@ void Stand::SetState(int status, int track, int lr, float xtrack, float distance
         for (int i = 0; i < 4; i++)
             drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
+    const float y_0 = drawinfo_.y;
+    drawinfo_.y += kVdgsDefaultHeight;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    drawinfo_.y = y_0;
 }
 
 float Stand::SetState(int pax_no) {
@@ -306,7 +338,10 @@ float Stand::SetState(int pax_no) {
             drefs[DGS_DR_PAXNO_0 + i] = pn[i];
     }
 
+    const float y_0 = drawinfo_.y;
+    drawinfo_.y += kVdgsDefaultHeight;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    drawinfo_.y = y_0;
     return delay;
 }
 
@@ -325,7 +360,10 @@ void Stand::SetIdle() {
         drefs[DGS_DR_R1C0 + i] = display_name_[i];
     drefs[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
 
+    const float y_0 = drawinfo_.y;
+    drawinfo_.y += kVdgsDefaultHeight;
     XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    drawinfo_.y = y_0;
 }
 
 // compute the DGS position
@@ -358,20 +396,11 @@ void Stand::SetDgsDist() {
         dgs_dist_ = std::min(marshaller_pe_dist, dgs_dist_);
     }
 
-    // xform vector (0, -dgs_dist) into global frame
-    float x = x_ + -sin_hdgt_ * (-dgs_dist_);
-    float z = z_ +  cos_hdgt_ * (-dgs_dist_);
+    UpdateXYZ();
 
-    if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y_, z, &probeinfo))
-        throw std::runtime_error("XPLMProbeTerrainXYZ failed");
-
-    drawinfo_.x = probeinfo.locationX;
-    drawinfo_.y = probeinfo.locationY;
-    drawinfo_.z = probeinfo.locationZ;
     if (dgs_type_ == kVDGS) {
         assert(pole_base_inst_ref_ != nullptr);
         XPLMInstanceSetPosition(pole_base_inst_ref_, &drawinfo_, nullptr);
-        drawinfo_.y += kVdgsDefaultHeight;
     }
 }
 
@@ -393,6 +422,8 @@ const char* const Airport::state_str[] = {"INACTIVE", "DEPARTURE", "BOARDING", "
 void LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::tuple<int, float>>& cfg);
 
 Airport::Airport(const AptAirport& apt_airport) {
+    CheckRefFrameShift();   // ensure ref_gen is up to date
+
     name_ = apt_airport.icao_;
     stands_.reserve(apt_airport.stands_.size());
     float arpt_elevation = XPLMGetDataf(plane_elevation_dr);  // best guess
@@ -587,9 +618,11 @@ void Airport::FindNearestStand() {
         min_stand = selected_stand_;
     } else {
         for (int i = 0; i < (int)stands_.size(); i++) {
-            const Stand& s = stands_[i];
+            Stand& s = stands_[i];
             if (s.is_wet_)
                 continue;
+
+            s.UpdateXYZ();
 
             // heading in local system
             float local_hdgt = fem::RA(plane_hdgt - s.hdgt());
@@ -654,7 +687,7 @@ void Airport::FindNearestStand() {
 
     if (min_stand >= 0 && min_stand != active_stand_) {
         Stand& ms = stands_[min_stand];
-        LogMsg("stand: %s, lat: %f, lon: %f, hdgt: %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
+        LogMsg("active stand now: %s, lat,lon: %f, %f, hdgt: %f, dist: %f", ms.cname(), ms.lat(), ms.lon(), ms.hdgt(), dist);
 
         if (active_stand_ >= 0)
             stands_[active_stand_].SetIdle();
@@ -676,12 +709,14 @@ int Airport::FindDepartureStand() {
     float nw_x = plane_x + plane.nw_z * sinf(kD2R * plane_hdgt);
 
     for (int i = 0; i < (int)stands_.size(); i++) {
-        const Stand& s = stands_[i];
+        Stand& s = stands_[i];
         if (s.dgs_type_ != kVDGS)
             continue;
 
         if (fabsf(fem::RA(plane_hdgt - s.hdgt())) > 3.0f)
             continue;
+
+        s.UpdateXYZ();
 
         float dx = nw_x - s.x_;
         float dz = nw_z - s.z_;
@@ -697,6 +732,8 @@ int Airport::FindDepartureStand() {
 float Airport::StateMachine() {
     if (error_disabled)
         return 0.0f;
+
+    CheckRefFrameShift();   // ensure ref_gen is up to date
 
     state_t state_prev = state_;
 
@@ -809,6 +846,8 @@ float Airport::StateMachine() {
 
     Stand& as = stands_[active_stand_];
 
+    as.UpdateXYZ();
+
     // xform plane pos into stand local coordinate system
     float dx = XPLMGetDataf(plane_x_dr) - as.x_;
     float dz = XPLMGetDataf(plane_z_dr) - as.z_;
@@ -848,7 +887,7 @@ float Airport::StateMachine() {
     distance_ = nw_z;
     bool slow = false;
 
-   // set drefs according to *current* state
+    // set drefs according to *current* state
     switch (state_) {
         case ENGAGED:
             if (beacon_on) {

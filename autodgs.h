@@ -141,6 +141,9 @@ extern opmode_t operation_mode;
 extern float now;           // current timestamp
 extern int on_ground;
 
+void CheckRefFrameShift();
+extern int ref_gen;
+
 extern void create_api_drefs();
 extern void ToggleUI(void);
 extern void UpdateUI(bool only_if_visible = true);

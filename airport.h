@@ -45,16 +45,23 @@ class Stand {
   protected:
     friend class Airport;
 
+    int xyz_ref_gen_;          // reference frame generation number
     float x_, y_, z_;
+
     float sin_hdgt_, cos_hdgt_;
     int dgs_type_;
     bool is_wet_;
+
+    float drawinfo_dgs_dist_;  // last dgs_dist_ used in drawinfo_
     XPLMDrawInfo_t drawinfo_;
+
     XPLMInstanceRef vdgs_inst_ref_, pole_base_inst_ref_;
     float dgs_dist_;            // distance to dgs
     float marshaller_max_dist_; // max distance, actual can be lower according to PE
-    void SetDgsDist();
     std::unique_ptr<ScrollTxt> scroll_txt_;
+
+    void UpdateXYZ();      // x_, y_, z_ from as_.lon, as_.lat, reference frame
+    void SetDgsDist();
 
   public:
     Stand(Stand&&) = default;

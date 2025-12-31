@@ -69,6 +69,11 @@ static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
 XPLMObjectRef dgs_obj[2], pole_base_obj;
 
+// track reference frame generation number
+static XPLMDataRef lat_ref_dr, lon_ref_dr;
+static float lat_ref, lon_ref;
+int ref_gen = 1;
+
 float now;           // current timestamp
 int on_ground;
 
@@ -256,6 +261,20 @@ static void MenuCb([[maybe_unused]] void* menu_ref, void* item_ref) {
     XPLMCommandOnce(*(XPLMCommandRef*)item_ref);
 }
 
+// check for shift of reference frame
+void CheckRefFrameShift() {
+    // check for shift of reference frame
+    float lat_r = XPLMGetDataf(lat_ref_dr);
+    float lon_r = XPLMGetDataf(lon_ref_dr);
+
+    if (lat_r != lat_ref || lon_r != lon_ref) {
+        lat_ref = lat_r;
+        lon_ref = lon_r;
+        ref_gen++;
+        LogMsg("reference frame shift");
+    }
+}
+
 // =========================== plugin entry points ===============================================
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     strcpy(outName, "AutoDGS " VERSION);
@@ -307,6 +326,8 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     ground_speed_dr = XPLMFindDataRef("sim/flightmodel/position/groundspeed");
     zulu_time_minutes_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_minutes");
     zulu_time_hours_dr = XPLMFindDataRef("sim/cockpit2/clock_timer/zulu_time_hours");
+    lat_ref_dr = XPLMFindDataRef("sim/flightmodel/position/lat_ref");
+    lon_ref_dr = XPLMFindDataRef("sim/flightmodel/position/lon_ref");
 
     // these are served via instancing
     for (int i = 0; i < DGS_DR_NUM; i++)
