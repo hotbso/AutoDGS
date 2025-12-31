@@ -45,7 +45,8 @@ class Stand {
   protected:
     friend class Airport;
 
-    int xyz_ref_gen_;          // reference frame generation number
+    float elevation_;      // ground elevation of stand [m] (estimate from plane at touchdown)
+    int xyz_ref_gen_;      // reference frame generation number
     float x_, y_, z_;
 
     float sin_hdgt_, cos_hdgt_;

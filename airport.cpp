@@ -163,6 +163,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     if (display_name_.length() > kR1Nchar)
         display_name_.clear();  // give up
 
+    elevation_ = elevation;
     sin_hdgt_ = sinf(kD2R * as_.hdgt);
     cos_hdgt_ = cosf(kD2R * as_.hdgt);
     drawinfo_.structSize = sizeof(drawinfo_);
@@ -201,7 +202,7 @@ void Stand::UpdateXYZ() {
     if (xyz_ref_gen_ != ref_gen) {
         xyz_ref_gen_ = ref_gen;
         double x, y, z;
-        XPLMWorldToLocal(as_.lat, as_.lon, 0.0, &x, &y, &z);
+        XPLMWorldToLocal(as_.lat, as_.lon, elevation_, &x, &y, &z);
 
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
             throw std::runtime_error("XPLMProbeTerrainXYZ 1 failed");
