@@ -79,11 +79,13 @@ static std::unique_ptr<Marshaller> marshaller;
 
 class Marshaller {
     XPLMInstanceRef inst_ref_;
+    float drefs_[DGS_DR_NUM];
 
   public:
     Marshaller();
     ~Marshaller();
     void SetPos(const XPLMDrawInfo_t *drawinfo, int status, int track, int lr, float distance);
+    void SetPos(const XPLMDrawInfo_t *drawinfo);    // move to new position only
 };
 
 //------------------------------------------------------------------------------------
@@ -97,12 +99,16 @@ Marshaller::~Marshaller() {
 }
 
 void Marshaller::SetPos(const XPLMDrawInfo_t* drawinfo, int status, int track, int lr, float distance) {
-    float drefs[DGS_DR_NUM]{};
-    drefs[DGS_DR_STATUS] = status;
-    drefs[DGS_DR_DISTANCE] = distance;
-    drefs[DGS_DR_TRACK] = track;
-    drefs[DGS_DR_LR] = lr;
-    XPLMInstanceSetPosition(inst_ref_, drawinfo, drefs);
+    memset(drefs_, 0, sizeof(drefs_));
+    drefs_[DGS_DR_STATUS] = status;
+    drefs_[DGS_DR_DISTANCE] = distance;
+    drefs_[DGS_DR_TRACK] = track;
+    drefs_[DGS_DR_LR] = lr;
+    SetPos(drawinfo);
+}
+
+void Marshaller::SetPos(const XPLMDrawInfo_t* drawinfo) {
+    XPLMInstanceSetPosition(inst_ref_, drawinfo, drefs_);
 }
 
 //------------------------------------------------------------------------------------
@@ -177,7 +183,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     dgs_dist_ = dgs_dist;
 
     // determine local coords
-    xyz_ref_gen_ = -1;  // force update
+    ref_gen_ = -1;  // force update
     UpdateXYZ();
 
     dgs_type_ = -1;  // invalidate to ensure that SetDgsType's code does something
@@ -199,8 +205,8 @@ Stand::~Stand() {
 void Stand::UpdateXYZ() {
     XPLMProbeInfo_t probeinfo = {.structSize = sizeof(XPLMProbeInfo_t)};
 
-    if (xyz_ref_gen_ != ref_gen) {
-        xyz_ref_gen_ = ref_gen;
+    if (ref_gen_ != ref_gen) {
+        ref_gen_ = ref_gen;
         double x, y, z;
         XPLMWorldToLocal(as_.lat, as_.lon, elevation_, &x, &y, &z);
 
@@ -285,27 +291,27 @@ void Stand::SetState(int status, int track, int lr, float xtrack, float distance
 
     distance = ((float)((int)((distance) * 2))) / 2;  // multiple of 0.5m
 
-    float drefs[DGS_DR_NUM]{};
-    drefs[DGS_DR_STATUS] = status;
-    drefs[DGS_DR_TRACK] = track;
-    drefs[DGS_DR_DISTANCE] = distance;
-    drefs[DGS_DR_DISTANCE_0] = d_0;
-    drefs[DGS_DR_DISTANCE_01] = d_01;
-    drefs[DGS_DR_XTRACK] = xtrack;
-    drefs[DGS_DR_LR] = lr;
+    memset(drefs_, 0, sizeof(drefs_));
+    drefs_[DGS_DR_STATUS] = status;
+    drefs_[DGS_DR_TRACK] = track;
+    drefs_[DGS_DR_DISTANCE] = distance;
+    drefs_[DGS_DR_DISTANCE_0] = d_0;
+    drefs_[DGS_DR_DISTANCE_01] = d_01;
+    drefs_[DGS_DR_XTRACK] = xtrack;
+    drefs_[DGS_DR_LR] = lr;
 
     if (slow) {
-        drefs[DGS_DR_ICAO_0] = 'S';
-        drefs[DGS_DR_ICAO_1] = 'L';
-        drefs[DGS_DR_ICAO_2] = 'O';
-        drefs[DGS_DR_ICAO_3] = 'W';
+        drefs_[DGS_DR_ICAO_0] = 'S';
+        drefs_[DGS_DR_ICAO_1] = 'L';
+        drefs_[DGS_DR_ICAO_2] = 'O';
+        drefs_[DGS_DR_ICAO_3] = 'W';
     } else
         for (int i = 0; i < 4; i++)
-            drefs[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
+            drefs_[DGS_DR_ICAO_0 + i] = (int)plane.acf_icao[i];
 
     const float y_0 = drawinfo_.y;
     drawinfo_.y += kVdgsDefaultHeight;
-    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs_);
     drawinfo_.y = y_0;
 }
 
@@ -314,16 +320,16 @@ float Stand::SetState(int pax_no) {
 
     float delay = 1.0f;
 
-    float drefs[DGS_DR_NUM]{};
+    memset(drefs_, 0, sizeof(drefs_));
 
     if (scroll_txt_) {
-        scroll_txt_->Tick(drefs);
+        scroll_txt_->Tick(drefs_);
         delay = 0.05f;
     } else {
         int n = display_name_.length();
         for (int i = 0; i < n; i++)
-            drefs[DGS_DR_R1C0 + i] = display_name_[i];
-        drefs[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
+            drefs_[DGS_DR_R1C0 + i] = display_name_[i];
+        drefs_[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
     }
 
     if (pax_no > 0) {
@@ -334,14 +340,14 @@ float Stand::SetState(int pax_no) {
             if (pax_no == 0)
                 break;
         }
-        drefs[DGS_DR_BOARDING] = 1;
+        drefs_[DGS_DR_BOARDING] = 1;
         for (int i = 0; i < 3; i++)
-            drefs[DGS_DR_PAXNO_0 + i] = pn[i];
+            drefs_[DGS_DR_PAXNO_0 + i] = pn[i];
     }
 
     const float y_0 = drawinfo_.y;
     drawinfo_.y += kVdgsDefaultHeight;
-    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs_);
     drawinfo_.y = y_0;
     return delay;
 }
@@ -354,16 +360,16 @@ void Stand::SetIdle() {
 
     scroll_txt_ = nullptr;
 
-    float drefs[DGS_DR_NUM]{};
+    memset(drefs_, 0, sizeof(drefs_));
 
     int n = display_name_.length();
     for (int i = 0; i < n; i++)
-        drefs[DGS_DR_R1C0 + i] = display_name_[i];
-    drefs[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
+        drefs_[DGS_DR_R1C0 + i] = display_name_[i];
+    drefs_[DGS_DR_R1_SCROLL] = (5 * 16 - (n * 12 - 2)) / 2;  // center
 
     const float y_0 = drawinfo_.y;
     drawinfo_.y += kVdgsDefaultHeight;
-    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs);
+    XPLMInstanceSetPosition(vdgs_inst_ref_, &drawinfo_, drefs_);
     drawinfo_.y = y_0;
 }
 
@@ -424,6 +430,7 @@ void LoadCfg(const std::string& pathname, std::unordered_map<std::string, std::t
 
 Airport::Airport(const AptAirport& apt_airport) {
     CheckRefFrameShift();   // ensure ref_gen is up to date
+    ref_gen_ = ref_gen;
 
     name_ = apt_airport.icao_;
     stands_.reserve(apt_airport.stands_.size());
@@ -623,8 +630,6 @@ void Airport::FindNearestStand() {
             if (s.is_wet_)
                 continue;
 
-            s.UpdateXYZ();
-
             // heading in local system
             float local_hdgt = fem::RA(plane_hdgt - s.hdgt());
 
@@ -717,8 +722,6 @@ int Airport::FindDepartureStand() {
         if (fabsf(fem::RA(plane_hdgt - s.hdgt())) > 3.0f)
             continue;
 
-        s.UpdateXYZ();
-
         float dx = nw_x - s.x_;
         float dz = nw_z - s.z_;
         // LogMsg("stand: %s, z: %2.1f, x: %2.1f", s.cname(), dz, dx);
@@ -735,6 +738,25 @@ float Airport::StateMachine() {
         return 0.0f;
 
     CheckRefFrameShift();   // ensure ref_gen is up to date
+    if (ref_gen_ != ref_gen) {
+        ref_gen_ = ref_gen;
+        LogMsg("reference frame changed, moving all instances");
+        for (auto& s : stands_) {
+            s.UpdateXYZ();
+            if (s.dgs_type_ == kVDGS) {
+                assert(s.pole_base_inst_ref_);
+                XPLMInstanceSetPosition(s.pole_base_inst_ref_, &s.drawinfo_, nullptr);
+                float y_0 = s.drawinfo_.y;
+                s.drawinfo_.y += kVdgsDefaultHeight;
+                XPLMInstanceSetPosition(s.vdgs_inst_ref_, &s.drawinfo_, s.drefs_);
+                s.drawinfo_.y = y_0;
+            } else {
+                // marshaller
+                if (marshaller)
+                    marshaller->SetPos(&s.drawinfo_);
+            }
+        }
+    }
 
     state_t state_prev = state_;
 
@@ -847,15 +869,13 @@ float Airport::StateMachine() {
 
     Stand& as = stands_[active_stand_];
 
-    as.UpdateXYZ();
-
     // xform plane pos into stand local coordinate system
     float dx = XPLMGetDataf(plane_x_dr) - as.x_;
     float dz = XPLMGetDataf(plane_z_dr) - as.z_;
     float local_x =  as.cos_hdgt_ * dx + as.sin_hdgt_ * dz;
     float local_z = -as.sin_hdgt_ * dx + as.cos_hdgt_ * dz;
 
-    // relative reading to stand +/- 180
+    // relative heading in stand local system +/ 180°
     float local_hdgt = fem::RA(XPLMGetDataf(plane_true_psi_dr) - as.hdgt());
 
     // nose wheel

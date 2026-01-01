@@ -46,7 +46,7 @@ class Stand {
     friend class Airport;
 
     float elevation_;      // ground elevation of stand [m] (estimate from plane at touchdown)
-    int xyz_ref_gen_;      // reference frame generation number
+    int ref_gen_;          // reference frame generation number
     float x_, y_, z_;
 
     float sin_hdgt_, cos_hdgt_;
@@ -55,8 +55,9 @@ class Stand {
 
     float drawinfo_dgs_dist_;  // last dgs_dist_ used in drawinfo_
     XPLMDrawInfo_t drawinfo_;
-
+    float drefs_[DGS_DR_NUM];
     XPLMInstanceRef vdgs_inst_ref_, pole_base_inst_ref_;
+
     float dgs_dist_;            // distance to dgs
     float marshaller_max_dist_; // max distance, actual can be lower according to PE
     std::unique_ptr<ScrollTxt> scroll_txt_;
@@ -100,6 +101,8 @@ class Airport {
     static const char * const state_str[];
 
   private:
+    int ref_gen_;    // reference frame generation number
+
     std::string name_;
     state_t state_;
 
@@ -135,7 +138,7 @@ class Airport {
     void ResetState(state_t new_state);
     void SetSelectedStand(int selected_stand);
 
-    // these act onto the selected of active stand
+    // these act onto the selected or active stand
     void DgsMoveCloser();
     void SetDgsType(int dgs_type);
     int GetDgsType() const;
