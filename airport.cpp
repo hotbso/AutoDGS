@@ -151,6 +151,8 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
         display_name_ = asn.substr(6);
     else if (asn.starts_with("Gate"))
         display_name_ = asn.substr(5);
+    else if (asn.starts_with("Ramp"))
+        display_name_ = asn.substr(5);
     else
         display_name_ = as_.name;
 
