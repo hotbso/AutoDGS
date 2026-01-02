@@ -207,11 +207,19 @@ void Stand::UpdateXYZ() {
 
     if (ref_gen_ != ref_gen) {
         ref_gen_ = ref_gen;
-        double x, y, z;
+        double x, y, z, lat, lon;
         XPLMWorldToLocal(as_.lat, as_.lon, elevation_, &x, &y, &z);
 
         if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
             throw std::runtime_error("XPLMProbeTerrainXYZ 1 failed");
+
+        // On the first pass elevation is only an estimate so we iterate.
+        // It makes a difference on higher elevation airports like LOWI.
+        XPLMLocalToWorld(probeinfo.locationX, probeinfo.locationY, probeinfo.locationZ, &lat, &lon, &elevation_);
+        XPLMWorldToLocal(as_.lat, as_.lon, elevation_, &x, &y, &z);
+
+        if (xplm_ProbeHitTerrain != XPLMProbeTerrainXYZ(probe_ref, x, y, z, &probeinfo))
+            throw std::runtime_error("XPLMProbeTerrainXYZ 1a failed");
 
         is_wet_ = probeinfo.is_wet;
         x_ = probeinfo.locationX;

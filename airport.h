@@ -45,7 +45,7 @@ class Stand {
   protected:
     friend class Airport;
 
-    float elevation_;      // ground elevation of stand [m] (estimate from plane at touchdown)
+    double elevation_;     // ground elevation of stand [m] (starts as an estimate from plane at touchdown)
     int ref_gen_;          // reference frame generation number
     float x_, y_, z_;
 
@@ -62,7 +62,7 @@ class Stand {
     float marshaller_max_dist_; // max distance, actual can be lower according to PE
     std::unique_ptr<ScrollTxt> scroll_txt_;
 
-    void UpdateXYZ();      // x_, y_, z_ from as_.lon, as_.lat, reference frame
+    void UpdateXYZ();      // x_, y_, z_, drawinfo_ from as_.lon, as_.lat, reference frame
     void SetDgsDist();
 
   public:
