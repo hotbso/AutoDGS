@@ -22,6 +22,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <algorithm>
