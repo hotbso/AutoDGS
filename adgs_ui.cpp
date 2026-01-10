@@ -37,23 +37,18 @@
 
 static WidgetCtx ui_widget_ctx;
 
-static XPWidgetID ui_widget, list_box, status_line,
-    marshaller_label, vdgs_label, marshaller_btn, vdgs_btn,
+static XPWidgetID ui_widget, list_box, status_line, marshaller_label, vdgs_label, marshaller_btn, vdgs_btn,
     activate_btn, move_btn;
 
 // current status of ui
 static std::string ui_arpt_icao;
 static int ui_selected_stand;
 
-static inline bool
-IsActive()
-{
+static inline bool IsActive() {
     return (arpt && arpt->state() >= Airport::ARRIVAL);
 }
 
-static void
-ShowTypeButtons()
-{
+static void ShowTypeButtons() {
     XPShowWidget(vdgs_label);
     XPShowWidget(marshaller_label);
     XPShowWidget(vdgs_btn);
@@ -63,9 +58,7 @@ ShowTypeButtons()
     XPHideWidget(activate_btn);
 }
 
-static void
-HideTypeButtons()
-{
+static void HideTypeButtons() {
     XPHideWidget(vdgs_label);
     XPHideWidget(marshaller_label);
     XPHideWidget(vdgs_btn);
@@ -74,9 +67,7 @@ HideTypeButtons()
     XPHideWidget(move_btn);
 }
 
-static int
-WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
-{
+static int WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2) {
     if (msg == xpMessage_CloseButtonPushed) {
         ui_widget_ctx.Hide();
         return 1;
@@ -94,30 +85,30 @@ WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t pa
         return 1;
     }
 
-	if (msg == xpMessage_ListBoxItemSelected) {
+    if (msg == xpMessage_ListBoxItemSelected) {
         ui_selected_stand = XPGetWidgetProperty(list_box, xpProperty_ListBoxCurrentItem, NULL);
-        assert(ui_selected_stand >= 0); // be paranoid
-        ui_selected_stand--;            // 0 is "Automatic"
+        assert(ui_selected_stand >= 0);  // be paranoid
+        ui_selected_stand--;             // 0 is "Automatic"
 
         if (ui_selected_stand < 0) {
             HideTypeButtons();
             std::string txt = "Automatic @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
             XPSetWidgetDescriptor(status_line, txt.c_str());
             if (IsActive())
-                arpt->SetSelectedStand(-1); // unselect
+                arpt->SetSelectedStand(-1);  // unselect
             return 1;
         }
 
         char ss_name[100];
         ss_name[99] = '\0';
-		XPGetWidgetDescriptor(list_box, ss_name, sizeof(ss_name) - 1);
-        std::string txt{ss_name + 2};   // skip type, blank
+        XPGetWidgetDescriptor(list_box, ss_name, sizeof(ss_name) - 1);
+        std::string txt{ss_name + 2};  // skip type, blank
         LogMsg("selected ramp is '%s'", txt.c_str());
         txt += " @ " + (ui_arpt_icao.empty() ? "unknown" : ui_arpt_icao);
-		XPSetWidgetDescriptor(status_line, txt.c_str());
+        XPSetWidgetDescriptor(status_line, txt.c_str());
 
         ShowTypeButtons();
-        if (IsActive()) {       // be paranoid, otherwise we should never be here
+        if (IsActive()) {  // be paranoid, otherwise we should never be here
             arpt->SetSelectedStand(ui_selected_stand);
             int dgs_type = arpt->GetDgsType();
             XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 0);
@@ -151,7 +142,7 @@ WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t pa
     if (IsActive()) {
         arpt->SetDgsType(dgs_type);
         int selected_stand = XPGetWidgetProperty(list_box, xpProperty_ListBoxCurrentItem, NULL);
-        selected_stand--;            // 0 is "Automatic"
+        selected_stand--;  // 0 is "Automatic"
         if (selected_stand >= 0) {
             auto [dgs_type, name] = arpt->GetStand(selected_stand);
             char entry[100];
@@ -166,9 +157,7 @@ WidgetCb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t pa
     return 1;
 }
 
-void
-UpdateUI(bool only_if_visible)
-{
+void UpdateUI(bool only_if_visible) {
     if (ui_widget == NULL || (only_if_visible && !XPIsWidgetVisible(ui_widget))) {
         LogMsg("update_ui: widget is not visible");
         return;
@@ -221,9 +210,7 @@ UpdateUI(bool only_if_visible)
     }
 }
 
-static void
-CreateUI()
-{
+static void CreateUI() {
     // Note that (0,0) is the top left while for widgets it's bottom left
     // so we pass the y* arguments that the outcome is in widget coordinates
 
@@ -236,8 +223,8 @@ CreateUI()
     int height = 450;
     int lb_height = 350;
 
-    ui_widget = XPCreateWidget(left, top, left + width, top - height,
-                               0, "AutoDGS " VERSION_SHORT, 1, NULL, xpWidgetClass_MainWindow);
+    ui_widget = XPCreateWidget(left, top, left + width, top - height, 0, "AutoDGS " VERSION_SHORT, 1, NULL,
+                               xpWidgetClass_MainWindow);
     ui_widget_ctx.Set(ui_widget, left, top, width, height);
 
     XPSetWidgetProperty(ui_widget, xpProperty_MainWindowHasCloseBoxes, 1);
@@ -249,50 +236,44 @@ CreateUI()
     int top_btn = top - 20;
     int left_btn = left + (width - 60) / 2;
     // "Activate" button
-    activate_btn = XPCreateWidget(left_btn, top_btn, left_btn + 60, top_btn - 20,
-                                    1, "Activate", 0, ui_widget, xpWidgetClass_Button);
+    activate_btn = XPCreateWidget(left_btn, top_btn, left_btn + 60, top_btn - 20, 1, "Activate", 0, ui_widget,
+                                  xpWidgetClass_Button);
     XPSetWidgetProperty(activate_btn, xpProperty_ButtonType, xpPushButton);
     XPSetWidgetProperty(activate_btn, xpProperty_ButtonBehavior, xpButtonBehaviorPushButton);
     XPAddWidgetCallback(activate_btn, WidgetCb);
 
     // "Move closer" button
     left_btn = left1 + 60;
-    move_btn = XPCreateWidget(left_btn, top_btn, left_btn + 80, top_btn - 20,
-                              1, "Move closer", 0, ui_widget, xpWidgetClass_Button);
+    move_btn = XPCreateWidget(left_btn, top_btn, left_btn + 80, top_btn - 20, 1, "Move closer", 0, ui_widget,
+                              xpWidgetClass_Button);
     XPSetWidgetProperty(move_btn, xpProperty_ButtonType, xpPushButton);
     XPSetWidgetProperty(move_btn, xpProperty_ButtonBehavior, xpButtonBehaviorPushButton);
     XPAddWidgetCallback(move_btn, WidgetCb);
 
     // Type radio buttons
-    marshaller_label = XPCreateWidget(left, top, left + 50, top - 20,
-                                      1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
-    marshaller_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
-                                    1, "", 0, ui_widget, xpWidgetClass_Button);
+    marshaller_label =
+        XPCreateWidget(left, top, left + 50, top - 20, 1, "Marshaller", 0, ui_widget, xpWidgetClass_Caption);
+    marshaller_btn = XPCreateWidget(left1, top, left1 + 20, top - 20, 1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
     XPAddWidgetCallback(marshaller_btn, WidgetCb);
     XPSetWidgetProperty(marshaller_btn, xpProperty_ButtonState, 1);
 
     top -= 20;
-    vdgs_label = XPCreateWidget(left, top, left + 50, top - 20,
-                                1, "VDGS", 0, ui_widget, xpWidgetClass_Caption);
-    vdgs_btn = XPCreateWidget(left1, top, left1 + 20, top - 20,
-                              1, "", 0, ui_widget, xpWidgetClass_Button);
+    vdgs_label = XPCreateWidget(left, top, left + 50, top - 20, 1, "VDGS", 0, ui_widget, xpWidgetClass_Caption);
+    vdgs_btn = XPCreateWidget(left1, top, left1 + 20, top - 20, 1, "", 0, ui_widget, xpWidgetClass_Button);
     XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonType, xpRadioButton);
     XPSetWidgetProperty(vdgs_btn, xpProperty_ButtonBehavior, xpButtonBehaviorRadioButton);
     XPAddWidgetCallback(vdgs_btn, WidgetCb);
 
     top -= 20;
-    status_line = XPCreateWidget(left, top, left + width - 30, top - 20,
-                                    1, "", 0, ui_widget, xpWidgetClass_Caption);
+    status_line = XPCreateWidget(left, top, left + width - 30, top - 20, 1, "", 0, ui_widget, xpWidgetClass_Caption);
 
     top -= 30;
-    list_box = XPCreateListBox(left, top, left + width - 10, top - lb_height,
-                               1, "Automatic", ui_widget);
+    list_box = XPCreateListBox(left, top, left + width - 10, top - lb_height, 1, "Automatic", ui_widget);
 }
 
-void
-ToggleUI(void) {
+void ToggleUI(void) {
     LogMsg("toggle_ui called");
 
     if (ui_widget == NULL)
