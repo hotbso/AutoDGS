@@ -149,6 +149,7 @@ class Airport {
     // accessors
     const std::string& name() const { return name_; }
     state_t state() const { return state_; }
+    int selected_stand() const { return selected_stand_; }
 };
 
 extern std::unique_ptr<Airport> arpt;

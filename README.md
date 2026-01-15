@@ -36,6 +36,11 @@ If you don't like automatic activation or automatic docking of the jetway see th
 When on ground you can preselect a stand in the GUI (e.g. after you get a stand assigned on VATSIM).\
 Depending on the selected stand a Marshaller appears or the VDGS lights up in "lead in" mode.
 
+## Preplan the arrival gate via simbrief OFP
+Put a string ```ARRIVAL_STAND=<stand>;``` into simbrief's dispatch remarks.\
+When AutoDGS enters departure mode this information is picked up and the named stand is automatically selected after arrival.\
+Should you be assigned to a different gate later use the GUI to change to that one or use Automatic.
+
 ## Boarding
 When parked for departure (= beacon off, engines off, no. of pax = 0) boarding is detected when the no. of pax starts rising. The current no. of pax is displayed in the VDGS.\
 Currently suuports only the ToLiss fleet.

@@ -71,6 +71,9 @@ static std::unique_ptr<Ofp> ofp;
 static int ofp_seqno;
 static float ofp_ts;
 
+static std::string ofp_destination;
+static std::string ofp_arrival_stand;
+
 class Marshaller;
 
 // there is exactly none or one Marshaller
@@ -475,6 +478,20 @@ Airport::Airport(const AptAirport& apt_airport) {
 
     timestamp_ = distance_ = sin_wave_prev_ = 0.0f;
     departure_stand_ts_ = nearest_stand_ts_ = update_dgs_log_ts_ = 0.0f;
+
+    if (ofp_destination == name_) {
+        LogMsg("Now on the OFP destination '%s', looking for arrival stand %s", ofp_destination.c_str(), ofp_arrival_stand.c_str());
+        for (int i = 0; i < (int)stands_.size(); i++) {
+            if (stands_[i].name() == ofp_arrival_stand) {
+                selected_stand_ = i;
+                LogMsg("found");
+                break;
+            }
+        }
+
+        if (selected_stand_ == -1)
+            LogMsg("Arrival stand '%s' from OFP not found", ofp_arrival_stand.c_str());
+    }
 }
 
 Airport::~Airport() {
@@ -835,6 +852,24 @@ float Airport::StateMachine() {
                     else
                         ds.scroll_txt_ = std::make_unique<ScrollTxt>(name() + " STAND " + ds.display_name_ + "   " +
                                                                      ofp_str + "   ");
+
+                    // extract arrival stand from ofp remarks if any
+                    if (!ofp->dx_rmk.empty()) {
+                        LogMsg("OFP Departure Remarks: '%s'", ofp->dx_rmk.c_str());
+                        auto pos = ofp->dx_rmk.find("ARRIVAL_STAND=");
+                        if (pos != std::string::npos) {
+                            ofp_arrival_stand = ofp->dx_rmk.substr(pos + 14);
+                            auto endpos = ofp_arrival_stand.find_first_of(";,\n\r");
+                            if (endpos != std::string::npos)
+                                ofp_arrival_stand = ofp_arrival_stand.substr(0, endpos);
+                            ofp_destination = ofp->destination;
+                            LogMsg("OFP Arrival Stand set to '%s@%s'", ofp_arrival_stand.c_str(),
+                                   ofp_destination.c_str());
+                        }
+                    } else {
+                        ofp_arrival_stand.clear();
+                        ofp_destination.clear();
+                    }
                 }
             }
         }

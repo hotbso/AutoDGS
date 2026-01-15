@@ -181,7 +181,7 @@ void UpdateUI(bool only_if_visible) {
         ui_arpt_icao = arpt->name();
         XPHideWidget(activate_btn);
         LogMsg("load ramps");
-        ui_selected_stand = -1;
+        ui_selected_stand = arpt->selected_stand(); // preselected via OFP or -1
         XPSetWidgetDescriptor(list_box, "Automatic");
         XPSetWidgetProperty(list_box, xpProperty_ListBoxAddItemsWithClear, 1);
 
