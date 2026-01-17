@@ -707,9 +707,9 @@ void Airport::FindNearestStand() {
                 }
             }
 
-            // for the final comparison give xtrack a higher weight
-            static const float xtrack_weight = 4.0;
-            d = sqrt(SQR(xtrack_weight * nw_x) + SQR(nw_z));
+            // for the final comparison give xtrack a higher weight + consider heading deviation
+            static constexpr float xtrack_weight = 4.0;
+            d = sqrt(SQR(xtrack_weight * nw_x) + SQR(nw_z)) + fabsf(local_hdgt);
 
             if (d < dist) {
                 // LogMsg("new min: %s, z: %2.1f, x: %2.1f", s.cname(), nw_z, nw_x);
