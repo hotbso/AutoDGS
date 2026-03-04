@@ -69,6 +69,9 @@ static XPLMDataRef zulu_time_minutes_dr, zulu_time_hours_dr;
 XPLMProbeRef probe_ref;
 XPLMObjectRef dgs_obj[2], pole_base_obj;
 
+static fem::LLPos plane_pos;       // current plane position, updated in FlightLoopCb()
+static fem::LLPos plane_pos_prev;  // previous plane position
+
 // track reference frame generation number
 static XPLMDataRef lat_ref_dr, lon_ref_dr;
 static float lat_ref, lon_ref;
@@ -131,15 +134,14 @@ void Activate(void) {
 
     plane.ResetBeacon();
 
-    flat_earth_math::LLPos pos(XPLMGetDataf(plane_lat_dr), XPLMGetDataf(plane_lon_dr));
-    std::string airport_id = AptAirport::LocateAirport(pos);
+    std::string airport_id = AptAirport::LocateAirport(plane_pos);
     if (!airport_id.empty()) {
         LogMsg("now on airport: %s", airport_id.c_str());
         if (arpt == nullptr || arpt->name() != airport_id) {  // don't reload same
             arpt = Airport::LoadAirport(airport_id);
         }
     } else {
-        LogMsg("airport could not be identified at %0.8f,%0.8f", pos.lat, pos.lon);
+        LogMsg("airport could not be identified at %0.8f,%0.8f", plane_pos.lat, plane_pos.lon);
         arpt = nullptr;
     }
 
@@ -167,6 +169,15 @@ static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSince
         if (pending_plane_loaded_cb) {
             plane.PlaneLoadedCb();
             pending_plane_loaded_cb = false;
+        }
+
+        plane_pos_prev = plane_pos;
+        plane_pos = fem::LLPos(XPLMGetDataf(plane_lat_dr), XPLMGetDataf(plane_lon_dr));
+
+        // if we go 3 * supersonic it's a teleportation, e.g. a ToLiss situation reload
+        if (fem::len(plane_pos - plane_pos_prev) > inElapsedSinceLastCall * 3.0f * 340.0f) {
+            LogMsg("teleportation detected, resetting airport");
+            arpt = nullptr;
         }
 
         float loop_delay = 2.0;
@@ -460,5 +471,12 @@ PLUGIN_API void XPluginReceiveMessage([[maybe_unused]] XPLMPluginID in_from, lon
             if (ev100_dr)
                 LogMsg("ev100 dataref mapped");
         }
+        return;
+    }
+
+    if (in_msg == XPLM_MSG_AIRPORT_LOADED) {
+        LogMsg("airport loaded message received, resetting airport");
+        arpt = nullptr;
+        return;
     }
 }

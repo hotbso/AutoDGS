@@ -34,6 +34,8 @@
 #include "flat_earth_math.h"
 #include "log_msg.h"
 
+namespace fem = flat_earth_math;
+
 static constexpr float kD2R = std::numbers::pi/180.0;
 static constexpr float kF2M = 0.3048;               // 1 ft [m]
 static constexpr float kJw2Stand = 25.0;            // m, max dist jw to stand
@@ -94,20 +96,20 @@ struct AptStand {
 // code 100 data
 struct AptRunway {
     std::string name;
-    flat_earth_math::LLPos end1, end2;
-    flat_earth_math::Vec2 cl;   // center line unit vector, end1 -> end2
+    fem::LLPos end1, end2;
+    fem::Vec2 cl;   // center line unit vector, end1 -> end2
     double len;
     float width;
 };
 
 class AptAirport {
   private:
-    flat_earth_math::LLPos bbox_min_, bbox_max_; // bounding box of this airport
+    fem::LLPos bbox_min_, bbox_max_; // bounding box of this airport
 
     public:
     static bool CollectAirports(const std::string& xp_dir);
     static const AptAirport *LookupAirport(const std::string& airport_id);
-    static const std::string LocateAirport(const flat_earth_math::LLPos& pos);
+    static const std::string LocateAirport(const fem::LLPos& pos);
 
     std::string icao_;
     bool has_twr_{false};
