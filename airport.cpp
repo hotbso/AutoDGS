@@ -34,8 +34,6 @@
 
 #include "XPLMGraphics.h"
 
-namespace fem = flat_earth_math;
-
 // DGS _A = angles [°] (to centerline), _X, _Z = [m] (to stand)
 static constexpr float kCapA = 15;   // Capture
 static constexpr float kCapZ = 105;  // (50-80 in Safedock2 flier)
@@ -171,7 +169,7 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     }
 
     // trim trailing whitespace
-    display_name_.erase(0, display_name_.find_first_not_of(" "));
+    display_name_.erase(display_name_.find_last_not_of(" ") + 1);
 
     if (display_name_.length() > kR1Nchar)
         display_name_.clear();  // give up
