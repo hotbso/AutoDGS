@@ -228,6 +228,7 @@ static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSince
         return loop_delay;
     } catch (const std::exception& ex) {
         LogMsg("fatal error: '%s'", ex.what());  // hopefully LogMsg is still alive
+        LogMsg("disabling plugin to avoid further errors and hopefully protect X-Plane from crashing");
         error_disabled = true;
         return 0;
     }
@@ -235,6 +236,9 @@ static float FlightLoopCb(float inElapsedSinceLastCall, float inElapsedTimeSince
 
 // call backs for commands
 static int CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] void* ref) {
+    if (error_disabled)
+        return 0;
+
     if (xplm_CommandBegin != phase)
         return 0;
 
@@ -258,6 +262,9 @@ static int CmdCb(XPLMCommandRef cmdr, XPLMCommandPhase phase, [[maybe_unused]] v
 
 // call back for menu
 static void MenuCb([[maybe_unused]] void* menu_ref, void* item_ref) {
+    if (error_disabled)
+        return;
+
     XPLMCommandOnce(*(XPLMCommandRef*)item_ref);
 }
 
