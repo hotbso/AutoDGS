@@ -152,24 +152,25 @@ Stand::Stand(const AptStand& as, float elevation, int dgs_type, float dgs_dist) 
     const std::string& asn = as_.name;
 
     if (asn.starts_with("Stand"))
-        display_name_ = asn.substr(6);
+        display_name_ = asn.substr(5);
     else if (asn.starts_with("Gate"))
-        display_name_ = asn.substr(5);
+        display_name_ = asn.substr(4);
     else if (asn.starts_with("Ramp"))
-        display_name_ = asn.substr(5);
+        display_name_ = asn.substr(4);
     else
         display_name_ = as_.name;
 
-    // delete stuff following and including a "(,;"
+    // trim leading whitespace
+    display_name_.erase(0, display_name_.find_first_not_of(" "));
+
+    // delete stuff following and including a "({,;"
     if (display_name_.length() > kR1Nchar) {
-        const auto i = display_name_.find_first_of("(,;");
-        if (i != std::string::npos) {
+        const auto i = display_name_.find_first_of("({,;");
+        if (i != std::string::npos)
             display_name_.resize(i);
-            display_name_.erase(display_name_.find_last_not_of(" ") + 1);
-        }
     }
 
-    // trim whitespace
+    // trim trailing whitespace
     display_name_.erase(0, display_name_.find_first_not_of(" "));
 
     if (display_name_.length() > kR1Nchar)
