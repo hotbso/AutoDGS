@@ -2,7 +2,7 @@
 Automatically provide DGS service (Marshaller or VDGS) for X Plane's Global Scenery airports.
 
 Well, not every airport. As you don't want to have Marshallers and Safedock VDGS' at your rural landing strip the airport
-must have at least have a tower and some stands resulting in 5000+ airports.
+must at least have a tower frequency and some stands resulting in 5000+ airports.
 It works for XP11 and XP12.
 
 ## Installation and Support
