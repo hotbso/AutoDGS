@@ -1,0 +1,17 @@
+resources/Marshaller_XP11.obj|1137347
+resources/Safedock-T2-24-pole.obj|1728297
+resources/Marshaller.obj|1137358
+resources/pole_base.png|6437798
+resources/pole_base.obj|25301
+resources/Safedock-T2-24_LIT.png|8975
+resources/Safedock-T2-24-pole_XP11.obj|1728240
+resources/Safedock-T2-24.png|48606
+resources/Marshaller_LIT.dds|174904
+resources/Marshaller.dds|174904
+win_x64/AutoDGS.xpl|3557077
+lin_x64/AutoDGS.xpl|196808
+acf_use_engine_running.txt|177
+README.html|680
+mac_x64/AutoDGS.xpl|328312
+lua_sample/autodgs_activate_on_taxi_light_off.lua|1061
+acf_dont_connect_jetway.txt|143
