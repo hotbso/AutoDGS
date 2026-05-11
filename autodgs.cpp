@@ -301,6 +301,11 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
 
     LogMsg("startup " VERSION);
 
+    LogMsg("There won't be a 5.x version for AutoDGS. The functionality of AutoDGS will be integrated into openSAM 5.x");
+    LogMsg("If you want to stick with AutoDGS stay in the PROD channel of skunkcrafts and go for a 4.x release");
+    LogMsg("Signing off, it was a great journey!");
+    return 0;
+
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
     XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
