@@ -1,3 +1,6 @@
+# AutoDGS is deprecated and no longer supported.
+# Use openSAM > v5.x.
+
 # AutoDGS
 Automatically provide DGS service (Marshaller or VDGS) for X Plane's Global Scenery airports.
 
